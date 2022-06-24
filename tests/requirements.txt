@@ -1,0 +1,4 @@
+equinox>=0.5.3
+pytest>=7.0.1
+beartype>=0.10.4
+typeguard>=2.13.3
