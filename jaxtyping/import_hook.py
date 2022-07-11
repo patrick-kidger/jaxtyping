@@ -104,7 +104,7 @@ class _JaxtypingTransformer(ast.NodeVisitor):
                 0,
                 ast.Attribute(
                     ast.Name(id="jaxtyping", ctx=ast.Load()), "jaxtyped", ast.Load()
-                )
+                ),
             )
             if self._typechecker is not None:
                 # Place at the end of the decorator list, as decorators
