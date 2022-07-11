@@ -18,7 +18,8 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import functools as ft
-from typing import Any, Dict, List, Literal, NoReturn, Optional, Tuple, Union
+from typing import Any, Dict, List, NoReturn, Optional, Tuple, Union
+from typing_extensions import Literal
 
 import jax.numpy as jnp
 
