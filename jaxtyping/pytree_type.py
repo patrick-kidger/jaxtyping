@@ -18,9 +18,25 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import functools as ft
+from typing import Generic, TypeVar
 
 import jax
 import typeguard
+
+
+_T = TypeVar("_T")
+
+
+class _FakePyTree(Generic[_T]):
+    pass
+
+
+_FakePyTree.__name__ = "PyTree"
+_FakePyTree.__qualname__ = "PyTree"
+# Can't do type("PyTree", (Generic[_T],), {}) because dynamic subclassing of typeforms
+# isn't allowed.
+# Can't do types.new_class("PyTree", (Generic[_T],), {}) because that has __module__
+# "types", e.g. we get types.PyTree[int].
 
 
 class _MetaPyTree(type):
@@ -32,7 +48,8 @@ class _MetaPyTree(type):
 
     @ft.lru_cache(maxsize=None)
     def __getitem__(cls, item):
-        return _MetaSubscriptPyTree(f"PyTree[{item.__name__}]", (), {"leaftype": item})
+        name = str(_FakePyTree[item])
+        return _MetaSubscriptPyTree(name, (), {"leaftype": item})
 
 
 class _MetaSubscriptPyTree(type):
@@ -63,3 +80,6 @@ class _MetaSubscriptPyTree(type):
 
 
 PyTree = _MetaPyTree("PyTree", (), {})
+# Can't do `class PyTree(Generic[_T]): ...` because we need to override the
+# instancecheck for PyTree[foo], but we subclassing
+# `type(Generic[int])`, i.e. `typing._GenericAlias` is disallowed.

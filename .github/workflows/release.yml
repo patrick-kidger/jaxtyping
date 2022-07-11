@@ -33,7 +33,7 @@ jobs:
         with:
             python-version: "3.8"
             test-script: |
-                python -m pip install pytest jax jaxlib typeguard
+                python -m pip install pytest beartype equinox jaxlib
                 cp -r ${{ github.workspace }}/test ./test
                 pytest
             pypi-token: ${{ secrets.pypi_token }}
