@@ -19,13 +19,20 @@
 
 import random
 
-import beartype
 import jax.random as jr
 import pytest
 import typeguard
 
 
-@pytest.fixture(params=[typeguard.typechecked, beartype.beartype])
+try:
+    import beartype
+except ImportError:
+    typecheck_params = [typeguard.typechecked]
+else:
+    typecheck_params = [typeguard.typechecked, beartype.beartype]
+
+
+@pytest.fixture(params=typecheck_params)
 def typecheck(request):
     return request.param
 
@@ -37,6 +44,3 @@ def getkey():
         return jr.PRNGKey(random.randint(0, 2**31 - 1))
 
     return _getkey
-
-
-ParamException = (TypeError, beartype.roar.BeartypeCallHintParamViolation)

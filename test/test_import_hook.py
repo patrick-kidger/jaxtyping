@@ -32,10 +32,17 @@ def test_import_hook_typeguard():
 
 
 def test_import_hook_beartype():
-    hook = install_import_hook("import_hook_tester_beartype", ("beartype", "beartype"))
-    import import_hook_tester_beartype  # noqa: F401
+    try:
+        import beartype  # noqa: F401
+    except ImportError:
+        pass
+    else:
+        hook = install_import_hook(
+            "import_hook_tester_beartype", ("beartype", "beartype")
+        )
+        import import_hook_tester_beartype  # noqa: F401
 
-    hook.uninstall()
+        hook.uninstall()
 
 
 def test_import_hook_transitive():

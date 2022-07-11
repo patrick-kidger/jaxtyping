@@ -17,12 +17,17 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import beartype
 import equinox as eqx
 
 
-ParamError = (TypeError, beartype.roar.BeartypeCallHintParamViolation)
-ReturnError = (TypeError, beartype.roar.BeartypeCallHintReturnViolation)
+try:
+    import beartype
+except ImportError:
+    ParamError = TypeError
+    ReturnError = TypeError
+else:
+    ParamError = (TypeError, beartype.roar.BeartypeCallHintParamViolation)
+    ReturnError = (TypeError, beartype.roar.BeartypeCallHintReturnViolation)
 
 
 @eqx.filter_jit
