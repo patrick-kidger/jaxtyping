@@ -24,9 +24,10 @@ import jax
 import jax.numpy as jnp
 import jax.random as jr
 import pytest
-from helpers import make_mlp, ParamError
 
 from jaxtyping import f, jaxtyped, PyTree
+
+from .helpers import make_mlp, ParamError
 
 
 def test_direct(typecheck):

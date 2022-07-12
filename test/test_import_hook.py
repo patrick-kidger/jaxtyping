@@ -24,9 +24,9 @@ from jaxtyping import install_import_hook
 
 def test_import_hook_typeguard():
     hook = install_import_hook(
-        "import_hook_tester_typeguard", ("typeguard", "typechecked")
+        "test.import_hook_tester_typeguard", ("typeguard", "typechecked")
     )
-    import import_hook_tester_typeguard  # noqa: F401
+    from . import import_hook_tester_typeguard  # noqa: F401
 
     hook.uninstall()
 
@@ -38,26 +38,26 @@ def test_import_hook_beartype():
         pass
     else:
         hook = install_import_hook(
-            "import_hook_tester_beartype", ("beartype", "beartype")
+            "test.import_hook_tester_beartype", ("beartype", "beartype")
         )
-        import import_hook_tester_beartype  # noqa: F401
+        from . import import_hook_tester_beartype  # noqa: F401
 
         hook.uninstall()
 
 
 def test_import_hook_transitive():
     hook = install_import_hook(
-        "import_hook_tester_transitive", ("typeguard", "typechecked")
+        "test.import_hook_tester_transitive", ("typeguard", "typechecked")
     )
-    import import_hook_tester_transitive  # noqa: F401
+    from . import import_hook_tester_transitive  # noqa: F401
 
     hook.uninstall()
 
 
 def test_import_hook_broken_checker():
     hook = install_import_hook(
-        "import_hook_tester_broken_checker", ("jaxtyping", "does_not_exist")
+        "test.import_hook_tester_broken_checker", ("jaxtyping", "does_not_exist")
     )
     with pytest.raises(AttributeError):
-        import import_hook_tester_broken_checker  # noqa: F401
+        from . import import_hook_tester_broken_checker  # noqa: F401
     hook.uninstall()
