@@ -35,7 +35,7 @@ def test_import_hook_beartype():
     try:
         import beartype  # noqa: F401
     except ImportError:
-        pass
+        pytest.skip("Beartype not installed")
     else:
         hook = install_import_hook(
             "test.import_hook_tester_beartype", ("beartype", "beartype")
