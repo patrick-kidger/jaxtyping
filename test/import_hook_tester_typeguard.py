@@ -19,9 +19,10 @@
 
 import jax.numpy as jnp
 import pytest
-from helpers import ParamError
 
 from jaxtyping import f32
+
+from .helpers import ParamError
 
 
 def g(x: f32[" b"]):

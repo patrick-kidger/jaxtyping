@@ -27,7 +27,11 @@ import typeguard
 try:
     import beartype
 except ImportError:
-    typecheck_params = [typeguard.typechecked]
+
+    def skip(*args, **kwargs):
+        pytest.skip("Beartype not installed")
+
+    typecheck_params = [typeguard.typechecked, skip]
 else:
     typecheck_params = [typeguard.typechecked, beartype.beartype]
 

@@ -20,9 +20,10 @@
 import jax.numpy as jnp
 import jax.random as jr
 import pytest
-from helpers import ParamError, ReturnError
 
 from jaxtyping import Array, f, f32, jaxtyped
+
+from .helpers import ParamError, ReturnError
 
 
 def test_basic(typecheck):
