@@ -6,22 +6,27 @@ Each array is denoted by a type `dtype[shape]`, such as `f32["batch channels"]`.
 
 ### Shape
 
-The shape should be a string of space-separated symbols, such as "a b c d". Each symbol can be:
+The shape should be a string of space-separated symbols, such as "a b c d". Each symbol can be either an:
 - `int`: fixed-size axis, e.g. `f32["28 28"]`.
 - `str`: variable-size axis, e.g. `f32["channels"]`.
-- `_`: anonymous axis, e.g. `f32["batch channels _ _"]`.
-- `...`: anonymous zero or more axes, e.g. `f32["... c h w"]`
-- `*name`: zero or more variable-size axes, e.g. `f32["*batch c h w"]`
-- Append `#` to a dimension size to indicate that it can be that size *or* equal to one -- i.e. broadcasting is acceptable.
 
 When calling a function, variable-size axes will be matched up across all arguments and checked for consistency. (See [runtime type checking](#runtime-type-checking) below.)
+
+In addition some modifiers can be applied:
+- Prepend `*` to a dimension to indicate that it can match multiple axes, e.g. `f32["*batch c h w"]` will match zero or more batch axes.
+- Prepend `#` to a dimension to indicate that it can be that size *or* equal to one -- i.e. broadcasting is acceptable, e.g. `add(x: f32["#foo"], y: f32["#foo"]) -> f32["#foo"]`.
+- Prepend `_` to a dimension to disable any runtime checking of that dimension (so that it can be used just as documentation). This can also be used as just `_` on its own: e.g. `f32["b c _ _"]`.
+
+The order of these modifiers does not matter.
+
+As a special case:
+- `...`: anonymous zero or more axes (equivalent to `*_`) e.g. `f32["... c h w"]`
 
 Some notes:
 - To denote a scalar shape use `""`, e.g. `f32[""]`.
 - To denote an arbitrary shape (and only check dtype) use `"..."`, e.g. `f32["..."]`.
-- You cannot have multiple variadic axes, i.e. you can only use `...` or `*name` at most once in each array.
-- An example of broadcasting in one dimension: `add(x: f32["foo#"], y: f32["foo#"]) -> f32["foo#"]`.
-- An example of broadcasting multiple dimensions: `add(x: f32["*foo#"], y: f32["*foo#"]) -> f32["*foo#"]`.
+- You cannot have more than one use of multiple-axes, i.e. you can only use `...` or `*name` at most once in each array.
+- An example of broadcasting multiple dimensions: `add(x: f32["*#foo"], y: f32["*#foo"]) -> f32["*#foo"]`.
 
 ### Dtype
 

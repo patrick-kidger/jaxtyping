@@ -185,7 +185,8 @@ class _MetaAbstractDtype(type):
     def __getitem__(cls, dim_str: str) -> _MetaAbstractArray:
         if not isinstance(dim_str, str):
             raise ValueError(
-                "Shape specification must be a string. Axes should be separated with spaces."
+                "Shape specification must be a string. Axes should be separated with "
+                "spaces."
             )
         dims = []
         index_variadic = None
@@ -195,29 +196,100 @@ class _MetaAbstractDtype(type):
                 raise ValueError(
                     "Dimensions should be separated with spaces, not commas"
                 )
-            broadcastable = False
             if elem.endswith("#"):
-                broadcastable = True
-                elem = elem[:-1]
-            try:
-                elem = int(elem)
-            except ValueError:
-                if elem == "_":
-                    elem = _anonymous_dim
-                elif elem == "...":
-                    if index_variadic is not None:
-                        raise ValueError("Cannot have multiple variadic dimensions")
-                    index_variadic = index
-                    elem = _anonymous_variadic_dim
-                elif elem[0] == "*":
-                    if index_variadic is not None:
-                        raise ValueError("Cannot have multiple variadic dimensions")
-                    index_variadic = index
-                    elem = _NamedVariadicDim(elem[1:], broadcastable)
-                else:
-                    elem = _NamedDim(elem, broadcastable)
+                raise ValueError(
+                    "As of jaxtyping v0.0.3, broadcastable dimensions are now denoted "
+                    "with a # at the start, rather than at the end"
+                )
+
+            if "..." in elem:
+                if elem != "...":
+                    raise ValueError(
+                        "Anonymous multiple dimension '...' must be used on its own; "
+                        f"got {elem}"
+                    )
+                broadcastable = False
+                variadic = True
+                anonymous = True
+                is_fixed = False
             else:
+                broadcastable = False
+                variadic = False
+                anonymous = False
+                while True:
+                    if len(elem) == 0:
+                        # This branch needed as just `_` is valid
+                        break
+                    first_char = elem[0]
+                    if first_char == "#":
+                        if broadcastable:
+                            raise ValueError(
+                                "Do not use # twice to denote broadcastability, e.g. "
+                                "`##foo` is not allowed"
+                            )
+                        broadcastable = True
+                        elem = elem[1:]
+                    elif first_char == "*":
+                        if variadic:
+                            raise ValueError(
+                                "Do not use * twice to denote accepting multiple "
+                                "dimensions, e.g. `**foo` is not allowed"
+                            )
+                        variadic = True
+                        elem = elem[1:]
+                    elif first_char == "_":
+                        if anonymous:
+                            raise ValueError(
+                                "Do not use _ twice to denote anonymity, e.g. `__foo` "
+                                "is not allowed"
+                            )
+                        anonymous = True
+                        elem = elem[1:]
+                    else:
+                        break
+                try:
+                    elem = int(elem)
+                except ValueError:
+                    is_fixed = False
+                else:
+                    is_fixed = True
+
+            if variadic:
+                if index_variadic is not None:
+                    raise ValueError(
+                        "Cannot use multiple-dimension specifiers (`*name` or `...`) "
+                        "more than once"
+                    )
+                index_variadic = index
+
+            if is_fixed:
+                if variadic:
+                    raise ValueError(
+                        "Cannot have a fixed axis bind to multiple dimensions, e.g. "
+                        "`*4` is not allowed"
+                    )
+                if anonymous:
+                    raise ValueError(
+                        "Cannot have a fixed axis be anonymous, e.g. `_4` is not "
+                        "allowed"
+                    )
                 elem = _FixedDim(elem, broadcastable)
+            else:
+                if anonymous:
+                    if broadcastable:
+                        raise ValueError(
+                            "Cannot have a dimension be both anonymous and "
+                            "broadcastable, e.g. `#_` is not allowed"
+                        )
+                    if variadic:
+                        elem = _anonymous_variadic_dim
+                    else:
+                        elem = _anonymous_dim
+                else:
+                    if variadic:
+                        elem = _NamedVariadicDim(elem, broadcastable)
+                    else:
+                        elem = _NamedDim(elem, broadcastable)
             dims.append(elem)
         if _array_name_format == "dtype_and_shape":
             name = f"{cls.__name__}['{dim_str}']"

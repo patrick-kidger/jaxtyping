@@ -227,7 +227,7 @@ def test_anonymous_variadic(typecheck, getkey):
 def test_broadcast_fixed(typecheck, getkey):
     @jaxtyped
     @typecheck
-    def g(x: f32["4#"]):
+    def g(x: f32["#4"]):
         pass
 
     g(jr.normal(getkey(), (4,)))
@@ -240,7 +240,7 @@ def test_broadcast_fixed(typecheck, getkey):
 def test_broadcast_named(typecheck, getkey):
     @jaxtyped
     @typecheck
-    def g(x: f32[" foo#"], y: f32[" foo#"]):
+    def g(x: f32[" #foo"], y: f32[" #foo"]):
         pass
 
     a = jr.normal(getkey(), (3,))
@@ -264,7 +264,7 @@ def test_broadcast_named(typecheck, getkey):
 def test_broadcast_variadic_named(typecheck, getkey):
     @jaxtyped
     @typecheck
-    def g(x: f32[" *foo#"], y: f32[" *foo#"]):
+    def g(x: f32[" *#foo"], y: f32[" *#foo"]):
         pass
 
     a = jr.normal(getkey(), (3,))
