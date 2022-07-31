@@ -22,6 +22,7 @@ from typing import Any, Dict, List, NoReturn, Optional, Tuple, Union
 from typing_extensions import Literal
 
 import jax.numpy as jnp
+import numpy as np
 
 from .decorator import storage
 
@@ -142,29 +143,34 @@ class _MetaAbstractArray(type):
             if j is not None and not _check_dims(cls.dims[j:], obj.shape[j:], memo):
                 return False
             variadic_dim = cls.dims[i]
-            if variadic_dim is not _anonymous_variadic_dim:
+            if variadic_dim is _anonymous_variadic_dim:
+                return True
+            else:
                 variadic_name = variadic_dim.name
                 try:
-                    variadic_shape = memo[variadic_name]
+                    if variadic_dim.broadcastable:
+                        variadic_shapes = memo[variadic_name]
+                    else:
+                        variadic_shape = memo[variadic_name]
                 except KeyError:
-                    memo[variadic_name] = obj.shape[i:j]
+                    if variadic_dim.broadcastable:
+                        memo[variadic_name] = [obj.shape[i:j]]
+                    else:
+                        memo[variadic_name] = obj.shape[i:j]
+                    return True
                 else:
                     if variadic_dim.broadcastable:
-                        new_variadic_shape = []
-                        obj_shape = obj.shape[i:j]
-                        if len(variadic_shape) != len(obj_shape):
-                            return False
-                        for old_size, new_size in zip(variadic_shape, obj_shape):
-                            if old_size == 1:
-                                new_variadic_shape.append(new_size)
-                            else:
-                                if new_size != 1 and old_size != new_size:
-                                    return False
-                                new_variadic_shape.append(old_size)
-                        memo[variadic_name] = tuple(new_variadic_shape)
+                        new_shape = obj.shape[i:j]
+                        for existing_shape in variadic_shapes:
+                            try:
+                                np.broadcast_shapes(new_shape, existing_shape)
+                            except ValueError:
+                                return False
+                        variadic_shapes.append(new_shape)
+                        return True
                     else:
                         return variadic_shape == obj.shape[i:j]
-            return True
+            assert False
 
 
 class AbstractArray(metaclass=_MetaAbstractArray):

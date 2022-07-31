@@ -283,12 +283,11 @@ def test_broadcast_variadic_named(typecheck, getkey):
     g(b, b)
     g(c, c)
     g(d, d)
+    g(b, c)
     with pytest.raises(ParamError):
         g(a, b)
     with pytest.raises(ParamError):
         g(a, c)
-    with pytest.raises(ParamError):
-        g(b, c)
     with pytest.raises(ParamError):
         g(a, b)
     with pytest.raises(ParamError):
@@ -296,26 +295,20 @@ def test_broadcast_variadic_named(typecheck, getkey):
 
     g(a, j)
     g(b, j)
-    with pytest.raises(ParamError):
-        g(c, j)
-    with pytest.raises(ParamError):
-        g(d, j)
-    with pytest.raises(ParamError):
-        g(b, k)
+    g(c, j)
+    g(d, j)
+    g(b, k)
     g(c, k)
     with pytest.raises(ParamError):
         g(d, k)
     with pytest.raises(ParamError):
         g(c, l)
     g(d, l)
-    with pytest.raises(ParamError):
-        g(a, m)
+    g(a, m)
     g(c, m)
     g(d, m)
-    with pytest.raises(ParamError):
-        g(a, n)
-    with pytest.raises(ParamError):
-        g(b, n)
+    g(a, n)
+    g(b, n)
     with pytest.raises(ParamError):
         g(c, n)
     with pytest.raises(ParamError):
