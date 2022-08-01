@@ -320,6 +320,54 @@ def test_broadcast_variadic_named(typecheck, getkey):
         g(o, a)
 
 
-def test_no_commas(typecheck, getkey):
+def test_no_commas():
     with pytest.raises(ValueError):
         f32["foo, bar"]
+
+
+def test_symbolic(typecheck, getkey):
+    @jaxtyped
+    @typecheck
+    def make_slice(x: f32[" dim"]) -> f32[" dim-1"]:
+        return x[1:]
+
+    @jaxtyped
+    @typecheck
+    def cat(x: f32[" dim"]) -> f32[" 2*dim"]:
+        return jnp.concatenate([x, x])
+
+    @jaxtyped
+    @typecheck
+    def bad_make_slice(x: f32[" dim"]) -> f32[" dim-1"]:
+        return x
+
+    @jaxtyped
+    @typecheck
+    def bad_cat(x: f32[" dim"]) -> f32[" 2*dim"]:
+        return jnp.concatenate([x, x, x])
+
+    x = jr.normal(getkey(), (5,))
+    assert make_slice(x).shape == (4,)
+    assert cat(x).shape == (10,)
+
+    y = jr.normal(getkey(), (3, 4))
+    with pytest.raises(ParamError):
+        make_slice(y)
+    with pytest.raises(ParamError):
+        cat(y)
+
+    with pytest.raises(ReturnError):
+        bad_make_slice(x)
+    with pytest.raises(ReturnError):
+        bad_cat(x)
+
+
+def test_incomplete_symbolic(typecheck, getkey):
+    @jaxtyped
+    @typecheck
+    def foo(x: f32[" 2*dim"]):
+        pass
+
+    x = jr.normal(getkey(), (4,))
+    with pytest.raises(NameError):
+        foo(x)

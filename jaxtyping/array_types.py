@@ -17,6 +17,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import enum
 import functools as ft
 from typing import Any, Dict, List, NoReturn, Optional, Tuple, Union
 from typing_extensions import Literal
@@ -41,8 +42,15 @@ def set_array_name_format(value):
 
 _any_dtype = object()
 
+
 _anonymous_dim = object()
 _anonymous_variadic_dim = object()
+
+
+class _DimType(enum.Enum):
+    named = enum.auto()
+    fixed = enum.auto()
+    symbolic = enum.auto()
 
 
 class _NamedDim:
@@ -63,21 +71,28 @@ class _FixedDim:
         self.broadcastable = broadcastable
 
 
+class _SymbolicDim:
+    def __init__(self, expr, broadcastable):
+        self.expr = expr
+        self.broadcastable = broadcastable
+
+
 _AbstractDimOrVariadicDim = Union[
     Literal[_anonymous_dim],
     Literal[_anonymous_variadic_dim],
     _NamedDim,
     _NamedVariadicDim,
     _FixedDim,
+    _SymbolicDim,
 ]
-_AbstractDim = Union[Literal[_anonymous_dim], _NamedDim, _FixedDim]
+_AbstractDim = Union[Literal[_anonymous_dim], _NamedDim, _FixedDim, _SymbolicDim]
 
 
 def _check_dims(
     cls_dims: List[_AbstractDim],
     obj_shape: Tuple[int],
-    memo: Dict[str, Union[int, Tuple[int]]],
-):
+    single_memo: Dict[str, int],
+) -> bool:
     assert len(cls_dims) == len(obj_shape)
     for cls_dim, obj_size in zip(cls_dims, obj_shape):
         if cls_dim is _anonymous_dim:
@@ -87,12 +102,24 @@ def _check_dims(
         elif type(cls_dim) is _FixedDim:
             if cls_dim.size != obj_size:
                 return False
+        elif type(cls_dim) is _SymbolicDim:
+            try:
+                eval_size = eval(cls_dim.expr, single_memo)
+            except NameError as e:
+                raise NameError(
+                    f"Cannot process symbolic dimension '{cls_dim.expr}' as some "
+                    "dimension names have not been processed. In practice you should "
+                    "usually only use symbolic dimensions in annotations for return "
+                    "types, referring only to dimensions annotated for arguments."
+                ) from e
+            if eval_size != obj_size:
+                return False
         else:
             assert type(cls_dim) is _NamedDim
             try:
-                cls_size = memo[cls_dim.name]
+                cls_size = single_memo[cls_dim.name]
             except KeyError:
-                memo[cls_dim.name] = obj_size
+                single_memo[cls_dim.name] = obj_size
             else:
                 if cls_size != obj_size:
                     return False
@@ -111,26 +138,41 @@ class _MetaAbstractArray(type):
             # `isinstance` happening outside any @jaxtyped decorators, e.g. at the
             # global scope. In this case just create a temporary memo, since we're not
             # going to be comparing against any stored values anyway.
-            memo = {}
+            single_memo = {}
+            variadic_memo = {}
+            variadic_broadcast_memo = {}
             temp_memo = True
         else:
+            single_memo, variadic_memo, variadic_broadcast_memo = storage.memo_stack[-1]
             # Make a copy so we don't mutate the original memo during the shape check.
-            memo = storage.memo_stack[-1].copy()
+            single_memo = single_memo.copy()
+            variadic_memo = variadic_memo.copy()
+            variadic_broadcast_memo = variadic_broadcast_memo.copy()
             temp_memo = False
 
-        if cls._check_shape(obj, memo):
+        if cls._check_shape(obj, single_memo, variadic_memo, variadic_broadcast_memo):
             # We update the memo every time we successfully pass a shape check
             if not temp_memo:
-                storage.memo_stack[-1] = memo
+                storage.memo_stack[-1] = (
+                    single_memo,
+                    variadic_memo,
+                    variadic_broadcast_memo,
+                )
             return True
         else:
             return False
 
-    def _check_shape(cls, obj, memo):
+    def _check_shape(
+        cls,
+        obj,
+        single_memo: Dict[str, int],
+        variadic_memo: Dict[str, Tuple[int, ...]],
+        variadic_broadcast_memo: Dict[str, List[Tuple[int, ...]]],
+    ):
         if cls.index_variadic is None:
             if obj.ndim != len(cls.dims):
                 return False
-            return _check_dims(cls.dims, obj.shape, memo)
+            return _check_dims(cls.dims, obj.shape, single_memo)
         else:
             if obj.ndim < len(cls.dims) - 1:
                 return False
@@ -138,25 +180,28 @@ class _MetaAbstractArray(type):
             j = -(len(cls.dims) - i - 1)
             if j == 0:
                 j = None
-            if not _check_dims(cls.dims[:i], obj.shape[:i], memo):
+            if not _check_dims(cls.dims[:i], obj.shape[:i], single_memo):
                 return False
-            if j is not None and not _check_dims(cls.dims[j:], obj.shape[j:], memo):
+            if j is not None and not _check_dims(
+                cls.dims[j:], obj.shape[j:], single_memo
+            ):
                 return False
             variadic_dim = cls.dims[i]
             if variadic_dim is _anonymous_variadic_dim:
                 return True
             else:
+                assert type(variadic_dim) is _NamedVariadicDim
                 variadic_name = variadic_dim.name
                 try:
                     if variadic_dim.broadcastable:
-                        variadic_shapes = memo[variadic_name]
+                        variadic_shapes = variadic_broadcast_memo[variadic_name]
                     else:
-                        variadic_shape = memo[variadic_name]
+                        variadic_shape = variadic_memo[variadic_name]
                 except KeyError:
                     if variadic_dim.broadcastable:
-                        memo[variadic_name] = [obj.shape[i:j]]
+                        variadic_broadcast_memo[variadic_name] = [obj.shape[i:j]]
                     else:
-                        memo[variadic_name] = obj.shape[i:j]
+                        variadic_memo[variadic_name] = obj.shape[i:j]
                     return True
                 else:
                     if variadic_dim.broadcastable:
@@ -217,7 +262,7 @@ class _MetaAbstractDtype(type):
                 broadcastable = False
                 variadic = True
                 anonymous = True
-                is_fixed = False
+                dim_type = _DimType.named
             else:
                 broadcastable = False
                 variadic = False
@@ -256,9 +301,12 @@ class _MetaAbstractDtype(type):
                 try:
                     elem = int(elem)
                 except ValueError:
-                    is_fixed = False
+                    if len(elem) == 0 or elem.isidentifier():
+                        dim_type = _DimType.named
+                    else:
+                        dim_type = _DimType.symbolic
                 else:
-                    is_fixed = True
+                    dim_type = _DimType.fixed
 
             if variadic:
                 if index_variadic is not None:
@@ -268,7 +316,7 @@ class _MetaAbstractDtype(type):
                     )
                 index_variadic = index
 
-            if is_fixed:
+            if dim_type is _DimType.fixed:
                 if variadic:
                     raise ValueError(
                         "Cannot have a fixed axis bind to multiple dimensions, e.g. "
@@ -280,7 +328,7 @@ class _MetaAbstractDtype(type):
                         "allowed"
                     )
                 elem = _FixedDim(elem, broadcastable)
-            else:
+            elif dim_type is _DimType.named:
                 if anonymous:
                     if broadcastable:
                         raise ValueError(
@@ -296,6 +344,20 @@ class _MetaAbstractDtype(type):
                         elem = _NamedVariadicDim(elem, broadcastable)
                     else:
                         elem = _NamedDim(elem, broadcastable)
+            else:
+                assert dim_type is _DimType.symbolic
+                if anonymous:
+                    raise ValueError(
+                        "Cannot have a symbolic dimension be anonymous, e.g. "
+                        "`_foo+bar` is not allowed"
+                    )
+                if variadic:
+                    raise ValueError(
+                        "Cannot have symbolic multiple-dimensions, e.g. "
+                        "`*foo+bar` is not allowed"
+                    )
+                elem = compile(elem, "<string>", "eval")
+                elem = _SymbolicDim(elem, broadcastable)
             dims.append(elem)
         if _array_name_format == "dtype_and_shape":
             name = f"{cls.__name__}['{dim_str}']"

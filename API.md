@@ -9,8 +9,9 @@ Each array is denoted by a type `dtype[shape]`, such as `f32["batch channels"]`.
 The shape should be a string of space-separated symbols, such as "a b c d". Each symbol can be either an:
 - `int`: fixed-size axis, e.g. `f32["28 28"]`.
 - `str`: variable-size axis, e.g. `f32["channels"]`.
+- A symbolic expression (without spaces!) in terms of other variable-size axes, e.g. `def remove_last(x: f32["dim"]) -> f32["dim-1"]`.
 
-When calling a function, variable-size axes will be matched up across all arguments and checked for consistency. (See [runtime type checking](#runtime-type-checking) below.)
+When calling a function, variable-size axes and symbolic axes will be matched up across all arguments and checked for consistency. (See [runtime type checking](#runtime-type-checking) below.)
 
 In addition some modifiers can be applied:
 - Prepend `*` to a dimension to indicate that it can match multiple axes, e.g. `f32["*batch c h w"]` will match zero or more batch axes.
@@ -27,6 +28,7 @@ Some notes:
 - To denote an arbitrary shape (and only check dtype) use `"..."`, e.g. `f32["..."]`.
 - You cannot have more than one use of multiple-axes, i.e. you can only use `...` or `*name` at most once in each array.
 - An example of broadcasting multiple dimensions: `add(x: f32["*#foo"], y: f32["*#foo"]) -> f32["*#foo"]`.
+- A symbolic expression cannot be evaluated unless all of the axes sizes it refers to have already been processed. In practice this usually means that they should only be used in annotations for the return type, and only use axes declared in the arguments.
 
 ### Dtype
 
