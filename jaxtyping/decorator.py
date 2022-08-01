@@ -28,8 +28,7 @@ storage.memo_stack = []
 def jaxtyped(fn):
     @ft.wraps(fn)
     def wrapper(*args, **kwargs):
-        memo = {}
-        storage.memo_stack.append(memo)
+        storage.memo_stack.append(({}, {}, {}))
         try:
             return fn(*args, **kwargs)
         finally:

@@ -28,7 +28,8 @@ _here = pathlib.Path(__file__).resolve().parent
 
 name = "jaxtyping"
 
-# for simplicity we actually store the version in the __version__ attribute in the source
+# for simplicity we actually store the version in the __version__ attribute in the
+# source
 with open(_here / name / "__init__.py") as f:
     meta_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", f.read(), re.M)
     if meta_match:
@@ -40,7 +41,10 @@ author = "Patrick Kidger"
 
 author_email = "contact@kidger.site"
 
-description = "Type annotations and runtime checking for shape and dtype of JAX arrays, and PyTrees."
+description = (
+    "Type annotations and runtime checking for shape and dtype of JAX "
+    "arrays, and PyTrees."
+)
 
 with open(_here / "README.md", "r") as f:
     readme = f.read()
@@ -63,7 +67,12 @@ python_requires = "~=3.7"
 
 # We use typeguard internally (in a fairly minimal way), but it's not required that
 # end users make the same choice.
-install_requires = ["jax>=0.3.4", "typeguard>=2.13.3", "typing_extensions>=4.2.0"]
+install_requires = [
+    "jax>=0.3.4",
+    "numpy>=1.20.0",
+    "typeguard>=2.13.3",
+    "typing_extensions>=4.2.0",
+]
 
 entry_points = dict(pytest11=["jaxtyping = jaxtyping.pytest_plugin"])
 

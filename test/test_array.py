@@ -227,7 +227,7 @@ def test_anonymous_variadic(typecheck, getkey):
 def test_broadcast_fixed(typecheck, getkey):
     @jaxtyped
     @typecheck
-    def g(x: f32["4#"]):
+    def g(x: f32["#4"]):
         pass
 
     g(jr.normal(getkey(), (4,)))
@@ -240,7 +240,7 @@ def test_broadcast_fixed(typecheck, getkey):
 def test_broadcast_named(typecheck, getkey):
     @jaxtyped
     @typecheck
-    def g(x: f32[" foo#"], y: f32[" foo#"]):
+    def g(x: f32[" #foo"], y: f32[" #foo"]):
         pass
 
     a = jr.normal(getkey(), (3,))
@@ -264,7 +264,7 @@ def test_broadcast_named(typecheck, getkey):
 def test_broadcast_variadic_named(typecheck, getkey):
     @jaxtyped
     @typecheck
-    def g(x: f32[" *foo#"], y: f32[" *foo#"]):
+    def g(x: f32[" *#foo"], y: f32[" *#foo"]):
         pass
 
     a = jr.normal(getkey(), (3,))
@@ -283,12 +283,11 @@ def test_broadcast_variadic_named(typecheck, getkey):
     g(b, b)
     g(c, c)
     g(d, d)
+    g(b, c)
     with pytest.raises(ParamError):
         g(a, b)
     with pytest.raises(ParamError):
         g(a, c)
-    with pytest.raises(ParamError):
-        g(b, c)
     with pytest.raises(ParamError):
         g(a, b)
     with pytest.raises(ParamError):
@@ -296,26 +295,20 @@ def test_broadcast_variadic_named(typecheck, getkey):
 
     g(a, j)
     g(b, j)
-    with pytest.raises(ParamError):
-        g(c, j)
-    with pytest.raises(ParamError):
-        g(d, j)
-    with pytest.raises(ParamError):
-        g(b, k)
+    g(c, j)
+    g(d, j)
+    g(b, k)
     g(c, k)
     with pytest.raises(ParamError):
         g(d, k)
     with pytest.raises(ParamError):
         g(c, l)
     g(d, l)
-    with pytest.raises(ParamError):
-        g(a, m)
+    g(a, m)
     g(c, m)
     g(d, m)
-    with pytest.raises(ParamError):
-        g(a, n)
-    with pytest.raises(ParamError):
-        g(b, n)
+    g(a, n)
+    g(b, n)
     with pytest.raises(ParamError):
         g(c, n)
     with pytest.raises(ParamError):
@@ -327,6 +320,54 @@ def test_broadcast_variadic_named(typecheck, getkey):
         g(o, a)
 
 
-def test_no_commas(typecheck, getkey):
+def test_no_commas():
     with pytest.raises(ValueError):
         f32["foo, bar"]
+
+
+def test_symbolic(typecheck, getkey):
+    @jaxtyped
+    @typecheck
+    def make_slice(x: f32[" dim"]) -> f32[" dim-1"]:
+        return x[1:]
+
+    @jaxtyped
+    @typecheck
+    def cat(x: f32[" dim"]) -> f32[" 2*dim"]:
+        return jnp.concatenate([x, x])
+
+    @jaxtyped
+    @typecheck
+    def bad_make_slice(x: f32[" dim"]) -> f32[" dim-1"]:
+        return x
+
+    @jaxtyped
+    @typecheck
+    def bad_cat(x: f32[" dim"]) -> f32[" 2*dim"]:
+        return jnp.concatenate([x, x, x])
+
+    x = jr.normal(getkey(), (5,))
+    assert make_slice(x).shape == (4,)
+    assert cat(x).shape == (10,)
+
+    y = jr.normal(getkey(), (3, 4))
+    with pytest.raises(ParamError):
+        make_slice(y)
+    with pytest.raises(ParamError):
+        cat(y)
+
+    with pytest.raises(ReturnError):
+        bad_make_slice(x)
+    with pytest.raises(ReturnError):
+        bad_cat(x)
+
+
+def test_incomplete_symbolic(typecheck, getkey):
+    @jaxtyped
+    @typecheck
+    def foo(x: f32[" 2*dim"]):
+        pass
+
+    x = jr.normal(getkey(), (4,))
+    with pytest.raises(NameError):
+        foo(x)
