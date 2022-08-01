@@ -249,7 +249,7 @@ class _MetaAbstractDtype(type):
                 )
             if elem.endswith("#"):
                 raise ValueError(
-                    "As of jaxtyping v0.0.3, broadcastable dimensions are now denoted "
+                    "As of jaxtyping v0.1.0, broadcastable dimensions are now denoted "
                     "with a # at the start, rather than at the end"
                 )
 
