@@ -21,12 +21,9 @@ import jax.numpy as jnp
 import jax.random as jr
 import pytest
 
-from jaxtyping import f32, Float, jaxtyped, Shaped
+from jaxtyping import Array, f32, Float, jaxtyped, Shaped
 
 from .helpers import ParamError, ReturnError
-
-
-Array = jnp.ndarray
 
 
 def test_basic(typecheck):

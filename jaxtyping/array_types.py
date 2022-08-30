@@ -22,6 +22,7 @@ import functools as ft
 from typing import Any, Dict, List, NoReturn, Optional, Tuple, TYPE_CHECKING, Union
 from typing_extensions import Literal
 
+import jax.numpy as jnp
 import numpy as np
 
 from .decorator import storage
@@ -261,6 +262,8 @@ class _MetaAbstractDtype(type):
                 "array type. For example `jaxtyping.f32[jnp.ndarray, 'foo bar']`."
             )
         array_type, dim_str = item
+        if array_type is Array:
+            array_type = jnp.ndarray
         del item
         if not isinstance(dim_str, str):
             raise ValueError(
@@ -451,6 +454,8 @@ if TYPE_CHECKING:
     from typing_extensions import Annotated as u16
     from typing_extensions import Annotated as u32
     from typing_extensions import Annotated as u64
+
+    from jax.numpy import ndarray as Array
 else:
     _bool = "bool"
     _uint8 = "uint8"
@@ -518,4 +523,8 @@ else:
     c = _make_dtype(_bool, "c", _deprecated=Complex)
     x = _make_dtype(_bool, "x", _deprecated=Inexact)
     n = _make_dtype(_bool, "n", _deprecated=Num)
+    # Note that Array also has a non-deprecated use-case as
+    # `f32[Array, "foo"]`.
+    # TODO: once these deprecations are removed, then just have a
+    # `from jax.numpy import ndarray as Array` in `__init__.py`.
     Array = _make_dtype(_bool, "Array", _deprecated=Shaped)

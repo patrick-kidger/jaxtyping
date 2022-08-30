@@ -7,8 +7,7 @@ Type annotations **and runtime checking** for:
 
 **For example:**
 ```python
-from jaxtyping import Float, PyTree
-from jax.numpy import ndarray as Array
+from jaxtyping import Array, Float, PyTree
 
 def matrix_multiply(x: Float[Array, "dim1 dim2"],
                     y: Float[Array, "dim2 dim3"]

@@ -2,20 +2,20 @@
 
 ## Annotating array types
 
-Each array is denoted by a type `dtype[array, shape]`, such as `Float[jnp.ndarray, "batch channels"]`.
+Each array is denoted by a type `dtype[array, shape]`, such as `Float[Array, "batch channels"]`.
 
 ### Shape
 
 The shape should be a string of space-separated symbols, such as "a b c d". Each symbol can be either an:
 - `int`: fixed-size axis, e.g. `"28 28"`.
 - `str`: variable-size axis, e.g. `"channels"`.
-- A symbolic expression (without spaces!) in terms of other variable-size axes, e.g. `def remove_last(x: Float[jnp.ndarray, "dim"]) -> Float[jnp.ndarray, "dim-1"]`.
+- A symbolic expression (without spaces!) in terms of other variable-size axes, e.g. `def remove_last(x: Float[Array, "dim"]) -> Float[Array, "dim-1"]`.
 
 When calling a function, variable-size axes and symbolic axes will be matched up across all arguments and checked for consistency. (See [runtime type checking](#runtime-type-checking) below.)
 
 In addition some modifiers can be applied:
 - Prepend `*` to a dimension to indicate that it can match multiple axes, e.g. `"*batch c h w"` will match zero or more batch axes.
-- Prepend `#` to a dimension to indicate that it can be that size *or* equal to one -- i.e. broadcasting is acceptable, e.g. `add(x: Float[jnp.ndarray, "#foo"], y: Float[jnp.ndarray, "#foo"]) -> Float[jnp.ndarray, "#foo"]`.
+- Prepend `#` to a dimension to indicate that it can be that size *or* equal to one -- i.e. broadcasting is acceptable, e.g. `add(x: Float[Array, "#foo"], y: Float[Array, "#foo"]) -> Float[Array, "#foo"]`.
 - Prepend `_` to a dimension to disable any runtime checking of that dimension (so that it can be used just as documentation). This can also be used as just `_` on its own: e.g. `"b c _ _"`.
 
 The order of these modifiers does not matter.
@@ -24,10 +24,10 @@ As a special case:
 - `...`: anonymous zero or more axes (equivalent to `*_`) e.g. `"... c h w"`
 
 Some notes:
-- To denote a scalar shape use `""`, e.g. `Float[jnp.ndarray, ""]`.
-- To denote an arbitrary shape (and only check dtype) use `"..."`, e.g. `Float[jnp.ndarray, "..."]`.
+- To denote a scalar shape use `""`, e.g. `Float[Array, ""]`.
+- To denote an arbitrary shape (and only check dtype) use `"..."`, e.g. `Float[Array, "..."]`.
 - You cannot have more than one use of multiple-axes, i.e. you can only use `...` or `*name` at most once in each array.
-- An example of broadcasting multiple dimensions: `add(x: Float[jnp.ndarray, "*#foo"], y: Float[jnp.ndarray, "*#foo"]) -> Float[jnp.ndarray, "*#foo"]`.
+- An example of broadcasting multiple dimensions: `add(x: Float[Array, "*#foo"], y: Float[Array, "*#foo"]) -> Float[Array, "*#foo"]`.
 - A symbolic expression cannot be evaluated unless all of the axes sizes it refers to have already been processed. In practice this usually means that they should only be used in annotations for the return type, and only use axes declared in the arguments.
 
 ### Dtype
@@ -49,26 +49,21 @@ The dtype should be any one of (imported from `jaxtyping`):
 
 Unless you really want to force a particular precision, then for most applications you should probably allow any floating-point, any integer, etc. That is, use
 ```python
-from jaxtyping import Float
-Float[jnp.ndarray, "some_shape"]
+from jaxtyping import Array, Float
+Float[Array, "some_shape"]
 ```
 rather than
 ```python
-from jaxtyping import f32
-f32[jnp.ndarray, "some_shape"]
+from jaxtyping import Array, f32
+f32[Array, "some_shape"]
 ```
 
 ### Array
 
-The array should typically be a `jnp.ndarray`. In practice, to save a bit of space and because it looks quite nice, we recommend:
-```python
-from jax.numpy import ndarray as Array
-Float[Array, "..."]
-```
+The array should typically be a `jaxtyping.Array`, which is an alias for `jnp.ndarray`.
 
-You can use other types as well. `jaxtyping` has support for JAX, NumPy, TensorFlow, and PyTorch, e.g.:
+But you can use other types as well. `jaxtyping` has support for JAX, NumPy, TensorFlow, and PyTorch, e.g.:
 ```python
-Float[jnp.ndarray, "..."]
 Float[np.ndarray, "..."]
 Float[tf.Tensor, "..."]
 Float[torch.Tensor, "..."]
@@ -78,7 +73,7 @@ Float[torch.Tensor, "..."]
 
 ### `jaxtyping.PyTree`
 
-Each PyTree is denoted by a type `PyTree[LeafType]`, such as `PyTree[int]` or `PyTree[Union[str, f32[jnp.ndarray, "b c"]]]`.
+Each PyTree is denoted by a type `PyTree[LeafType]`, such as `PyTree[int]` or `PyTree[Union[str, f32[Array, "b c"]]]`.
 
 You can leave off the `[...]`, in which case `PyTree` is simply a suggestively-named alternative to `Any`. ([By definition all types are PyTrees.](https://jax.readthedocs.io/en/latest/pytrees.html))
 
@@ -98,8 +93,7 @@ Example:
 
 ```python
 # Import both the annotation and the `jaxtyped` decorator from `jaxtyping`
-from jaxtyping import f32, jaxtyped
-from jax.numpy import ndarray as Array
+from jaxtyping import Array, f32, jaxtyped
 
 # Use your favourite typechecker: usually one of the two lines below.
 from typeguard import typechecked as typechecker
@@ -179,8 +173,7 @@ install_import_hook("do_stuff", ("typeguard", "typechecked"))
 import do_stuff
 
 ### do_stuff.py
-from jaxtyping import f32
-from jax.numpy import ndarray as Array
+from jaxtyping import Array, f32
 
 def g(x: f32[Array, "..."]):
     ...
@@ -224,4 +217,4 @@ Union[u8["shape"], u16["shape"]]
 ### `jaxtyping.AbstractArray`
 
 The base class of all shape-and-dtype-specified arrays, e.g. it's a base class
-for `f32[jnp.ndarray, "foo"]`.
+for `f32[Array, "foo"]`.
