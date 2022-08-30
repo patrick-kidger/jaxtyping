@@ -18,7 +18,7 @@ In addition some modifiers can be applied:
 - Prepend `#` to a dimension to indicate that it can be that size *or* equal to one -- i.e. broadcasting is acceptable, e.g. `add(x: Float[Array, "#foo"], y: Float[Array, "#foo"]) -> Float[Array, "#foo"]`.
 - Prepend `_` to a dimension to disable any runtime checking of that dimension (so that it can be used just as documentation). This can also be used as just `_` on its own: e.g. `"b c _ _"`.
 
-The order of these modifiers does not matter.
+When using multiple modifiers, their order does not matter.
 
 As a special case:
 - `...`: anonymous zero or more axes (equivalent to `*_`) e.g. `"... c h w"`
@@ -60,7 +60,7 @@ f32[Array, "some_shape"]
 
 ### Array
 
-The array should typically be a `jaxtyping.Array`, which is an alias for `jnp.ndarray`.
+The array should typically be a `jaxtyping.Array`, which is an alias for `jax.numpy.ndarray`.
 
 But you can use other types as well. `jaxtyping` has support for JAX, NumPy, TensorFlow, and PyTorch, e.g.:
 ```python

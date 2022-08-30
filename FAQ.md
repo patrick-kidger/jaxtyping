@@ -1,5 +1,17 @@
 # FAQ
 
+## Does jaxtyping work with static type checkers like `mypy`/`pyright`/`pytype`?
+
+There is partial support for these. An annotation of the form `dtype[array, shape]` should be treated as just `array` by a static type checker. Unfortunately full dtype/shape checking is beyond the scope of what static type checking is currently capable of.
+
+(Note that at time of writing, `pytype` has a bug in that `dtype[array, shape]` is sometimes treated as `Any` rather than `array`. `mypy` and `pyright` both work fine.)
+
+## How does jaxtyping interact with `jax.jit`?
+
+jaxtyping and `jax.jit` synergise beautifully.
+
+When calling JAX operations wrapped in a `jax.jit`, then the dtype/shape-checking will happen at trace time. (When JAX traces your function prior to compiling it.) The actual compiled code does not have any dtype/shape-checking, and will therefore still be just as fast as before!
+
 ## `flake8` is throwing an error.
 
 In type annotations, strings are used for two different things. Sometimes they're strings. Sometimes they're "forward references", used to refer to a type that will be defined later.
@@ -7,18 +19,6 @@ In type annotations, strings are used for two different things. Sometimes they'r
 Some tooling in the Python ecosystem assumes that only the latter is true, and will throw spurious errors if you try to use a string just as a string (like we do).
 
 In the case of `flake8`, at least, this is easily resolved. Multi-dimensional arrays (e.g. `f32[Array, "b c"]`) will throw a very unusual error (F722, syntax error in forward annotation), so you can safely just disable this particular error globally. Uni-dimensional arrays (e.g. `f32[Array, "x"]`) will throw an error that's actually useful (F821, undefined name), so instead of disabling this globally, you should instead prepend a space to the start of your shape, e.g. `f32[Array, " x"]`. `jaxtyping` will treat this in the same way, whilst `flake8` will now throw an F722 error that you can disable as before.
-
-## Does jaxtyping work with static type checkers like `mypy`/`pyright`/`pytype`?
-
-There is partial support for these. An annotation of the form `dtype[array, shape]` should be treated as just `array` by a static type checker. Unfortunately full dtype/shape checking is beyond the scope of what static type checking is currently capable of.
-
-(Note that at time of writing, `pytype` has a bug in that `dtype[array, shape]` is sometimes treated as `Any` rather than `array`. The other two work fine.)
-
-## How does jaxtyping interact with `jax.jit`?
-
-jaxtyping and `jax.jit` synergise beautifully.
-
-When calling JAX operations wrapped in a `jax.jit`, then the dtype/shape-checking will happen at trace time. (When JAX traces your function prior to compiling it.) The actual compiled code does not have any dtype/shape-checking, and will therefore still be just as fast as before!
 
 ## Does jaxtyping use [PEP 646](https://www.python.org/dev/peps/pep-0646/) (variadic generics)?
 
@@ -36,4 +36,13 @@ The real problem is that Python's static typing ecosystem is a complicated colle
 
 5. The syntax for static typing is verbose. You have to write things like `Array[Float32, Unpack[AnyShape], Literal[3], Height, Width]` instead of `f32[Array, "... 3 height width"]`.
 
-6. [The underlying type system has flaws](https://github.com/patrick-kidger/torchtyping/issues/37#issuecomment-1153294196). [The numeric tower is broken](https://stackoverflow.com/a/69383462); [int is not a number](https://github.com/python/mypy/issues/3186#issuecomment-885718629); [virtual base classes don't work](https://github.com/python/mypy/issues/2922); [complex lies about having comparison operations, so type checkers have to lie about that lie in order to remove them again](https://posita.github.io/numerary/0.4/whytho/); `typing.*` don't work with `isinstance`; co/contra-variance are baked into containers (not specified at use-time); `dict` is variadic despite... not being variadic; bool is a subclass of int (!); ... etc. etc.
+6. [The underlying type system has flaws](https://github.com/patrick-kidger/torchtyping/issues/37#issuecomment-1153294196).  
+   [The numeric tower is broken](https://stackoverflow.com/a/69383462);  
+   [int is not a number](https://github.com/python/mypy/issues/3186#issuecomment-885718629);  
+   [virtual base classes don't work](https://github.com/python/mypy/issues/2922);  
+   [complex lies about having comparison operations, so type checkers have to lie about that lie in order to remove them again](https://posita.github.io/numerary/0.4/whytho/);  
+   `typing.*` don't work with `isinstance`;  
+   co/contra-variance are baked into containers (not specified at use-time);  
+   `dict` is variadic despite... not being variadic;  
+   bool is a subclass of int (!);  
+   ... etc. etc.
