@@ -25,7 +25,7 @@ from jaxtyping import f32
 from .helpers import ParamError
 
 
-def g(x: f32[" b"]):
+def g(x: f32[jnp.ndarray, " b"]):
     pass
 
 

@@ -23,21 +23,30 @@ from .array_types import (
     Array,
     b,
     bf16,
+    Bool,
     c,
     c64,
     c128,
+    Complex,
     f,
     f16,
     f32,
     f64,
+    Float,
     get_array_name_format,
     i,
     i8,
     i16,
     i32,
     i64,
+    Inexact,
+    Int,
+    IntSign,
+    IntUnsign,
     n,
+    Num,
     set_array_name_format,
+    Shaped,
     t,
     u,
     u8,
@@ -51,4 +60,4 @@ from .import_hook import install_import_hook
 from .pytree_type import PyTree
 
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

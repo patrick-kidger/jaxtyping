@@ -2,67 +2,83 @@
 
 ## Annotating array types
 
-Each array is denoted by a type `dtype[shape]`, such as `f32["batch channels"]`.
+Each array is denoted by a type `dtype[array, shape]`, such as `Float[jnp.ndarray, "batch channels"]`.
 
 ### Shape
 
 The shape should be a string of space-separated symbols, such as "a b c d". Each symbol can be either an:
-- `int`: fixed-size axis, e.g. `f32["28 28"]`.
-- `str`: variable-size axis, e.g. `f32["channels"]`.
-- A symbolic expression (without spaces!) in terms of other variable-size axes, e.g. `def remove_last(x: f32["dim"]) -> f32["dim-1"]`.
+- `int`: fixed-size axis, e.g. `"28 28"`.
+- `str`: variable-size axis, e.g. `"channels"`.
+- A symbolic expression (without spaces!) in terms of other variable-size axes, e.g. `def remove_last(x: Float[jnp.ndarray, "dim"]) -> Float[jnp.ndarray, "dim-1"]`.
 
 When calling a function, variable-size axes and symbolic axes will be matched up across all arguments and checked for consistency. (See [runtime type checking](#runtime-type-checking) below.)
 
 In addition some modifiers can be applied:
-- Prepend `*` to a dimension to indicate that it can match multiple axes, e.g. `f32["*batch c h w"]` will match zero or more batch axes.
-- Prepend `#` to a dimension to indicate that it can be that size *or* equal to one -- i.e. broadcasting is acceptable, e.g. `add(x: f32["#foo"], y: f32["#foo"]) -> f32["#foo"]`.
-- Prepend `_` to a dimension to disable any runtime checking of that dimension (so that it can be used just as documentation). This can also be used as just `_` on its own: e.g. `f32["b c _ _"]`.
+- Prepend `*` to a dimension to indicate that it can match multiple axes, e.g. `"*batch c h w"` will match zero or more batch axes.
+- Prepend `#` to a dimension to indicate that it can be that size *or* equal to one -- i.e. broadcasting is acceptable, e.g. `add(x: Float[jnp.ndarray, "#foo"], y: Float[jnp.ndarray, "#foo"]) -> Float[jnp.ndarray, "#foo"]`.
+- Prepend `_` to a dimension to disable any runtime checking of that dimension (so that it can be used just as documentation). This can also be used as just `_` on its own: e.g. `"b c _ _"`.
 
 The order of these modifiers does not matter.
 
 As a special case:
-- `...`: anonymous zero or more axes (equivalent to `*_`) e.g. `f32["... c h w"]`
+- `...`: anonymous zero or more axes (equivalent to `*_`) e.g. `"... c h w"`
 
 Some notes:
-- To denote a scalar shape use `""`, e.g. `f32[""]`.
-- To denote an arbitrary shape (and only check dtype) use `"..."`, e.g. `f32["..."]`.
+- To denote a scalar shape use `""`, e.g. `Float[jnp.ndarray, ""]`.
+- To denote an arbitrary shape (and only check dtype) use `"..."`, e.g. `Float[jnp.ndarray, "..."]`.
 - You cannot have more than one use of multiple-axes, i.e. you can only use `...` or `*name` at most once in each array.
-- An example of broadcasting multiple dimensions: `add(x: f32["*#foo"], y: f32["*#foo"]) -> f32["*#foo"]`.
+- An example of broadcasting multiple dimensions: `add(x: Float[jnp.ndarray, "*#foo"], y: Float[jnp.ndarray, "*#foo"]) -> Float[jnp.ndarray, "*#foo"]`.
 - A symbolic expression cannot be evaluated unless all of the axes sizes it refers to have already been processed. In practice this usually means that they should only be used in annotations for the return type, and only use axes declared in the arguments.
 
 ### Dtype
 
 The dtype should be any one of (imported from `jaxtyping`):
-- Any dtype at all: `Array`
-  - Boolean: `b`
-  - Any integer, unsigned integer, floating, or complex: `n` (for <ins>n</ins>umber)
-    - Any floating or complex: `x` (for ine<ins>x</ins>act)
-      - Any floating point: `f`
-        - Floating point: `bf16`, `f16`, `f32`, `f64` (`bf16` is bfloat16)
-      - Any complex: `c`
-        - Complexes: `c64`, `c128`
-    - Any integer or unsigned intger: `t` (for in<ins>t</ins>eger)
-      - Any unsigned integer: `u`
-        - Unsigned integer: `u8`, `u16`, `u32`, `u64`
-      - Any signed integer: `i`
-        - Signed integer: `i8`, `i16`, `i32`, `i64`
+- Any dtype at all: `Shaped`
+  - Boolean: `Bool`
+  - Any integer, unsigned integer, floating, or complex: `Num`
+    - Any floating or complex: `Inexact`
+      - Any floating point: `Float`
+        - Of particular precision: `bf16`, `f16`, `f32`, `f64` (`bf16` is bfloat16)
+      - Any complex: `Complex`
+        - Of particular precision: `c64`, `c128`
+    - Any integer or unsigned intger: `Int`
+      - Any unsigned integer: `IntUnsign`
+        - Of particular precision: `u8`, `u16`, `u32`, `u64`
+      - Any signed integer: `IntSign`
+        - Of particular precision: `i8`, `i16`, `i32`, `i64`
 
 Unless you really want to force a particular precision, then for most applications you should probably allow any floating-point, any integer, etc. That is, use
 ```python
-from jaxtyping import f
-f["some_shape"]
+from jaxtyping import Float
+Float[jnp.ndarray, "some_shape"]
 ```
 rather than
 ```python
 from jaxtyping import f32
-f32["some_shape"]
+f32[jnp.ndarray, "some_shape"]
+```
+
+### Array
+
+The array should typically be a `jnp.ndarray`. In practice, to save a bit of space and because it looks quite nice, we recommend:
+```python
+from jax.numpy import ndarray as Array
+Float[Array, "..."]
+```
+
+You can use other types as well. `jaxtyping` has support for JAX, NumPy, TensorFlow, and PyTorch, e.g.:
+```python
+Float[jnp.ndarray, "..."]
+Float[np.ndarray, "..."]
+Float[tf.Tensor, "..."]
+Float[torch.Tensor, "..."]
 ```
 
 ## PyTrees
 
 ### `jaxtyping.PyTree`
 
-Each PyTree is denoted by a type `PyTree[LeafType]`, such as `PyTree[int]` or `PyTree[Union[str, f32["b c"]]]`.
+Each PyTree is denoted by a type `PyTree[LeafType]`, such as `PyTree[int]` or `PyTree[Union[str, f32[jnp.ndarray, "b c"]]]`.
 
 You can leave off the `[...]`, in which case `PyTree` is simply a suggestively-named alternative to `Any`. ([By definition all types are PyTrees.](https://jax.readthedocs.io/en/latest/pytrees.html))
 
@@ -83,6 +99,7 @@ Example:
 ```python
 # Import both the annotation and the `jaxtyped` decorator from `jaxtyping`
 from jaxtyping import f32, jaxtyped
+from jax.numpy import ndarray as Array
 
 # Use your favourite typechecker: usually one of the two lines below.
 from typeguard import typechecked as typechecker
@@ -91,7 +108,9 @@ from beartype import beartype as typechecker
 # Write your function. @jaxtyped must be applied above @typechecker!
 @jaxtyped
 @typechecker
-def batch_outer_product(x: f32["b c1"], y: f32["b c2"]) -> f32["b c1 c2"]:
+def batch_outer_product(x: f32[Array, "b c1"],
+                        y: f32[Array, "b c2"]
+                      ) -> f32[Array, "b c1 c2"]:
     return x[:, :, None] * y[:, None, :]
 ```
 
@@ -136,9 +155,14 @@ Any module imported **afterwards**, whose name begins with the specified string,
 
 The import hook may be uninstalled after you've imported all the modules you're interested in:
 ```python
+# Manual uninstall
 hook = install_import_hook(...)
 ...  # perform imports
 hook.uninstall()
+
+# Alternative: automatic uninstall
+with install_import_hook(...):
+    # perform imports
 ```
 
 The import hook can be applied to multiple packages via
@@ -156,8 +180,9 @@ import do_stuff
 
 ### do_stuff.py
 from jaxtyping import f32
+from jax.numpy import ndarray as Array
 
-def g(x: f32["..."]):
+def g(x: f32[Array, "..."]):
     ...
 ```
 
@@ -166,11 +191,10 @@ def g(x: f32["..."]):
 ```python
 ### __init__.py
 from jaxtyping import install_import_hook
-hook = install_import_hook("my_library_name", ("beartype", "beartype"))
-from .subpackage import foo  # full name is my_library_name.subpackage so will be hook'd
-from .another_subpackage import bar  # full name is my_library_name.another_subpackage so will be hook'd.
-hook.uninstall()
-del hook, install_import_hook, jaxtyping  # keep interface tidy
+with install_import_hook("my_library_name", ("beartype", "beartype")):
+    from .subpackage import foo  # full name is my_library_name.subpackage so will be hook'd
+    from .another_subpackage import bar  # full name is my_library_name.another_subpackage so will be hook'd.
+del install_import_hook  # keep interface tidy
 ```
 
 #### pytest hook
@@ -200,4 +224,4 @@ Union[u8["shape"], u16["shape"]]
 ### `jaxtyping.AbstractArray`
 
 The base class of all shape-and-dtype-specified arrays, e.g. it's a base class
-for `f32["foo"]`.
+for `f32[jnp.ndarray, "foo"]`.

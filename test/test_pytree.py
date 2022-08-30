@@ -25,7 +25,7 @@ import jax.numpy as jnp
 import jax.random as jr
 import pytest
 
-from jaxtyping import f, jaxtyped, PyTree
+from jaxtyping import Float, jaxtyped, PyTree
 
 from .helpers import make_mlp, ParamError
 
@@ -95,7 +95,7 @@ def test_nested_pytrees(getkey, typecheck):
 def test_pytree_array(typecheck):
     @jaxtyped
     @typecheck
-    def g(x: PyTree[f["..."]]):
+    def g(x: PyTree[Float[jnp.ndarray, "..."]]):
         pass
 
     g(jnp.array(1.0))
@@ -109,7 +109,7 @@ def test_pytree_array(typecheck):
 def test_pytree_shaped_array(typecheck, getkey):
     @jaxtyped
     @typecheck
-    def g(x: PyTree[f["b c"]]):
+    def g(x: PyTree[Float[jnp.ndarray, "b c"]]):
         pass
 
     g(jnp.array([[1.0]]))
