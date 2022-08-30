@@ -9,6 +9,7 @@ Type annotations **and runtime checking** for:
 ```python
 from jaxtyping import Array, Float, PyTree
 
+# Accepts floating-point 2D arrays with matching dimensions
 def matrix_multiply(x: Float[Array, "dim1 dim2"],
                     y: Float[Array, "dim2 dim3"]
                   ) -> Float[Array, "dim1 dim3"]:

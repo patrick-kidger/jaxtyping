@@ -127,7 +127,7 @@ and just do your own manual `isinstance` checks.)
 
 Only `isinstance` checks that pass will contribute to the store of axis name-size pairs; those
 that fail will not. As such it is safe to write e.g. `assert not isinstance(x,
-f32["foo"])`.
+f32[Array, "foo"])`.
 
 ### `jaxtyping.install_import_hook`
 
@@ -156,7 +156,7 @@ hook.uninstall()
 
 # Alternative: automatic uninstall
 with install_import_hook(...):
-    # perform imports
+    ... # perform imports
 ```
 
 The import hook can be applied to multiple packages via
@@ -202,16 +202,16 @@ which will apply the import hook to all modules whose names start with either `f
 
 ### `jaxtyping.AbstractDtype`
 
-The base class of all dtypes. This can be used to create your own custom collection of dtypes (analogous to `n`, `x` etc.) For example:
+The base class of all dtypes. This can be used to create your own custom collection of dtypes (analogous to `Float`, `Inexact` etc.) For example:
 ```python
 class u8_or_u16(AbstractDtype):
     dtypes = ["uint8", "uint16"]
 
-u8_or_u16["shape"]
+u8_or_u16[Array, "shape"]
 ```
 which is functionally equivalent to
 ```python
-Union[u8["shape"], u16["shape"]]
+Union[u8[Array, "shape"], u16[Array, "shape"]]
 ```
 
 ### `jaxtyping.AbstractArray`
