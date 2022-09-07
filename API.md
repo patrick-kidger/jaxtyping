@@ -73,7 +73,7 @@ Float[torch.Tensor, "..."]
 
 ### `jaxtyping.PyTree`
 
-Each PyTree is denoted by a type `PyTree[LeafType]`, such as `PyTree[int]` or `PyTree[Union[str, f32[Array, "b c"]]]`.
+Each PyTree is denoted by a type `PyTree[LeafType]`, such as `PyTree[int]` or `PyTree[Union[str, Float32[Array, "b c"]]]`.
 
 You can leave off the `[...]`, in which case `PyTree` is simply a suggestively-named alternative to `Any`. ([By definition all types are PyTrees.](https://jax.readthedocs.io/en/latest/pytrees.html))
 
@@ -85,7 +85,7 @@ To enable multi-argument consistency checks (i.e. that shapes match up between a
 
 Regardless of your choice, **this approach synergises beautifully with `jax.jit`!** All shape checks will be performed at trace-time only, and will not impact runtime performance.
 
-### `jaxtyping.jaxtyped`
+### Option 1: `jaxtyping.jaxtyped`
 
 Decorate a function with this to have shapes checked for consistency across multiple arguments.
 
@@ -122,14 +122,14 @@ this function use the same axes sizes as the function it was called from.
 
 Likewise, this means you can use `isinstance` checks inside a function body
 and have them contribute to the same collection of consistency checks performed
-by a typechecker against its arguments. (Or even forgo a typechecker altogether,
-and just do your own manual `isinstance` checks.)
+by a typechecker against its arguments. (Or even forgo a typechecker that analyses arguments,
+and instead just do your own manual `isinstance` checks.)
 
 Only `isinstance` checks that pass will contribute to the store of axis name-size pairs; those
 that fail will not. As such it is safe to write e.g. `assert not isinstance(x,
-f32[Array, "foo"])`.
+Float32[Array, "foo"])`.
 
-### `jaxtyping.install_import_hook`
+### Option 2: `jaxtyping.install_import_hook`
 
 It can be a lot of effort to add `@jaxtyped` decorators all over your codebase.
 (Not to mention that double-decorators everywhere are a bit ugly.) The easier
@@ -139,25 +139,24 @@ Example:
 
 ```python
 from jaxtyping import install_import_hook
-# Plus either one of the following:
-install_import_hook("foo", ("typeguard", "typechecked"))  # decorate @jaxtyped and @typeguard.typechecked
-install_import_hook("foo", ("beartype", "beartype"))  # decorate @jaxtyped and @beartype.beartype
-install_import_hook("foo", None)  # decorate only @jaxtyped (if you have manually applied typechecking decorators)
+# Plus any one of the following:
+
+# decorate @jaxtyped and @typeguard.typechecked
+with install_import_hook("foo", ("typeguard", "typechecked")):
+    import foo
+    import foo.bar
+    import foo.bar.qux
+
+# decorate @jaxtyped and @beartype.beartype
+with install_import_hook("foo", ("beartype", "beartype")):
+    ...
+    
+# decorate only @jaxtyped (if you have manually applied typechecking decorators)
+with install_import_hook("foo", None):
+    ...
 ```
 
-Any module imported **afterwards**, whose name begins with the specified string, will automatically have both `@jaxtyped` and the specified typechecker applied to all of their functions. (E.g. in the above example `foo`, `foo.bar`, `foo.bar.qux` would all be hook'd).
-
-The import hook may be uninstalled after you've imported all the modules you're interested in:
-```python
-# Manual uninstall
-hook = install_import_hook(...)
-...  # perform imports
-hook.uninstall()
-
-# Alternative: automatic uninstall
-with install_import_hook(...):
-    ... # perform imports
-```
+Any module imported inside the `with` block, whose name begins with the specified string, will automatically have both `@jaxtyped` and the specified typechecker applied to all of their functions. (E.g. in the above example `foo`, `foo.bar`, `foo.bar.qux` would all be hook'd).
 
 The import hook can be applied to multiple packages via
 ```python
@@ -169,8 +168,8 @@ install_import_hook(["foo", "bar.baz"], ...)
 ```python
 ### entry_point.py
 from jaxtyping import install_import_hook
-install_import_hook("do_stuff", ("typeguard", "typechecked"))
-import do_stuff
+with install_import_hook("do_stuff", ("typeguard", "typechecked")):
+    import do_stuff
 
 ### do_stuff.py
 from jaxtyping import Array, Float32
@@ -187,7 +186,6 @@ from jaxtyping import install_import_hook
 with install_import_hook("my_library_name", ("beartype", "beartype")):
     from .subpackage import foo  # full name is my_library_name.subpackage so will be hook'd
     from .another_subpackage import bar  # full name is my_library_name.another_subpackage so will be hook'd.
-del install_import_hook  # keep interface tidy
 ```
 
 #### pytest hook
@@ -197,6 +195,12 @@ The import hook can be installed at test-time only, as a pytest hook. The syntax
 pytest --jaxtyping-packages=foo,bar.baz,beartype.beartype
 ```
 which will apply the import hook to all modules whose names start with either `foo` or `bar.baz`. The typechecker used in this example is `beartype.beartype`.
+
+## Static type checking
+
+jaxtyping should be compatible with static type checkers (the big three are `mypy`, `pyright`, `pytype`) out of the box.
+
+Due to limitations of static type checkers, only the array type (JAX array vs NumPy array vs PyTorch tensor vs TensorFlow tensor) is checked. Shape and dtype are not checked. [See the FAQ](./FAQ.md#what-about-pep-646-and-variadic-generics) for more details.
 
 ## Abstract base classes
 

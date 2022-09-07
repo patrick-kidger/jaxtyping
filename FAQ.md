@@ -18,7 +18,7 @@ In type annotations, strings are used for two different things. Sometimes they'r
 
 Some tooling in the Python ecosystem assumes that only the latter is true, and will throw spurious errors if you try to use a string just as a string (like we do).
 
-In the case of `flake8`, at least, this is easily resolved. Multi-dimensional arrays (e.g. `f32[Array, "b c"]`) will throw a very unusual error (F722, syntax error in forward annotation), so you can safely just disable this particular error globally. Uni-dimensional arrays (e.g. `f32[Array, "x"]`) will throw an error that's actually useful (F821, undefined name), so instead of disabling this globally, you should instead prepend a space to the start of your shape, e.g. `f32[Array, " x"]`. `jaxtyping` will treat this in the same way, whilst `flake8` will now throw an F722 error that you can disable as before.
+In the case of `flake8`, at least, this is easily resolved. Multi-dimensional arrays (e.g. `Float32[Array, "b c"]`) will throw a very unusual error (F722, syntax error in forward annotation), so you can safely just disable this particular error globally. Uni-dimensional arrays (e.g. `Float32[Array, "x"]`) will throw an error that's actually useful (F821, undefined name), so instead of disabling this globally, you should instead prepend a space to the start of your shape, e.g. `Float32[Array, " x"]`. `jaxtyping` will treat this in the same way, whilst `flake8` will now throw an F722 error that you can disable as before.
 
 ## Does jaxtyping use [PEP 646](https://www.python.org/dev/peps/pep-0646/) (variadic generics)?
 
@@ -34,7 +34,7 @@ The real problem is that Python's static typing ecosystem is a complicated colle
 
 4. Variadic generics exist. Variadic protocols do not. (It's not clear that these were contemplated.)
 
-5. The syntax for static typing is verbose. You have to write things like `Array[Float32, Unpack[AnyShape], Literal[3], Height, Width]` instead of `f32[Array, "... 3 height width"]`.
+5. The syntax for static typing is a little verbose. You have to write things like `Array[Float32, Unpack[AnyShape], Literal[3], Height, Width]` instead of `Float32[Array, "... 3 height width"]`.
 
 6. [The underlying type system has flaws](https://github.com/patrick-kidger/torchtyping/issues/37#issuecomment-1153294196).  
    [The numeric tower is broken](https://stackoverflow.com/a/69383462);  
