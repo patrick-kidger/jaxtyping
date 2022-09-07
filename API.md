@@ -6,7 +6,7 @@ Each array is denoted by a type `dtype[array, shape]`, such as `Float[Array, "ba
 
 ### Shape
 
-The shape should be a string of space-separated symbols, such as "a b c d". Each symbol can be either an:
+The shape should be a string of space-separated symbols, such as `"a b c d"`. Each symbol can be either an:
 - `int`: fixed-size axis, e.g. `"28 28"`.
 - `str`: variable-size axis, e.g. `"channels"`.
 - A symbolic expression (without spaces!) in terms of other variable-size axes, e.g. `def remove_last(x: Float[Array, "dim"]) -> Float[Array, "dim-1"]`.
@@ -15,7 +15,7 @@ When calling a function, variable-size axes and symbolic axes will be matched up
 
 In addition some modifiers can be applied:
 - Prepend `*` to a dimension to indicate that it can match multiple axes, e.g. `"*batch c h w"` will match zero or more batch axes.
-- Prepend `#` to a dimension to indicate that it can be that size *or* equal to one -- i.e. broadcasting is acceptable, e.g. `add(x: Float[Array, "#foo"], y: Float[Array, "#foo"]) -> Float[Array, "#foo"]`.
+- Prepend `#` to a dimension to indicate that it can be that size *or* equal to one -- i.e. broadcasting is acceptable, e.g. `def add(x: Float[Array, "#foo"], y: Float[Array, "#foo"]) -> Float[Array, "#foo"]`.
 - Prepend `_` to a dimension to disable any runtime checking of that dimension (so that it can be used just as documentation). This can also be used as just `_` on its own: e.g. `"b c _ _"`.
 
 When using multiple modifiers, their order does not matter.
@@ -27,7 +27,7 @@ Some notes:
 - To denote a scalar shape use `""`, e.g. `Float[Array, ""]`.
 - To denote an arbitrary shape (and only check dtype) use `"..."`, e.g. `Float[Array, "..."]`.
 - You cannot have more than one use of multiple-axes, i.e. you can only use `...` or `*name` at most once in each array.
-- An example of broadcasting multiple dimensions: `add(x: Float[Array, "*#foo"], y: Float[Array, "*#foo"]) -> Float[Array, "*#foo"]`.
+- An example of broadcasting multiple dimensions: `def add(x: Float[Array, "*#foo"], y: Float[Array, "*#foo"]) -> Float[Array, "*#foo"]`.
 - A symbolic expression cannot be evaluated unless all of the axes sizes it refers to have already been processed. In practice this usually means that they should only be used in annotations for the return type, and only use axes declared in the arguments.
 
 ### Dtype
@@ -132,31 +132,36 @@ Float32[Array, "foo"])`.
 ### Option 2: `jaxtyping.install_import_hook`
 
 It can be a lot of effort to add `@jaxtyped` decorators all over your codebase.
-(Not to mention that double-decorators everywhere are a bit ugly.) The easier
-option is usually to use the import import hook.
+(Not to mention that double-decorators everywhere are a bit ugly.)
 
-Example:
+The easier option is usually to use the import hook.
 
+This can be used via a `with` block; for example:
 ```python
 from jaxtyping import install_import_hook
 # Plus any one of the following:
 
 # decorate @jaxtyped and @typeguard.typechecked
 with install_import_hook("foo", ("typeguard", "typechecked")):
-    import foo
-    import foo.bar
-    import foo.bar.qux
+    import foo          # Any module imported inside this `with` block, whose name begins
+    import foo.bar      # with the specified string, will automatically have both `@jaxtyped`
+    import foo.bar.qux  # and the specified typechecker applied to all of their functions.
 
 # decorate @jaxtyped and @beartype.beartype
 with install_import_hook("foo", ("beartype", "beartype")):
     ...
     
-# decorate only @jaxtyped (if you have manually applied typechecking decorators)
+# decorate only @jaxtyped (if you want that for some reason)
 with install_import_hook("foo", None):
     ...
 ```
 
-Any module imported inside the `with` block, whose name begins with the specified string, will automatically have both `@jaxtyped` and the specified typechecker applied to all of their functions. (E.g. in the above example `foo`, `foo.bar`, `foo.bar.qux` would all be hook'd).
+If you don't like using the `with` block, the hook can be used without that:
+```python
+hook = install_import_hook(...):
+import ...
+hook.uninstall()
+```
 
 The import hook can be applied to multiple packages via
 ```python
