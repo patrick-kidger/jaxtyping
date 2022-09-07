@@ -205,7 +205,7 @@ which will apply the import hook to all modules whose names start with either `f
 
 jaxtyping should be compatible with static type checkers (the big three are `mypy`, `pyright`, `pytype`) out of the box.
 
-Due to limitations of static type checkers, only the array type (JAX array vs NumPy array vs PyTorch tensor vs TensorFlow tensor) is checked. Shape and dtype are not checked. [See the FAQ](./FAQ.md#what-about-pep-646-and-variadic-generics) for more details.
+Due to limitations of static type checkers, only the array type (JAX array vs NumPy array vs PyTorch tensor vs TensorFlow tensor) is checked. Shape and dtype are not checked. [See the FAQ](./FAQ.md) for more details.
 
 ## Abstract base classes
 
