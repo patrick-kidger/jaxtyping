@@ -253,7 +253,7 @@ class _MetaAbstractDtype(type):
         if not isinstance(item, tuple) or len(item) != 2:
             raise ValueError(
                 "As of jaxtyping v0.2.0, type annotations must now include an explicit "
-                "array type. For example `jaxtyping.f32[jnp.ndarray, 'foo bar']`."
+                "array type. For example `jaxtyping.Float32[jnp.ndarray, 'foo bar']`."
             )
         array_type, dim_str = item
         del item
@@ -406,7 +406,7 @@ class AbstractDtype(metaclass=_MetaAbstractDtype):
     def __init__(self, *args, **kwargs):
         raise RuntimeError(
             "AbstractDtype cannot be instantiated. Perhaps you wrote e.g. "
-            '`f32("shape")` when you mean `f32[jnp.ndarray, "shape"]`?'
+            '`Float32("shape")` when you mean `Float32[jnp.ndarray, "shape"]`?'
         )
 
     def __init_subclass__(cls, **kwargs):
@@ -470,20 +470,20 @@ else:
         _Cls.__qualname__ = name
         return _Cls
 
-    UInt8 = _make_dtype(_uint8, "u8")
-    UInt16 = _make_dtype(_uint16, "u16")
-    UInt32 = _make_dtype(_uint32, "u32")
-    UInt64 = _make_dtype(_uint64, "u64")
-    Int8 = _make_dtype(_int8, "i8")
-    Int16 = _make_dtype(_int16, "i16")
-    Int32 = _make_dtype(_int32, "i32")
-    Int64 = _make_dtype(_int64, "i64")
-    BFloat16 = _make_dtype(_bfloat16, "bf16")
-    Float16 = _make_dtype(_float16, "f16")
-    Float32 = _make_dtype(_float32, "f32")
-    Float64 = _make_dtype(_float64, "f64")
-    Complex64 = _make_dtype(_complex64, "c64")
-    Complex128 = _make_dtype(_complex128, "c128")
+    UInt8 = _make_dtype(_uint8, "UInt8")
+    UInt16 = _make_dtype(_uint16, "UInt16")
+    UInt32 = _make_dtype(_uint32, "UInt32")
+    UInt64 = _make_dtype(_uint64, "UInt64")
+    Int8 = _make_dtype(_int8, "Int8")
+    Int16 = _make_dtype(_int16, "Int16")
+    Int32 = _make_dtype(_int32, "Int32")
+    Int64 = _make_dtype(_int64, "Int64")
+    BFloat16 = _make_dtype(_bfloat16, "BFloat16")
+    Float16 = _make_dtype(_float16, "Float16")
+    Float32 = _make_dtype(_float32, "Float32")
+    Float64 = _make_dtype(_float64, "Float64")
+    Complex64 = _make_dtype(_complex64, "Complex64")
+    Complex128 = _make_dtype(_complex128, "Complex128")
 
     uints = [_uint8, _uint16, _uint32, _uint64]
     ints = [_int8, _int16, _int32, _int64]
@@ -499,7 +499,7 @@ else:
     Integer = _make_dtype(uints + ints, "Integer")
     Float = _make_dtype(floats, "Float")
     Complex = _make_dtype(complexes, "Complex")
-    Inexact = _make_dtype(floats + complexes, "Inexact")  # inexact
-    Num = _make_dtype(uints + ints + floats + complexes, "Num")  # number
+    Inexact = _make_dtype(floats + complexes, "Inexact")
+    Num = _make_dtype(uints + ints + floats + complexes, "Num")
 
     Shaped = _make_dtype(_any_dtype, "Shaped")

@@ -21,7 +21,7 @@ import jax.numpy as jnp
 import jax.random as jr
 import pytest
 
-from jaxtyping import Array, Float, Float32, jaxtyped, Shaped
+from jaxtyping import AbstractDtype, Array, Float, Float32, jaxtyped, Shaped
 
 from .helpers import ParamError, ReturnError
 
@@ -61,6 +61,10 @@ def test_dtypes():
         UInt32,
         UInt64,
     )
+
+    for key, val in locals().items():
+        if issubclass(val, AbstractDtype):
+            assert key == val.__name__
 
 
 def test_return(typecheck, getkey):
