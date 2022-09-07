@@ -20,12 +20,12 @@
 import jax.numpy as jnp
 import pytest
 
-from jaxtyping import f32
+from jaxtyping import Float32
 
 from .helpers import ParamError
 
 
-def g(x: f32[jnp.ndarray, " b"]):
+def g(x: Float32[jnp.ndarray, " b"]):
     pass
 
 

@@ -22,7 +22,6 @@ import functools as ft
 from typing import Any, Dict, List, NoReturn, Optional, Tuple, TYPE_CHECKING, Union
 from typing_extensions import Literal
 
-import jax.numpy as jnp
 import numpy as np
 
 from .decorator import storage
@@ -251,19 +250,12 @@ class _MetaAbstractDtype(type):
 
     @ft.lru_cache(maxsize=None)
     def __getitem__(cls, item: Tuple[Any, str]) -> _MetaAbstractArray:
-        if cls.deprecated is not None:
-            raise ValueError(
-                f"As of jaxtyping v0.2.0, {cls.__name__} has been deprecated in favour "
-                f"of {cls.deprecated.__name__}"
-            )
         if not isinstance(item, tuple) or len(item) != 2:
             raise ValueError(
                 "As of jaxtyping v0.2.0, type annotations must now include an explicit "
                 "array type. For example `jaxtyping.f32[jnp.ndarray, 'foo bar']`."
             )
         array_type, dim_str = item
-        if array_type is Array:
-            array_type = jnp.ndarray
         del item
         if not isinstance(dim_str, str):
             raise ValueError(
@@ -409,7 +401,6 @@ class _MetaAbstractDtype(type):
 
 
 class AbstractDtype(metaclass=_MetaAbstractDtype):
-    deprecated: Optional[str]
     dtypes: Union[Literal[_any_dtype], List[str]]
 
     def __init__(self, *args, **kwargs):
@@ -431,31 +422,29 @@ if TYPE_CHECKING:
     # Note that `from typing_extensions import Annotated; ... = Annotated`
     # does not work with static type checkers. `Annotated` is a typeform rather
     # than a type, meaning it cannot be assigned.
+    from typing_extensions import Annotated as BFloat16
     from typing_extensions import Annotated as Bool
     from typing_extensions import Annotated as Complex
+    from typing_extensions import Annotated as Complex64
+    from typing_extensions import Annotated as Complex128
     from typing_extensions import Annotated as Float
+    from typing_extensions import Annotated as Float16
+    from typing_extensions import Annotated as Float32
+    from typing_extensions import Annotated as Float64
     from typing_extensions import Annotated as Inexact
     from typing_extensions import Annotated as Int
-    from typing_extensions import Annotated as IntSign
-    from typing_extensions import Annotated as IntUnsign
+    from typing_extensions import Annotated as Int8
+    from typing_extensions import Annotated as Int16
+    from typing_extensions import Annotated as Int32
+    from typing_extensions import Annotated as Int64
+    from typing_extensions import Annotated as Integer
     from typing_extensions import Annotated as Num
     from typing_extensions import Annotated as Shaped
-    from typing_extensions import Annotated as bf16
-    from typing_extensions import Annotated as c64
-    from typing_extensions import Annotated as c128
-    from typing_extensions import Annotated as f16
-    from typing_extensions import Annotated as f32
-    from typing_extensions import Annotated as f64
-    from typing_extensions import Annotated as i8
-    from typing_extensions import Annotated as i16
-    from typing_extensions import Annotated as i32
-    from typing_extensions import Annotated as i64
-    from typing_extensions import Annotated as u8
-    from typing_extensions import Annotated as u16
-    from typing_extensions import Annotated as u32
-    from typing_extensions import Annotated as u64
-
-    from jax.numpy import ndarray as Array
+    from typing_extensions import Annotated as UInt
+    from typing_extensions import Annotated as UInt8
+    from typing_extensions import Annotated as UInt16
+    from typing_extensions import Annotated as UInt32
+    from typing_extensions import Annotated as UInt64
 else:
     _bool = "bool"
     _uint8 = "uint8"
@@ -473,30 +462,28 @@ else:
     _complex64 = "complex64"
     _complex128 = "complex128"
 
-    def _make_dtype(_dtypes, name, *, _deprecated=None):
+    def _make_dtype(_dtypes, name):
         class _Cls(AbstractDtype):
-            deprecated = _deprecated
             dtypes = _dtypes
 
         _Cls.__name__ = name
         _Cls.__qualname__ = name
         return _Cls
 
-    Bool = _make_dtype(_bool, "Bool")
-    u8 = _make_dtype(_uint8, "u8")
-    u16 = _make_dtype(_uint16, "u16")
-    u32 = _make_dtype(_uint32, "u32")
-    u64 = _make_dtype(_uint64, "u64")
-    i8 = _make_dtype(_int8, "i8")
-    i16 = _make_dtype(_int16, "i16")
-    i32 = _make_dtype(_int32, "i32")
-    i64 = _make_dtype(_int64, "i64")
-    bf16 = _make_dtype(_bfloat16, "bf16")
-    f16 = _make_dtype(_float16, "f16")
-    f32 = _make_dtype(_float32, "f32")
-    f64 = _make_dtype(_float64, "f64")
-    c64 = _make_dtype(_complex64, "c64")
-    c128 = _make_dtype(_complex128, "c128")
+    UInt8 = _make_dtype(_uint8, "u8")
+    UInt16 = _make_dtype(_uint16, "u16")
+    UInt32 = _make_dtype(_uint32, "u32")
+    UInt64 = _make_dtype(_uint64, "u64")
+    Int8 = _make_dtype(_int8, "i8")
+    Int16 = _make_dtype(_int16, "i16")
+    Int32 = _make_dtype(_int32, "i32")
+    Int64 = _make_dtype(_int64, "i64")
+    BFloat16 = _make_dtype(_bfloat16, "bf16")
+    Float16 = _make_dtype(_float16, "f16")
+    Float32 = _make_dtype(_float32, "f32")
+    Float64 = _make_dtype(_float64, "f64")
+    Complex64 = _make_dtype(_complex64, "c64")
+    Complex128 = _make_dtype(_complex128, "c128")
 
     uints = [_uint8, _uint16, _uint32, _uint64]
     ints = [_int8, _int16, _int32, _int64]
@@ -506,25 +493,13 @@ else:
     # We match NumPy's type hierarachy in what types to provide. See the diagram at
     # https://numpy.org/doc/stable/reference/arrays.scalars.html#scalars
 
-    IntUnsign = _make_dtype(uints, "IntUnsign")
-    IntSign = _make_dtype(ints, "IntSign")
-    Int = _make_dtype(uints + ints, "Int")
+    Bool = _make_dtype(_bool, "Bool")
+    UInt = _make_dtype(uints, "UInt")
+    Int = _make_dtype(ints, "Int")
+    Integer = _make_dtype(uints + ints, "Integer")
     Float = _make_dtype(floats, "Float")
     Complex = _make_dtype(complexes, "Complex")
     Inexact = _make_dtype(floats + complexes, "Inexact")  # inexact
     Num = _make_dtype(uints + ints + floats + complexes, "Num")  # number
-    Shaped = _make_dtype(_any_dtype, "Shaped")
 
-    b = _make_dtype(_bool, "b", _deprecated=Bool)
-    i = _make_dtype(_bool, "i", _deprecated=IntSign)
-    u = _make_dtype(_bool, "u", _deprecated=IntUnsign)
-    t = _make_dtype(_bool, "t", _deprecated=Int)
-    f = _make_dtype(_bool, "f", _deprecated=Float)
-    c = _make_dtype(_bool, "c", _deprecated=Complex)
-    x = _make_dtype(_bool, "x", _deprecated=Inexact)
-    n = _make_dtype(_bool, "n", _deprecated=Num)
-    # Note that Array also has a non-deprecated use-case as
-    # `f32[Array, "foo"]`.
-    # TODO: once these deprecations are removed, then just have a
-    # `from jax.numpy import ndarray as Array` in `__init__.py`.
-    Array = _make_dtype(_bool, "Array", _deprecated=Shaped)
+    Shaped = _make_dtype(_any_dtype, "Shaped")

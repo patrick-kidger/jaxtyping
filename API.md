@@ -38,14 +38,14 @@ The dtype should be any one of (imported from `jaxtyping`):
   - Any integer, unsigned integer, floating, or complex: `Num`
     - Any floating or complex: `Inexact`
       - Any floating point: `Float`
-        - Of particular precision: `bf16`, `f16`, `f32`, `f64` (`bf16` is bfloat16)
+        - Of particular precision: `BFloat16`, `Float16`, `Float32`, `Float64`
       - Any complex: `Complex`
-        - Of particular precision: `c64`, `c128`
-    - Any integer or unsigned intger: `Int`
-      - Any unsigned integer: `IntUnsign`
-        - Of particular precision: `u8`, `u16`, `u32`, `u64`
-      - Any signed integer: `IntSign`
-        - Of particular precision: `i8`, `i16`, `i32`, `i64`
+        - Of particular precision: `Complex64`, `Complex128`
+    - Any integer or unsigned intger: `Integer`
+      - Any unsigned integer: `UInt`
+        - Of particular precision: `UInt8`, `UInt16`, `UInt32`, `UInt64`
+      - Any signed integer: `Int`
+        - Of particular precision: `Int8`, `Int16`, `Int32`, `Int64`
 
 Unless you really want to force a particular precision, then for most applications you should probably allow any floating-point, any integer, etc. That is, use
 ```python
@@ -54,8 +54,8 @@ Float[Array, "some_shape"]
 ```
 rather than
 ```python
-from jaxtyping import Array, f32
-f32[Array, "some_shape"]
+from jaxtyping import Array, Float32
+Float32[Array, "some_shape"]
 ```
 
 ### Array
@@ -93,7 +93,7 @@ Example:
 
 ```python
 # Import both the annotation and the `jaxtyped` decorator from `jaxtyping`
-from jaxtyping import Array, f32, jaxtyped
+from jaxtyping import Array, Float32, jaxtyped
 
 # Use your favourite typechecker: usually one of the two lines below.
 from typeguard import typechecked as typechecker
@@ -102,9 +102,9 @@ from beartype import beartype as typechecker
 # Write your function. @jaxtyped must be applied above @typechecker!
 @jaxtyped
 @typechecker
-def batch_outer_product(x: f32[Array, "b c1"],
-                        y: f32[Array, "b c2"]
-                      ) -> f32[Array, "b c1 c2"]:
+def batch_outer_product(x: Float32[Array, "b c1"],
+                        y: Float32[Array, "b c2"]
+                      ) -> Float32[Array, "b c1 c2"]:
     return x[:, :, None] * y[:, None, :]
 ```
 
@@ -173,9 +173,9 @@ install_import_hook("do_stuff", ("typeguard", "typechecked"))
 import do_stuff
 
 ### do_stuff.py
-from jaxtyping import Array, f32
+from jaxtyping import Array, Float32
 
-def g(x: f32[Array, "..."]):
+def g(x: Float32[Array, "..."]):
     ...
 ```
 
@@ -204,17 +204,17 @@ which will apply the import hook to all modules whose names start with either `f
 
 The base class of all dtypes. This can be used to create your own custom collection of dtypes (analogous to `Float`, `Inexact` etc.) For example:
 ```python
-class u8_or_u16(AbstractDtype):
+class UInt8or16(AbstractDtype):
     dtypes = ["uint8", "uint16"]
 
-u8_or_u16[Array, "shape"]
+UInt8or16[Array, "shape"]
 ```
 which is functionally equivalent to
 ```python
-Union[u8[Array, "shape"], u16[Array, "shape"]]
+Union[UInt8[Array, "shape"], UInt16[Array, "shape"]]
 ```
 
 ### `jaxtyping.AbstractArray`
 
 The base class of all shape-and-dtype-specified arrays, e.g. it's a base class
-for `f32[Array, "foo"]`.
+for `Float32[Array, "foo"]`.
