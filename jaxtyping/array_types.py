@@ -19,10 +19,9 @@
 
 import enum
 import functools as ft
-from typing import Any, Dict, List, NoReturn, Optional, Tuple, Union
+from typing import Any, Dict, List, NoReturn, Optional, Tuple, TYPE_CHECKING, Union
 from typing_extensions import Literal
 
-import jax.numpy as jnp
 import numpy as np
 
 from .decorator import storage
@@ -128,10 +127,26 @@ def _check_dims(
 
 class _MetaAbstractArray(type):
     def __instancecheck__(cls, obj):
-        if not isinstance(obj, jnp.ndarray):
+        if not isinstance(obj, cls.array_type):
             return False
 
-        if cls.dtypes is not _any_dtype and obj.dtype not in cls.dtypes:
+        if hasattr(obj.dtype, "type") and hasattr(obj.dtype.type, "__name__"):
+            # JAX, numpy
+            dtype = obj.dtype.type.__name__
+        elif hasattr(obj.dtype, "as_numpy_dtype"):
+            # TensorFlow
+            dtype = obj.dtype.as_numpy_dtype.__name__
+        else:
+            # PyTorch
+            repr_dtype = repr(obj.dtype).split(".")
+            if len(repr_dtype) == 2 and repr_dtype[0] == "torch":
+                dtype = repr_dtype[1]
+            else:
+                raise RuntimeError(
+                    "Unrecognised array/tensor type to extract dtype from"
+                )
+
+        if cls.dtypes is not _any_dtype and dtype not in cls.dtypes:
             return False
 
         if len(storage.memo_stack) == 0:
@@ -219,7 +234,8 @@ class _MetaAbstractArray(type):
 
 
 class AbstractArray(metaclass=_MetaAbstractArray):
-    dtypes: List[jnp.dtype]
+    array_type: Any
+    dtypes: List[str]
     dims: List[_AbstractDimOrVariadicDim]
     index_variadic: Optional[int]
 
@@ -227,13 +243,20 @@ class AbstractArray(metaclass=_MetaAbstractArray):
 class _MetaAbstractDtype(type):
     def __instancecheck__(cls, obj: Any) -> NoReturn:
         raise RuntimeError(
-            f"Do not use `isinstance(x, jaxtyping.{cls.__name__}`. If you want to "
+            f"Do not use `isinstance(x, jaxtyping.{cls.__name__})`. If you want to "
             "check just the dtype of an array, then use "
-            f'`jaxtyping.{cls.__name__}["..."]`.'
+            f'`jaxtyping.{cls.__name__}[jnp.ndarray, "..."]`.'
         )
 
     @ft.lru_cache(maxsize=None)
-    def __getitem__(cls, dim_str: str) -> _MetaAbstractArray:
+    def __getitem__(cls, item: Tuple[Any, str]) -> _MetaAbstractArray:
+        if not isinstance(item, tuple) or len(item) != 2:
+            raise ValueError(
+                "As of jaxtyping v0.2.0, type annotations must now include an explicit "
+                "array type. For example `jaxtyping.Float32[jnp.ndarray, 'foo bar']`."
+            )
+        array_type, dim_str = item
+        del item
         if not isinstance(dim_str, str):
             raise ValueError(
                 "Shape specification must be a string. Axes should be separated with "
@@ -360,7 +383,7 @@ class _MetaAbstractDtype(type):
                 elem = _SymbolicDim(elem, broadcastable)
             dims.append(elem)
         if _array_name_format == "dtype_and_shape":
-            name = f"{cls.__name__}['{dim_str}']"
+            name = f"{cls.__name__}[{array_type.__name__}, '{dim_str}']"
         elif _array_name_format == "array":
             name = "Array"
         else:
@@ -368,88 +391,115 @@ class _MetaAbstractDtype(type):
         return _MetaAbstractArray(
             name,
             (AbstractArray,),
-            dict(dtypes=cls.dtypes, dims=dims, index_variadic=index_variadic),
+            dict(
+                array_type=array_type,
+                dtypes=cls.dtypes,
+                dims=dims,
+                index_variadic=index_variadic,
+            ),
         )
 
 
 class AbstractDtype(metaclass=_MetaAbstractDtype):
-    dtypes: Union[str, List[str], Literal[_any_dtype]]
+    dtypes: Union[Literal[_any_dtype], List[str]]
 
     def __init__(self, *args, **kwargs):
         raise RuntimeError(
             "AbstractDtype cannot be instantiated. Perhaps you wrote e.g. "
-            '`f32("shape")` when you mean `f32["shape"]`?'
+            '`Float32("shape")` when you mean `Float32[jnp.ndarray, "shape"]`?'
         )
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
 
-        dtypes = cls.dtypes
-        if dtypes is not _any_dtype:
-            if not isinstance(dtypes, list):
-                dtypes = [dtypes]
-            dtypes = [jnp.dtype(d) for d in dtypes]
+        dtypes: Union[Literal[_any_dtype], str, List[str]] = cls.dtypes
+        if isinstance(dtypes, str):
+            dtypes = [dtypes]
         cls.dtypes = dtypes
 
 
-_bool = "bool"
-_uint8 = "uint8"
-_uint16 = "uint16"
-_uint32 = "uint32"
-_uint64 = "uint64"
-_int8 = "int8"
-_int16 = "int16"
-_int32 = "int32"
-_int64 = "int64"
-_bfloat16 = "bfloat16"
-_float16 = "float16"
-_float32 = "float32"
-_float64 = "float64"
-_complex64 = "complex64"
-_complex128 = "complex128"
+if TYPE_CHECKING:
+    # Note that `from typing_extensions import Annotated; ... = Annotated`
+    # does not work with static type checkers. `Annotated` is a typeform rather
+    # than a type, meaning it cannot be assigned.
+    from typing_extensions import Annotated as BFloat16
+    from typing_extensions import Annotated as Bool
+    from typing_extensions import Annotated as Complex
+    from typing_extensions import Annotated as Complex64
+    from typing_extensions import Annotated as Complex128
+    from typing_extensions import Annotated as Float
+    from typing_extensions import Annotated as Float16
+    from typing_extensions import Annotated as Float32
+    from typing_extensions import Annotated as Float64
+    from typing_extensions import Annotated as Inexact
+    from typing_extensions import Annotated as Int
+    from typing_extensions import Annotated as Int8
+    from typing_extensions import Annotated as Int16
+    from typing_extensions import Annotated as Int32
+    from typing_extensions import Annotated as Int64
+    from typing_extensions import Annotated as Integer
+    from typing_extensions import Annotated as Num
+    from typing_extensions import Annotated as Shaped
+    from typing_extensions import Annotated as UInt
+    from typing_extensions import Annotated as UInt8
+    from typing_extensions import Annotated as UInt16
+    from typing_extensions import Annotated as UInt32
+    from typing_extensions import Annotated as UInt64
+else:
+    _bool = "bool"
+    _uint8 = "uint8"
+    _uint16 = "uint16"
+    _uint32 = "uint32"
+    _uint64 = "uint64"
+    _int8 = "int8"
+    _int16 = "int16"
+    _int32 = "int32"
+    _int64 = "int64"
+    _bfloat16 = "bfloat16"
+    _float16 = "float16"
+    _float32 = "float32"
+    _float64 = "float64"
+    _complex64 = "complex64"
+    _complex128 = "complex128"
 
+    def _make_dtype(_dtypes, name):
+        class _Cls(AbstractDtype):
+            dtypes = _dtypes
 
-def _make_dtype(_dtypes, name):
-    class _Cls(AbstractDtype):
-        dtypes = _dtypes
+        _Cls.__name__ = name
+        _Cls.__qualname__ = name
+        return _Cls
 
-    _Cls.__name__ = name
-    _Cls.__qualname__ = name
-    return _Cls
+    UInt8 = _make_dtype(_uint8, "UInt8")
+    UInt16 = _make_dtype(_uint16, "UInt16")
+    UInt32 = _make_dtype(_uint32, "UInt32")
+    UInt64 = _make_dtype(_uint64, "UInt64")
+    Int8 = _make_dtype(_int8, "Int8")
+    Int16 = _make_dtype(_int16, "Int16")
+    Int32 = _make_dtype(_int32, "Int32")
+    Int64 = _make_dtype(_int64, "Int64")
+    BFloat16 = _make_dtype(_bfloat16, "BFloat16")
+    Float16 = _make_dtype(_float16, "Float16")
+    Float32 = _make_dtype(_float32, "Float32")
+    Float64 = _make_dtype(_float64, "Float64")
+    Complex64 = _make_dtype(_complex64, "Complex64")
+    Complex128 = _make_dtype(_complex128, "Complex128")
 
+    uints = [_uint8, _uint16, _uint32, _uint64]
+    ints = [_int8, _int16, _int32, _int64]
+    floats = [_bfloat16, _float16, _float32, _float64]
+    complexes = [_complex64, _complex128]
 
-b = _make_dtype(_bool, "b")
-u8 = _make_dtype(_uint8, "u8")
-u16 = _make_dtype(_uint16, "u16")
-u32 = _make_dtype(_uint32, "u32")
-u64 = _make_dtype(_uint64, "u64")
-i8 = _make_dtype(_int8, "i8")
-i16 = _make_dtype(_int16, "i16")
-i32 = _make_dtype(_int32, "i32")
-i64 = _make_dtype(_int64, "i64")
-bf16 = _make_dtype(_bfloat16, "bf16")
-f16 = _make_dtype(_float16, "f16")
-f32 = _make_dtype(_float32, "f32")
-f64 = _make_dtype(_float64, "f64")
-c64 = _make_dtype(_complex64, "c64")
-c128 = _make_dtype(_complex128, "c128")
+    # We match NumPy's type hierarachy in what types to provide. See the diagram at
+    # https://numpy.org/doc/stable/reference/arrays.scalars.html#scalars
 
-uints = [_uint8, _uint16, _uint32, _uint64]
-ints = [_int8, _int16, _int32, _int64]
-floats = [_bfloat16, _float16, _float32, _float64]
-complexes = [_complex64, _complex128]
+    Bool = _make_dtype(_bool, "Bool")
+    UInt = _make_dtype(uints, "UInt")
+    Int = _make_dtype(ints, "Int")
+    Integer = _make_dtype(uints + ints, "Integer")
+    Float = _make_dtype(floats, "Float")
+    Complex = _make_dtype(complexes, "Complex")
+    Inexact = _make_dtype(floats + complexes, "Inexact")
+    Num = _make_dtype(uints + ints + floats + complexes, "Num")
 
-# We match NumPy's type hierarachy in what types to provide. See the diagram at
-# https://numpy.org/doc/stable/reference/arrays.scalars.html#scalars
-#
-# No attempt is made to match up against their character codes: all of the below are
-# abstract base classes without NumPy chararacter codes.
-
-u = _make_dtype(uints, "u")
-i = _make_dtype(ints, "i")
-t = _make_dtype(uints + ints, "t")  # integer
-f = _make_dtype(floats, "f")
-c = _make_dtype(complexes, "c")
-x = _make_dtype(floats + complexes, "x")  # inexact
-n = _make_dtype(uints + ints + floats + complexes, "n")  # number
-Array = _make_dtype(_any_dtype, "Array")
+    Shaped = _make_dtype(_any_dtype, "Shaped")

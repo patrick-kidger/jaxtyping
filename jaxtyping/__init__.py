@@ -17,38 +17,40 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+from jax.numpy import ndarray as Array
+
 from .array_types import (
     AbstractArray,
     AbstractDtype,
-    Array,
-    b,
-    bf16,
-    c,
-    c64,
-    c128,
-    f,
-    f16,
-    f32,
-    f64,
+    BFloat16,
+    Bool,
+    Complex,
+    Complex64,
+    Complex128,
+    Float,
+    Float16,
+    Float32,
+    Float64,
     get_array_name_format,
-    i,
-    i8,
-    i16,
-    i32,
-    i64,
-    n,
+    Inexact,
+    Int,
+    Int8,
+    Int16,
+    Int32,
+    Int64,
+    Integer,
+    Num,
     set_array_name_format,
-    t,
-    u,
-    u8,
-    u16,
-    u32,
-    u64,
-    x,
+    Shaped,
+    UInt,
+    UInt8,
+    UInt16,
+    UInt32,
+    UInt64,
 )
 from .decorator import jaxtyped
 from .import_hook import install_import_hook
 from .pytree_type import PyTree
 
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

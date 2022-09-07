@@ -7,15 +7,18 @@ Type annotations **and runtime checking** for:
 
 **For example:**
 ```python
-from jaxtyping import f32, PyTree
+from jaxtyping import Array, Float, PyTree
 
-def matrix_multiply(x: f32["dim1 dim2"], y: f32["dim2 dim3"]) -> f32["dim1 dim3"]:
+# Accepts floating-point 2D arrays with matching dimensions
+def matrix_multiply(x: Float[Array, "dim1 dim2"],
+                    y: Float[Array, "dim2 dim3"]
+                  ) -> Float[Array, "dim1 dim3"]:
     ...
 
 def accepts_pytree_of_ints(x: PyTree[int]):
     ...
 
-def accepts_pytree_of_arrays(x: PyTree[f32["batch c1 c2"]]):
+def accepts_pytree_of_arrays(x: PyTree[Float[Array, "batch c1 c2"]]):
     ...
 ```
 
@@ -49,7 +52,7 @@ SymPy<->JAX conversion; train symbolic expressions via gradient descent: [sympy2
 
 Shape annotations + runtime type checking is inspired by [TorchTyping](https://github.com/patrick-kidger/torchtyping).
 
-The concise syntax is inspired by [etils.array_types](https://github.com/google/etils/tree/main/etils/array_types).
+The concise syntax is partially inspired by [etils.array_types](https://github.com/google/etils/tree/main/etils/array_types).
 
 ### Disclaimer
 
