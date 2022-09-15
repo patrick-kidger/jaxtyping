@@ -88,9 +88,7 @@ _AbstractDim = Union[Literal[_anonymous_dim], _NamedDim, _FixedDim, _SymbolicDim
 
 
 def _check_dims(
-    cls_dims: List[_AbstractDim],
-    obj_shape: Tuple[int],
-    single_memo: Dict[str, int],
+    cls_dims: List[_AbstractDim], obj_shape: Tuple[int], single_memo: Dict[str, int],
 ) -> bool:
     assert len(cls_dims) == len(obj_shape)
     for cls_dim, obj_size in zip(cls_dims, obj_shape):
@@ -446,7 +444,7 @@ if TYPE_CHECKING:
     from typing_extensions import Annotated as UInt32
     from typing_extensions import Annotated as UInt64
 else:
-    _bool = "bool"
+    _bool = "bool_"
     _uint8 = "uint8"
     _uint16 = "uint16"
     _uint32 = "uint32"
