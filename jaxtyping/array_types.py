@@ -446,7 +446,7 @@ if TYPE_CHECKING:
     from typing_extensions import Annotated as UInt32
     from typing_extensions import Annotated as UInt64
 else:
-    _bool = "bool"
+    _bool = "bool_"
     _uint8 = "uint8"
     _uint16 = "uint16"
     _uint32 = "uint32"
