@@ -27,7 +27,7 @@ from jaxtyping import Array, Float, jaxtyped
 
 def test_threading():
     @jaxtyped
-    @typecheckef
+    @typechecked
     def add(x: Float[Array, "a b"], y: Float[Array, "a b"]) -> Float[Array, "a b"]:
         return x + y
 
