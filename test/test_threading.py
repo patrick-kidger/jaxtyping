@@ -17,24 +17,25 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import functools as ft
 import threading
 
+import jax.numpy as jnp
+from typeguard import typechecked
 
-storage = threading.local()
+from jaxtyping import Array, Float, jaxtyped
 
 
-def jaxtyped(fn):
-    @ft.wraps(fn)
-    def wrapper(*args, **kwargs):
-        try:
-            memo_stack = storage.memo_stack
-        except AttributeError:
-            memo_stack = storage.memo_stack = []
-        memo_stack.append(({}, {}, {}))
-        try:
-            return fn(*args, **kwargs)
-        finally:
-            memo_stack.pop()
+def test_threading():
+    @jaxtyped
+    @typechecked
+    def add(x: Float[Array, "a b"], y: Float[Array, "a b"]) -> Float[Array, "a b"]:
+        return x + y
 
-    return wrapper
+    def run():
+        a = jnp.array([[1.0, 2.0]])
+        b = jnp.array([[2.0, 3.0]])
+        add(a, b)
+
+    thread = threading.Thread(target=run)
+    thread.start()
+    thread.join()
