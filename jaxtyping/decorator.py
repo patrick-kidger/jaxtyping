@@ -22,16 +22,19 @@ import threading
 
 
 storage = threading.local()
-storage.memo_stack = []
 
 
 def jaxtyped(fn):
     @ft.wraps(fn)
     def wrapper(*args, **kwargs):
-        storage.memo_stack.append(({}, {}, {}))
+        try:
+            memo_stack = storage.memo_stack
+        except AttributeError:
+            memo_stack = storage.memo_stack = []
+        memo_stack.append(({}, {}, {}))
         try:
             return fn(*args, **kwargs)
         finally:
-            storage.memo_stack.pop()
+            memo_stack.pop()
 
     return wrapper
