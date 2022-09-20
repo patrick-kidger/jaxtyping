@@ -19,7 +19,8 @@
 
 import functools as ft
 import typing
-from typing import Generic, Protocol, TYPE_CHECKING, TypeVar
+from typing import Generic, TYPE_CHECKING, TypeVar
+from typing_extensions import Protocol
 
 import jax
 import typeguard

@@ -25,7 +25,22 @@ from typeguard import typechecked
 from jaxtyping import Array, Float, jaxtyped
 
 
-def test_threading():
+class _ErrorableThread(threading.Thread):
+    def run(self):
+        try:
+            super().run()
+        except Exception as e:
+            self.exc = e
+        finally:
+            del self._target, self._args, self._kwargs
+
+    def join(self, timeout=None):
+        super().join(timeout)
+        if hasattr(self, "exc"):
+            raise self.exc
+
+
+def test_threading_jaxtyped():
     @jaxtyped
     @typechecked
     def add(x: Float[Array, "a b"], y: Float[Array, "a b"]) -> Float[Array, "a b"]:
@@ -36,6 +51,16 @@ def test_threading():
         b = jnp.array([[2.0, 3.0]])
         add(a, b)
 
-    thread = threading.Thread(target=run)
+    thread = _ErrorableThread(target=run)
+    thread.start()
+    thread.join()
+
+
+def test_threading_nojaxtyped():
+    def run():
+        a = jnp.array([[1.0, 2.0]])
+        assert isinstance(a, Float[Array, "..."])
+
+    thread = _ErrorableThread(target=run)
     thread.start()
     thread.join()
