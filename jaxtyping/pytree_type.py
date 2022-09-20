@@ -33,6 +33,7 @@ class _FakePyTree(Generic[_T]):
 
 _FakePyTree.__name__ = "PyTree"
 _FakePyTree.__qualname__ = "PyTree"
+_FakePyTree.__module__ = "builtins"
 # Can't do type("PyTree", (Generic[_T],), {}) because dynamic subclassing of typeforms
 # isn't allowed.
 # Can't do types.new_class("PyTree", (Generic[_T],), {}) because that has __module__
@@ -49,7 +50,9 @@ class _MetaPyTree(type):
     @ft.lru_cache(maxsize=None)
     def __getitem__(cls, item):
         name = str(_FakePyTree[item])
-        return _MetaSubscriptPyTree(name, (), {"leaftype": item})
+        out = _MetaSubscriptPyTree(name, (), {"leaftype": item})
+        out.__module__ = "jaxtyping"
+        return out
 
 
 class _MetaSubscriptPyTree(type):
@@ -80,6 +83,7 @@ class _MetaSubscriptPyTree(type):
 
 
 PyTree = _MetaPyTree("PyTree", (), {})
+PyTree.__module__ = "jaxtyping"
 # Can't do `class PyTree(Generic[_T]): ...` because we need to override the
 # instancecheck for PyTree[foo], but we subclassing
 # `type(Generic[int])`, i.e. `typing._GenericAlias` is disallowed.

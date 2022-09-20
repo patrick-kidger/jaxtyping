@@ -388,7 +388,7 @@ class _MetaAbstractDtype(type):
             name = "Array"
         else:
             raise ValueError(f"array_name_format {_array_name_format} not recognised")
-        return _MetaAbstractArray(
+        out = _MetaAbstractArray(
             name,
             (AbstractArray,),
             dict(
@@ -398,6 +398,8 @@ class _MetaAbstractDtype(type):
                 index_variadic=index_variadic,
             ),
         )
+        out.__module__ = "jaxtyping"
+        return out
 
 
 class AbstractDtype(metaclass=_MetaAbstractDtype):
@@ -468,6 +470,7 @@ else:
 
         _Cls.__name__ = name
         _Cls.__qualname__ = name
+        _Cls.__module__ = "jaxtyping"
         return _Cls
 
     UInt8 = _make_dtype(_uint8, "UInt8")
