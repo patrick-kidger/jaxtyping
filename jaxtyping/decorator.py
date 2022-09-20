@@ -24,17 +24,24 @@ import threading
 storage = threading.local()
 
 
-def jaxtyped(fn):
-    @ft.wraps(fn)
-    def wrapper(*args, **kwargs):
+class _Jaxtyped:
+    def __init__(self, fn):
+        self.fn = fn
+
+    def __get__(self, instance, owner):
+        return ft.wraps(self.fn)(_Jaxtyped(self.fn.__get__(instance, owner)))
+
+    def __call__(self, *args, **kwargs):
         try:
             memo_stack = storage.memo_stack
         except AttributeError:
             memo_stack = storage.memo_stack = []
         memo_stack.append(({}, {}, {}))
         try:
-            return fn(*args, **kwargs)
+            return self.fn(*args, **kwargs)
         finally:
             memo_stack.pop()
 
-    return wrapper
+
+def jaxtyped(fn):
+    return ft.wraps(fn)(_Jaxtyped(fn))
