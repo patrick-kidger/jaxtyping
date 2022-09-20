@@ -19,6 +19,7 @@
 
 import enum
 import functools as ft
+import typing
 from typing import Any, Dict, List, NoReturn, Optional, Tuple, TYPE_CHECKING, Union
 from typing_extensions import Literal
 
@@ -385,7 +386,7 @@ class _MetaAbstractDtype(type):
         if _array_name_format == "dtype_and_shape":
             name = f"{cls.__name__}[{array_type.__name__}, '{dim_str}']"
         elif _array_name_format == "array":
-            name = "Array"
+            name = array_type.__name__
         else:
             raise ValueError(f"array_name_format {_array_name_format} not recognised")
         out = _MetaAbstractArray(
@@ -398,7 +399,10 @@ class _MetaAbstractDtype(type):
                 index_variadic=index_variadic,
             ),
         )
-        out.__module__ = "jaxtyping"
+        if getattr(typing, "GENERATING_DOCUMENTATION", False):
+            out.__module__ = "builtins"
+        else:
+            out.__module__ = "jaxtyping"
         return out
 
 
