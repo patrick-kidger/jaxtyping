@@ -17,7 +17,17 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from jax.numpy import ndarray as Array
+import typing
+
+
+if getattr(typing, "GENERATING_DOCUMENTATION", False):
+
+    class Array:
+        pass
+
+    Array.__module__ = "builtins"
+else:
+    from jax.numpy import ndarray as Array
 
 from .array_types import (
     AbstractArray,
@@ -53,4 +63,4 @@ from .import_hook import install_import_hook
 from .pytree_type import PyTree
 
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
