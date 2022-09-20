@@ -18,7 +18,9 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import functools as ft
-from typing import Generic, TypeVar
+import typing
+from typing import Generic, TYPE_CHECKING, TypeVar
+from typing_extensions import Protocol
 
 import jax
 import typeguard
@@ -51,7 +53,10 @@ class _MetaPyTree(type):
     def __getitem__(cls, item):
         name = str(_FakePyTree[item])
         out = _MetaSubscriptPyTree(name, (), {"leaftype": item})
-        out.__module__ = "jaxtyping"
+        if getattr(typing, "GENERATING_DOCUMENTATION", False):
+            out.__module__ = "builtins"
+        else:
+            out.__module__ = "jaxtyping"
         return out
 
 
@@ -82,8 +87,18 @@ class _MetaSubscriptPyTree(type):
         return all(map(is_leaftype, leaves))
 
 
-PyTree = _MetaPyTree("PyTree", (), {})
-PyTree.__module__ = "jaxtyping"
+if TYPE_CHECKING:
+    # Work around pytype bug #1288
+    # pytype: skip-file
+    class PyTree(Protocol[_T]):
+        pass
+
+else:
+    PyTree = _MetaPyTree("PyTree", (), {})
+    if getattr(typing, "GENERATING_DOCUMENTATION", False):
+        PyTree.__module__ = "builtins"
+    else:
+        PyTree.__module__ = "jaxtyping"
 # Can't do `class PyTree(Generic[_T]): ...` because we need to override the
-# instancecheck for PyTree[foo], but we subclassing
+# instancecheck for PyTree[foo], but subclassing
 # `type(Generic[int])`, i.e. `typing._GenericAlias` is disallowed.

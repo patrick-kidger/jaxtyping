@@ -150,14 +150,15 @@ class _MetaAbstractArray(type):
         if cls.dtypes is not _any_dtype and dtype not in cls.dtypes:
             return False
 
-        if len(storage.memo_stack) == 0:
+        temp_memo = not hasattr(storage, "memo_stack") or len(storage.memo_stack) == 0
+
+        if temp_memo:
             # `isinstance` happening outside any @jaxtyped decorators, e.g. at the
             # global scope. In this case just create a temporary memo, since we're not
             # going to be comparing against any stored values anyway.
             single_memo = {}
             variadic_memo = {}
             variadic_broadcast_memo = {}
-            temp_memo = True
         else:
             single_memo, variadic_memo, variadic_broadcast_memo = storage.memo_stack[-1]
             # Make a copy so we don't mutate the original memo during the shape check.
@@ -474,7 +475,10 @@ else:
 
         _Cls.__name__ = name
         _Cls.__qualname__ = name
-        _Cls.__module__ = "jaxtyping"
+        if getattr(typing, "GENERATING_DOCUMENTATION", False):
+            _Cls.__module__ = "builtins"
+        else:
+            _Cls.__module__ = "jaxtyping"
         return _Cls
 
     UInt8 = _make_dtype(_uint8, "UInt8")
