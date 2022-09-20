@@ -474,7 +474,10 @@ else:
 
         _Cls.__name__ = name
         _Cls.__qualname__ = name
-        _Cls.__module__ = "jaxtyping"
+        if getattr(typing, "GENERATING_DOCUMENTATION", False):
+            _Cls.__module__ = "builtins"
+        else:
+            _Cls.__module__ = "jaxtyping"
         return _Cls
 
     UInt8 = _make_dtype(_uint8, "UInt8")
