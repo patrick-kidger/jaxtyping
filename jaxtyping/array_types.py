@@ -150,26 +150,25 @@ class _MetaAbstractArray(type):
         if cls.dtypes is not _any_dtype and dtype not in cls.dtypes:
             return False
 
-        temp_memo = not hasattr(storage, "memo_stack") or len(storage.memo_stack) == 0
+        no_temp_memo = hasattr(storage, "memo_stack") and len(storage.memo_stack) != 0
 
-        if temp_memo:
+        if no_temp_memo:
+            single_memo, variadic_memo, variadic_broadcast_memo = storage.memo_stack[-1]
+            # Make a copy so we don't mutate the original memo during the shape check.
+            single_memo = single_memo.copy()
+            variadic_memo = variadic_memo.copy()
+            variadic_broadcast_memo = variadic_broadcast_memo.copy()
+        else:
             # `isinstance` happening outside any @jaxtyped decorators, e.g. at the
             # global scope. In this case just create a temporary memo, since we're not
             # going to be comparing against any stored values anyway.
             single_memo = {}
             variadic_memo = {}
             variadic_broadcast_memo = {}
-        else:
-            single_memo, variadic_memo, variadic_broadcast_memo = storage.memo_stack[-1]
-            # Make a copy so we don't mutate the original memo during the shape check.
-            single_memo = single_memo.copy()
-            variadic_memo = variadic_memo.copy()
-            variadic_broadcast_memo = variadic_broadcast_memo.copy()
-            temp_memo = False
 
         if cls._check_shape(obj, single_memo, variadic_memo, variadic_broadcast_memo):
             # We update the memo every time we successfully pass a shape check
-            if not temp_memo:
+            if no_temp_memo:
                 storage.memo_stack[-1] = (
                     single_memo,
                     variadic_memo,
