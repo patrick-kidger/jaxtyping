@@ -385,7 +385,7 @@ class _MetaAbstractDtype(type):
             dims.append(elem)
         if _array_name_format == "dtype_and_shape":
             # In python 3.8, e.g., typing.Union lacks `__name__`.
-            type_str = getattr(array_type, '__name__', None) or repr(array_type)
+            type_str = getattr(array_type, "__name__", None) or repr(array_type)
             name = f"{cls.__name__}[{type_str}, '{dim_str}']"
         elif _array_name_format == "array":
             name = array_type.__name__
