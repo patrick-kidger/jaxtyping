@@ -1,2 +1,2 @@
-include LICENSE
-prune tests
+include jaxtyping/py.typed
+prune test

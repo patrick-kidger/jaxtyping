@@ -94,4 +94,5 @@ setuptools.setup(
     install_requires=install_requires,
     entry_points=entry_points,
     packages=[name],
+    include_package_data=True,
 )
