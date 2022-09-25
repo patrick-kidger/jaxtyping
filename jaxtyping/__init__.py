@@ -20,14 +20,18 @@
 import typing
 
 
-if getattr(typing, "GENERATING_DOCUMENTATION", False):
-
-    class Array:
-        pass
-
-    Array.__module__ = "builtins"
-else:
+if typing.TYPE_CHECKING:
+    # type checkers don't know which branch below will be executed
     from jax.numpy import ndarray as Array
+else:
+    if getattr(typing, "GENERATING_DOCUMENTATION", False):
+
+        class Array:
+            pass
+
+        Array.__module__ = "builtins"
+    else:
+        from jax.numpy import ndarray as Array
 
 from .array_types import (
     AbstractArray,
@@ -63,4 +67,4 @@ from .import_hook import install_import_hook
 from .pytree_type import PyTree
 
 
-__version__ = "0.2.5"
+__version__ = "0.2.6"
