@@ -67,4 +67,4 @@ from .import_hook import install_import_hook
 from .pytree_type import PyTree
 
 
-__version__ = "0.2.6"
+__version__ = "0.2.7"
