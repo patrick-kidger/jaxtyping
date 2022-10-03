@@ -17,7 +17,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from typing import Tuple, Union
+from typing import NamedTuple, Tuple, Union
 
 import equinox as eqx
 import jax
@@ -155,3 +155,33 @@ def test_pytree_tuple(typecheck):
         g([1, 1])
     with pytest.raises(ParamError):
         g([(1, 1), "hi"])
+
+
+def test_pytree_namedtuple(typecheck):
+    class CustomNamedTuple(NamedTuple):
+        x: Float[jnp.ndarray, "a b"]
+        y: Float[jnp.ndarray, "b c"]
+
+    class OtherCustomNamedTuple(NamedTuple):
+        x: Float[jnp.ndarray, "a b"]
+        y: Float[jnp.ndarray, "b c"]
+
+    @typecheck
+    def g(x: PyTree[CustomNamedTuple]):
+        ...
+
+    g(
+        CustomNamedTuple(
+            x=jax.random.normal(jax.random.PRNGKey(42), (3, 2)),
+            y=jax.random.normal(jax.random.PRNGKey(420), (2, 5)),
+        )
+    )
+    with pytest.raises(ParamError):
+        g(object())
+    with pytest.raises(ParamError):
+        g(
+            OtherCustomNamedTuple(
+                x=jax.random.normal(jax.random.PRNGKey(42), (3, 2)),
+                y=jax.random.normal(jax.random.PRNGKey(420), (2, 5)),
+            )
+        )
