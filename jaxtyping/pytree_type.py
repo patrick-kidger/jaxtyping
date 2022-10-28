@@ -22,7 +22,7 @@ import typing
 from typing import Generic, TYPE_CHECKING, TypeVar
 from typing_extensions import Protocol
 
-import jax
+import jax.tree_util as jtu
 import typeguard
 
 
@@ -83,7 +83,7 @@ class _MetaSubscriptPyTree(type):
             else:
                 return True
 
-        leaves = jax.tree_leaves(obj, is_leaf=is_leaftype)
+        leaves = jtu.tree_leaves(obj, is_leaf=is_leaftype)
         return all(map(is_leaftype, leaves))
 
 
