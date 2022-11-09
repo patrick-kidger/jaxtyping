@@ -383,15 +383,15 @@ class _MetaAbstractDtype(type):
                 elem = compile(elem, "<string>", "eval")
                 elem = _SymbolicDim(elem, broadcastable)
             dims.append(elem)
+        # In python 3.8, e.g., typing.Union lacks `__name__`.
+        try:
+            type_str = array_type.__name__
+        except AttributeError:
+            type_str = repr(array_type)
         if _array_name_format == "dtype_and_shape":
-            # In python 3.8, e.g., typing.Union lacks `__name__`.
-            try:
-                type_str = array_type.__name__
-            except AttributeError:
-                type_str = repr(array_type)
             name = f"{cls.__name__}[{type_str}, '{dim_str}']"
         elif _array_name_format == "array":
-            name = array_type.__name__
+            name = type_str
         else:
             raise ValueError(f"array_name_format {_array_name_format} not recognised")
         out = _MetaAbstractArray(
