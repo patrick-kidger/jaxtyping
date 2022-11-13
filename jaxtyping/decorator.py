@@ -50,4 +50,4 @@ def jaxtyped(fn):
         fn.__init__ = init
         return fn
     else:
-        ft.wraps(fn)(_Jaxtyped(fn))
+        return ft.wraps(fn)(_Jaxtyped(fn))
