@@ -45,12 +45,9 @@ class _Jaxtyped:
 
 
 def jaxtyped(fn):
-    if inspect.isclass(fn):
+    if inspect.isclass(fn):  # allow decorators on class definitions
         init = jaxtyped(fn.__init__)
         fn.__init__ = init
         return fn
     else:
         ft.wraps(fn)(_Jaxtyped(fn))
-
-
-       
