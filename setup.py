@@ -74,7 +74,7 @@ install_requires = [
     "jax>=0.3.4",
     "numpy>=1.20.0",
     "typeguard>=2.13.3",
-    "typing_extensions>=3.7.4.1,<4.2.0",
+    "typing_extensions>=3.7.4.1",
 ]
 
 entry_points = dict(pytest11=["jaxtyping = jaxtyping.pytest_plugin"])
