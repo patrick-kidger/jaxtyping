@@ -18,6 +18,7 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import functools as ft
+import inspect
 import threading
 
 
@@ -44,4 +45,9 @@ class _Jaxtyped:
 
 
 def jaxtyped(fn):
-    return ft.wraps(fn)(_Jaxtyped(fn))
+    if inspect.isclass(fn):  # allow decorators on class definitions
+        init = jaxtyped(fn.__init__)
+        fn.__init__ = init
+        return fn
+    else:
+        return ft.wraps(fn)(_Jaxtyped(fn))

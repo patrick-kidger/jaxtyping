@@ -67,11 +67,14 @@ python_requires = "~=3.7"
 
 # We use typeguard internally (in a fairly minimal way), but it's not required that
 # end users make the same choice.
+# For typing_extensions, we choose versions that match
+# https://github.com/explosion/confection/blob/main/setup.cfg#L33 used in colab
+
 install_requires = [
     "jax>=0.3.4",
     "numpy>=1.20.0",
     "typeguard>=2.13.3",
-    "typing_extensions>=4.2.0",
+    "typing_extensions>=3.7.4.1",
 ]
 
 entry_points = dict(pytest11=["jaxtyping = jaxtyping.pytest_plugin"])
