@@ -26,9 +26,8 @@ def test_import_hook_typeguard():
     hook = install_import_hook(
         "test.import_hook_tester_typeguard", ("typeguard", "typechecked")
     )
-    from . import import_hook_tester_typeguard  # noqa: F401
-
-    hook.uninstall()
+    with hook:
+        from . import import_hook_tester_typeguard  # noqa: F401
 
 
 def test_import_hook_beartype():
@@ -40,24 +39,21 @@ def test_import_hook_beartype():
         hook = install_import_hook(
             "test.import_hook_tester_beartype", ("beartype", "beartype")
         )
-        from . import import_hook_tester_beartype  # noqa: F401
-
-        hook.uninstall()
+        with hook:
+            from . import import_hook_tester_beartype  # noqa: F401
 
 
 def test_import_hook_transitive():
     hook = install_import_hook(
         "test.import_hook_tester_transitive", ("typeguard", "typechecked")
     )
-    from . import import_hook_tester_transitive  # noqa: F401
-
-    hook.uninstall()
+    with hook:
+        from . import import_hook_tester_transitive  # noqa: F401
 
 
 def test_import_hook_broken_checker():
     hook = install_import_hook(
         "test.import_hook_tester_broken_checker", ("jaxtyping", "does_not_exist")
     )
-    with pytest.raises(AttributeError):
+    with hook, pytest.raises(AttributeError):
         from . import import_hook_tester_broken_checker  # noqa: F401
-    hook.uninstall()
