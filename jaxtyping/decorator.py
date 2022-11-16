@@ -28,6 +28,7 @@ storage = threading.local()
 class _Jaxtyped:
     def __init__(self, fn):
         self.fn = fn
+        self.__signature__ = inspect.signature(fn, follow_wrapped=True)
 
     def __get__(self, instance, owner):
         return ft.wraps(self.fn)(_Jaxtyped(self.fn.__get__(instance, owner)))
