@@ -168,6 +168,8 @@ The import hook can be applied to multiple packages via
 install_import_hook(["foo", "bar.baz"], ...)
 ```
 
+The import hook will automatically decorate all functions, and the `__init__` method of dataclasses.
+
 **Example: writing an end-user script**
 
 ```python

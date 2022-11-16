@@ -17,6 +17,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import dataclasses
 import functools as ft
 import inspect
 import threading
@@ -46,8 +47,30 @@ class _Jaxtyped:
 
 def jaxtyped(fn):
     if inspect.isclass(fn):  # allow decorators on class definitions
-        init = jaxtyped(fn.__init__)
-        fn.__init__ = init
-        return fn
+        if dataclasses.is_dataclass(fn):
+            init = jaxtyped(fn.__init__)
+            fn.__init__ = init
+            return fn
+        else:
+            raise ValueError(
+                "jaxtyped may only be added as a class decorator to dataclasses"
+            )
     else:
         return ft.wraps(fn)(_Jaxtyped(fn))
+
+
+def _jaxtyped_typechecker(typechecker):
+    # typechecker is expected to probably be either `typeguard.typechecked`, or
+    # `beartype.beartype`, or `None`.
+
+    if typechecker is None:
+        typechecker = lambda x: x
+
+    def _wrapper(kls):
+        assert inspect.isclass(kls)
+        if dataclasses.is_dataclass(kls):
+            init = jaxtyped(typechecker(kls.__init__))
+            kls.__init__ = init
+        return kls
+
+    return _wrapper

@@ -67,7 +67,15 @@ def _call_with_frames_removed(f, *args, **kwargs):
 def _optimized_cache_from_source(path, debug_override=None):
     # Version 2: change the position of the `@jaxtyped` decorator, so need a
     # different name to avoid hitting old __pycache__
-    return cache_from_source(path, debug_override, optimization="jaxtyping2")
+    # Version 3: now also annotating classes.
+    return cache_from_source(path, debug_override, optimization="jaxtyping3")
+
+
+def _dot_lookup(*elements):
+    out = ast.Name(id=elements[0], ctx=ast.Load())
+    for element in elements[1:]:
+        out = ast.Attribute(out, element, ctx=ast.Load())
+    return out
 
 
 class _JaxtypingTransformer(ast.NodeVisitor):
@@ -97,6 +105,18 @@ class _JaxtypingTransformer(ast.NodeVisitor):
         self._parents.pop()
         return node
 
+    def visit_ClassDef(self, node: ast.ClassDef):
+        func = _dot_lookup("jaxtyping", "decorator", "_jaxtyped_typechecker")
+        if self._typechecker is None:
+            args = [ast.Constant(None)]
+        else:
+            args = [_dot_lookup(*self._typechecker)]
+        node.decorator_list.append(ast.Call(func, args, keywords=[]))
+        self._parents.append(node)
+        self.generic_visit(node)
+        self._parents.pop()
+        return node
+
     def visit_FunctionDef(self, node: ast.FunctionDef):
         has_annotated_args = any(arg for arg in node.args.args if arg.annotation)
         has_annotated_return = bool(node.returns)
@@ -110,24 +130,12 @@ class _JaxtypingTransformer(ast.NodeVisitor):
             # case we're just going to have to need to ask the user to remove their
             # typechecking annotation (and let this decorator do it instead).
             # It's more important we be compatible with normal JAX code.
-            node.decorator_list.append(
-                ast.Attribute(
-                    ast.Name(id="jaxtyping", ctx=ast.Load()), "jaxtyped", ast.Load()
-                ),
-            )
+            node.decorator_list.append(_dot_lookup("jaxtyping", "jaxtyped"))
             if self._typechecker is not None:
                 # Place at the end of the decorator list, as decorators
                 # frequently remove annotations from functions and we'd like to
                 # use those annotations.
-                typechecker_module, typechecker_function = self._typechecker
-                node.decorator_list.append(
-                    ast.Attribute(
-                        ast.Name(id=typechecker_module, ctx=ast.Load()),
-                        typechecker_function,
-                        ast.Load(),
-                    )
-                )
-
+                node.decorator_list.append(_dot_lookup(*self._typechecker))
         self._parents.append(node)
         self.generic_visit(node)
         self._parents.pop()

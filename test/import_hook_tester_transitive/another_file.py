@@ -17,6 +17,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import equinox as eqx
 import jax.numpy as jnp
 import pytest
 
@@ -32,3 +33,15 @@ def g(x: Float32[jnp.ndarray, " b"]):
 g(jnp.array([1.0]))
 with pytest.raises(ParamError):
     g(jnp.array(1))
+
+
+class M(eqx.Module):
+    foo: int
+    bar: Float32[jnp.ndarray, " a"]
+
+
+M(1, jnp.array([1.0]))
+with pytest.raises(ParamError):
+    M(1.0, jnp.array([1.0]))
+with pytest.raises(ParamError):
+    M(1, jnp.array(1.0))
