@@ -71,7 +71,7 @@ python_requires = "~=3.7"
 # https://github.com/explosion/confection/blob/main/setup.cfg#L33 used in colab
 
 install_requires = [
-    "jax>=0.3.4",
+    "jax>=0.3.18",
     "numpy>=1.20.0",
     "typeguard>=2.13.3",
     "typing_extensions>=3.7.4.1",
