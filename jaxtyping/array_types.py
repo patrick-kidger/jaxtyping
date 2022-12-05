@@ -518,3 +518,35 @@ else:
     Num = _make_dtype(uints + ints + floats + complexes, "Num")
 
     Shaped = _make_dtype(_any_dtype, "Shaped")
+
+# For imports, we need to explicitly export names in order for Pyright to recognize them
+# as public. See discussion at https://github.com/microsoft/pyright/issues/2277
+__all__ = [
+    "AbstractArray",
+    "AbstractDtype",
+    "BFloat16",
+    "Bool",
+    "Complex",
+    "Complex64",
+    "Complex128",
+    "Float",
+    "Float16",
+    "Float32",
+    "Float64",
+    "get_array_name_format",
+    "Inexact",
+    "Int",
+    "Int8",
+    "Int16",
+    "Int32",
+    "Int64",
+    "Integer",
+    "Num",
+    "set_array_name_format",
+    "Shaped",
+    "UInt",
+    "UInt8",
+    "UInt16",
+    "UInt32",
+    "UInt64",
+]
