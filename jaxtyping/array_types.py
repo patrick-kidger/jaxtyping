@@ -521,6 +521,11 @@ else:
 
 # For imports, we need to explicitly export names in order for Pyright to recognize them
 # as public. See discussion at https://github.com/microsoft/pyright/issues/2277
+#
+# Note that these names should be imported directly from `jaxtyping` (and not
+# `jaxtyping.array_types`), but `from jaxtyping import Float` results in a Pyright
+# error if `Float` isn't marked as public in `array_types` as well. See discusssion at
+# https://github.com/google/jaxtyping/pull/49.
 __all__ = [
     "AbstractArray",
     "AbstractDtype",
