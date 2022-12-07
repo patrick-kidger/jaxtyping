@@ -46,6 +46,8 @@ Neural networks: [Equinox](https://github.com/patrick-kidger/equinox).
 
 Numerical differential equation solvers: [Diffrax](https://github.com/patrick-kidger/diffrax).
 
+Computer vision models: [Eqxvision](https://github.com/paganpasta/eqxvision).
+
 SymPy<->JAX conversion; train symbolic expressions via gradient descent: [sympy2jax](https://github.com/google/sympy2jax).
 
 ### Acknowledgements

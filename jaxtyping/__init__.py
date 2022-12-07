@@ -18,6 +18,16 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import typing
+import typing_extensions
+
+
+try:
+    import jax
+except ImportError:
+    has_jax = False
+else:
+    has_jax = True
+    del jax
 
 
 # Type checkers don't know which branch below will be executed.
@@ -25,7 +35,7 @@ if typing.TYPE_CHECKING:
     # For imports, we need to explicitly `import X as X` in order for Pyright to recognize
     # them as public. See discussion at https://github.com/microsoft/pyright/issues/2277
     from jax import Array as Array
-else:
+elif has_jax:
     if getattr(typing, "GENERATING_DOCUMENTATION", False):
 
         class Array:
@@ -35,38 +45,46 @@ else:
     else:
         from jax import Array as Array
 
-from .array_types import (
-    AbstractArray as AbstractArray,
-    AbstractDtype as AbstractDtype,
-    BFloat16 as BFloat16,
-    Bool as Bool,
-    Complex as Complex,
-    Complex64 as Complex64,
-    Complex128 as Complex128,
-    Float as Float,
-    Float16 as Float16,
-    Float32 as Float32,
-    Float64 as Float64,
-    get_array_name_format as get_array_name_format,
-    Inexact as Inexact,
-    Int as Int,
-    Int8 as Int8,
-    Int16 as Int16,
-    Int32 as Int32,
-    Int64 as Int64,
-    Integer as Integer,
-    Num as Num,
-    set_array_name_format as set_array_name_format,
-    Shaped as Shaped,
-    UInt as UInt,
-    UInt8 as Uint8,
-    UInt16 as Uint16,
-    UInt32 as Uint32,
-    UInt64 as Uint64,
-)
+from .array_types import AbstractArray as AbstractArray
+from .array_types import AbstractDtype as AbstractDtype
+from .array_types import BFloat16 as BFloat16
+from .array_types import Bool as Bool
+from .array_types import Complex as Complex
+from .array_types import Complex64 as Complex64
+from .array_types import Complex128 as Complex128
+from .array_types import Float as Float
+from .array_types import Float16 as Float16
+from .array_types import Float32 as Float32
+from .array_types import Float64 as Float64
+from .array_types import get_array_name_format as get_array_name_format
+from .array_types import Inexact as Inexact
+from .array_types import Int as Int
+from .array_types import Int8 as Int8
+from .array_types import Int16 as Int16
+from .array_types import Int32 as Int32
+from .array_types import Int64 as Int64
+from .array_types import Integer as Integer
+from .array_types import Num as Num
+from .array_types import set_array_name_format as set_array_name_format
+from .array_types import Shaped as Shaped
+from .array_types import UInt as UInt
+from .array_types import UInt8 as Uint8
+from .array_types import UInt16 as Uint16
+from .array_types import UInt32 as Uint32
+from .array_types import UInt64 as Uint64
 from .decorator import jaxtyped as jaxtyped
 from .import_hook import install_import_hook as install_import_hook
-from .pytree_type import PyTree as PyTree
 
+
+if typing.TYPE_CHECKING:
+    _T = typing.TypeVar("_T")
+
+    class PyTree(typing_extensions.Protocol[_T]):
+        pass
+
+elif has_jax:
+    from .pytree_type import PyTree
+
+del has_jax
 
 __version__ = "0.2.9"
