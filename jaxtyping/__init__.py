@@ -18,12 +18,21 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import typing
+import typing_extensions
+
+
+try:
+    import jax
+except ImportError:
+    has_jax = False
+else:
+    has_jax = True
+    del jax
 
 
 if typing.TYPE_CHECKING:
-    # type checkers don't know which branch below will be executed
     from jax.numpy import ndarray as Array
-else:
+elif has_jax:
     if getattr(typing, "GENERATING_DOCUMENTATION", False):
 
         class Array:
@@ -64,7 +73,17 @@ from .array_types import (
 )
 from .decorator import jaxtyped
 from .import_hook import install_import_hook
-from .pytree_type import PyTree
 
+
+if typing.TYPE_CHECKING:
+    _T = typing.TypeVar("_T")
+
+    class PyTree(typing_extensions.Protocol[_T]):
+        pass
+
+elif has_jax:
+    from .pytree_type import PyTree
+
+del has_jax
 
 __version__ = "0.2.8"

@@ -19,8 +19,7 @@
 
 import functools as ft
 import typing
-from typing import Generic, TYPE_CHECKING, TypeVar
-from typing_extensions import Protocol
+from typing import Generic, TypeVar
 
 import jax.tree_util as jtu
 import typeguard
@@ -87,18 +86,11 @@ class _MetaSubscriptPyTree(type):
         return all(map(is_leaftype, leaves))
 
 
-if TYPE_CHECKING:
-    # Work around pytype bug #1288
-    # pytype: skip-file
-    class PyTree(Protocol[_T]):
-        pass
-
-else:
-    PyTree = _MetaPyTree("PyTree", (), {})
-    if getattr(typing, "GENERATING_DOCUMENTATION", False):
-        PyTree.__module__ = "builtins"
-    else:
-        PyTree.__module__ = "jaxtyping"
 # Can't do `class PyTree(Generic[_T]): ...` because we need to override the
 # instancecheck for PyTree[foo], but subclassing
 # `type(Generic[int])`, i.e. `typing._GenericAlias` is disallowed.
+PyTree = _MetaPyTree("PyTree", (), {})
+if getattr(typing, "GENERATING_DOCUMENTATION", False):
+    PyTree.__module__ = "builtins"
+else:
+    PyTree.__module__ = "jaxtyping"
