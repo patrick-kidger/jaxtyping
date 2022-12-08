@@ -433,29 +433,31 @@ if TYPE_CHECKING:
     # Note that `from typing_extensions import Annotated; ... = Annotated`
     # does not work with static type checkers. `Annotated` is a typeform rather
     # than a type, meaning it cannot be assigned.
-    from typing_extensions import Annotated as BFloat16
-    from typing_extensions import Annotated as Bool
-    from typing_extensions import Annotated as Complex
-    from typing_extensions import Annotated as Complex64
-    from typing_extensions import Annotated as Complex128
-    from typing_extensions import Annotated as Float
-    from typing_extensions import Annotated as Float16
-    from typing_extensions import Annotated as Float32
-    from typing_extensions import Annotated as Float64
-    from typing_extensions import Annotated as Inexact
-    from typing_extensions import Annotated as Int
-    from typing_extensions import Annotated as Int8
-    from typing_extensions import Annotated as Int16
-    from typing_extensions import Annotated as Int32
-    from typing_extensions import Annotated as Int64
-    from typing_extensions import Annotated as Integer
-    from typing_extensions import Annotated as Num
-    from typing_extensions import Annotated as Shaped
-    from typing_extensions import Annotated as UInt
-    from typing_extensions import Annotated as UInt8
-    from typing_extensions import Annotated as UInt16
-    from typing_extensions import Annotated as UInt32
-    from typing_extensions import Annotated as UInt64
+    from typing_extensions import (
+        Annotated as BFloat16,
+        Annotated as Bool,
+        Annotated as Complex,
+        Annotated as Complex64,
+        Annotated as Complex128,
+        Annotated as Float,
+        Annotated as Float16,
+        Annotated as Float32,
+        Annotated as Float64,
+        Annotated as Inexact,
+        Annotated as Int,
+        Annotated as Int8,
+        Annotated as Int16,
+        Annotated as Int32,
+        Annotated as Int64,
+        Annotated as Integer,
+        Annotated as Num,
+        Annotated as Shaped,
+        Annotated as UInt,
+        Annotated as UInt8,
+        Annotated as UInt16,
+        Annotated as UInt32,
+        Annotated as UInt64,
+    )
 else:
     _bool = "bool_"
     _uint8 = "uint8"
