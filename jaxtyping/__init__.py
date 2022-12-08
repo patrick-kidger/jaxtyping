@@ -69,10 +69,10 @@ from .array_types import (
     set_array_name_format as set_array_name_format,
     Shaped as Shaped,
     UInt as UInt,
-    UInt8 as Uint8,
-    UInt16 as Uint16,
-    UInt32 as Uint32,
-    UInt64 as Uint64,
+    UInt8 as UInt8,
+    UInt16 as UInt16,
+    UInt32 as UInt32,
+    UInt64 as UInt64,
 )
 from .decorator import jaxtyped as jaxtyped
 from .import_hook import install_import_hook as install_import_hook
