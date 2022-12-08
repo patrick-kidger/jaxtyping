@@ -32,7 +32,7 @@ else:
 
 # Type checkers don't know which branch below will be executed.
 if typing.TYPE_CHECKING:
-    # For imports, we need to explicitly `import X as X` in order for Pyright to recognize
+    # For imports, we need to explicitly `import X as X` in order for Pyright to see
     # them as public. See discussion at https://github.com/microsoft/pyright/issues/2277
     from jax import Array as Array
 elif has_jax:
