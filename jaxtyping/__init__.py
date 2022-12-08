@@ -30,8 +30,11 @@ else:
     del jax
 
 
+# Type checkers don't know which branch below will be executed.
 if typing.TYPE_CHECKING:
-    from jax.numpy import ndarray as Array
+    # For imports, we need to explicitly `import X as X` in order for Pyright to see
+    # them as public. See discussion at https://github.com/microsoft/pyright/issues/2277
+    from jax import Array as Array
 elif has_jax:
     if getattr(typing, "GENERATING_DOCUMENTATION", False):
 
@@ -40,39 +43,39 @@ elif has_jax:
 
         Array.__module__ = "builtins"
     else:
-        from jax.numpy import ndarray as Array
+        from jax import Array as Array
 
 from .array_types import (
-    AbstractArray,
-    AbstractDtype,
-    BFloat16,
-    Bool,
-    Complex,
-    Complex64,
-    Complex128,
-    Float,
-    Float16,
-    Float32,
-    Float64,
-    get_array_name_format,
-    Inexact,
-    Int,
-    Int8,
-    Int16,
-    Int32,
-    Int64,
-    Integer,
-    Num,
-    set_array_name_format,
-    Shaped,
-    UInt,
-    UInt8,
-    UInt16,
-    UInt32,
-    UInt64,
+    AbstractArray as AbstractArray,
+    AbstractDtype as AbstractDtype,
+    BFloat16 as BFloat16,
+    Bool as Bool,
+    Complex as Complex,
+    Complex64 as Complex64,
+    Complex128 as Complex128,
+    Float as Float,
+    Float16 as Float16,
+    Float32 as Float32,
+    Float64 as Float64,
+    get_array_name_format as get_array_name_format,
+    Inexact as Inexact,
+    Int as Int,
+    Int8 as Int8,
+    Int16 as Int16,
+    Int32 as Int32,
+    Int64 as Int64,
+    Integer as Integer,
+    Num as Num,
+    set_array_name_format as set_array_name_format,
+    Shaped as Shaped,
+    UInt as UInt,
+    UInt8 as UInt8,
+    UInt16 as UInt16,
+    UInt32 as UInt32,
+    UInt64 as UInt64,
 )
-from .decorator import jaxtyped
-from .import_hook import install_import_hook
+from .decorator import jaxtyped as jaxtyped
+from .import_hook import install_import_hook as install_import_hook
 
 
 if typing.TYPE_CHECKING:
@@ -86,4 +89,4 @@ elif has_jax:
 
 del has_jax
 
-__version__ = "0.2.8"
+__version__ = "0.2.9"
