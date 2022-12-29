@@ -18,16 +18,31 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import equinox as eqx
+import typeguard
 
+
+ParamError = []
+ReturnError = []
+ParamError.append(TypeError)  # old typeguard
+ReturnError.append(TypeError)  # old typeguard
+
+try:
+    # new typeguard
+    ParamError.append(typeguard.TypeCheckError)
+    ReturnError.append(typeguard.TypeCheckError)
+except AttributeError:
+    pass
 
 try:
     import beartype
 except ImportError:
-    ParamError = TypeError
-    ReturnError = TypeError
+    pass
 else:
-    ParamError = (TypeError, beartype.roar.BeartypeCallHintParamViolation)
-    ReturnError = (TypeError, beartype.roar.BeartypeCallHintReturnViolation)
+    ParamError.append(beartype.roar.BeartypeCallHintParamViolation)
+    ReturnError.append(beartype.roar.BeartypeCallHintReturnViolation)
+
+ParamError = tuple(ParamError)
+ReturnError = tuple(ReturnError)
 
 
 @eqx.filter_jit

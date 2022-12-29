@@ -59,6 +59,14 @@ class _MetaPyTree(type):
         return out
 
 
+try:
+    # new typeguard
+    _TypeCheckError = (TypeError, typeguard.TypeCheckError)
+except AttributeError:
+    # old typeguard
+    _TypeCheckError = TypeError
+
+
 class _MetaSubscriptPyTree(type):
     def __call__(self, *args, **kwargs):
         raise RuntimeError("PyTree cannot be instantiated")
@@ -77,7 +85,7 @@ class _MetaSubscriptPyTree(type):
         def is_leaftype(x):
             try:
                 accepts_leaftype(x)
-            except TypeError:
+            except _TypeCheckError:
                 return False
             else:
                 return True
