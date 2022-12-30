@@ -79,14 +79,27 @@ from .import_hook import install_import_hook as install_import_hook
 
 
 if typing.TYPE_CHECKING:
-    _T = typing.TypeVar("_T")
-
-    class PyTree(typing_extensions.Protocol[_T]):
-        pass
-
+    # Set up to deliberately confuse a static type checker.
+    PyTree = getattr(typing, "foo" + "bar")
+    # What's going on with this madness?
+    #
+    # At static-type-checking-time, we want `PyTree` to be a type for which both
+    # `PyTree` and `PyTree[Foo]` are equivalent to `Any`.
+    # (The intention is that `PyTree` be a runtime-only type; there's no real way to
+    # do more with static type checkers.)
+    #
+    # Unfortunately, this isn't possible: `Any` isn't subscriptable. And there's no
+    # equivalent way we can fake this using typing annotations. (In some sense the
+    # closest thing would be a `Protocol[T]` with no methods, but that's actually the
+    # opposite of what we want: that ends up allowing nothing at all.)
+    #
+    # The good news for us is that static type checkers have an internal escape hatch.
+    # If they can't figure out what a type is, then they just give up and allow
+    # anything. (I believe this is sometimes called `Unknown`.) Thus, this odd-looking
+    # annotation, which static type checkers aren't smart enough to resolve.
 elif has_jax:
     from .pytree_type import PyTree
 
 del has_jax
 
-__version__ = "0.2.10"
+__version__ = "0.2.11"
