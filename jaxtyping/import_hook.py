@@ -111,7 +111,7 @@ class _JaxtypingTransformer(ast.NodeVisitor):
             args = [ast.Constant(None)]
         else:
             args = [_dot_lookup(*self._typechecker)]
-        node.decorator_list.append(ast.Call(func, args, keywords=[]))
+        node.decorator_list.insert(0, ast.Call(func, args, keywords=[]))
         self._parents.append(node)
         self.generic_visit(node)
         self._parents.pop()
