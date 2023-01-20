@@ -2,8 +2,9 @@
 
 Type annotations **and runtime checking** for:
 
-1. shape and dtype of [JAX](https://github.com/google/jax) arrays;
+1. shape and dtype of [JAX](https://github.com/google/jax) arrays; *(Now also supports PyTorch, NumPy, and TensorFlow!)*
 2. [PyTrees](https://jax.readthedocs.io/en/latest/pytrees.html).
+
 
 **For example:**
 ```python
