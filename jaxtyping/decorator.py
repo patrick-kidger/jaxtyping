@@ -31,7 +31,12 @@ class _Jaxtyped:
         self.fn = fn
 
     def __get__(self, instance, owner):
-        return ft.wraps(self.fn)(_Jaxtyped(self.fn.__get__(instance, owner)))
+        if instance is None:
+            # Don't create a new _Jaxtyped object in this case. Otherwise anything
+            # assigned to methods (e.g. `__isabstractmethod__`) just gets swallowed.
+            return self
+        else:
+            return ft.wraps(self.fn)(_Jaxtyped(self.fn.__get__(instance, owner)))
 
     def __call__(self, *args, **kwargs):
         try:
