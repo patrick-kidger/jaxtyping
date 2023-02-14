@@ -66,9 +66,11 @@ def _call_with_frames_removed(f, *args, **kwargs):
 
 def _optimized_cache_from_source(path, debug_override=None):
     # Version 2: change the position of the `@jaxtyped` decorator, so need a
-    # different name to avoid hitting old __pycache__
+    #     different name to avoid hitting old __pycache__.
     # Version 3: now also annotating classes.
-    return cache_from_source(path, debug_override, optimization="jaxtyping3")
+    # Version 4: I'm honestly not sure, but bumping this fixed some kind of odd error.
+    #     Maybe I changed something with hte classes part way through version 3?
+    return cache_from_source(path, debug_override, optimization="jaxtyping4")
 
 
 def _dot_lookup(*elements):
