@@ -62,6 +62,8 @@ Float32[Array, "some_shape"]
 
 The array should typically be a `jaxtyping.Array`, which is an alias for `jax.numpy.ndarray`.
 
+`jaxtyping.ArrayLike` is also available, which is an alias for `jax.typing.ArrayLike`. This is a union over JAX arrays and the builtin `bool`/`int`/`float`/`complex`.
+
 But you can use other types as well. `jaxtyping` has support for JAX, NumPy, TensorFlow, and PyTorch, e.g.:
 ```python
 Float[np.ndarray, "..."]

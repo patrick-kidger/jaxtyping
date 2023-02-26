@@ -20,8 +20,17 @@
 import enum
 import functools as ft
 import typing
-from typing import Any, Dict, List, NoReturn, Optional, Tuple, TYPE_CHECKING, Union
-from typing_extensions import Literal
+from typing import (
+    Any,
+    Dict,
+    List,
+    Literal,
+    NoReturn,
+    Optional,
+    Tuple,
+    TYPE_CHECKING,
+    Union,
+)
 
 import numpy as np
 
@@ -58,11 +67,35 @@ class _NamedDim:
         self.name = name
         self.broadcastable = broadcastable
 
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        if self.name != other.name:
+            return False
+        if self.broadcastable != other.broadcastable:
+            return False
+        return True
+
+    def __hash__(self):
+        return hash((self.name, self.broadcastable))
+
 
 class _NamedVariadicDim:
     def __init__(self, name, broadcastable):
         self.name = name
         self.broadcastable = broadcastable
+
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        if self.name != other.name:
+            return False
+        if self.broadcastable != other.broadcastable:
+            return False
+        return True
+
+    def __hash__(self):
+        return hash((self.name, self.broadcastable))
 
 
 class _FixedDim:
@@ -70,11 +103,35 @@ class _FixedDim:
         self.size = size
         self.broadcastable = broadcastable
 
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        if self.size != other.size:
+            return False
+        if self.broadcastable != other.broadcastable:
+            return False
+        return True
+
+    def __hash__(self):
+        return hash((self.size, self.broadcastable))
+
 
 class _SymbolicDim:
     def __init__(self, expr, broadcastable):
         self.expr = expr
         self.broadcastable = broadcastable
+
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        if self.expr != other.expr:
+            return False
+        if self.broadcastable != other.broadcastable:
+            return False
+        return True
+
+    def __hash__(self):
+        return hash((self.expr, self.broadcastable))
 
 
 _AbstractDimOrVariadicDim = Union[
@@ -127,6 +184,22 @@ def _check_dims(
 
 
 class _MetaAbstractArray(type):
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        if self.array_type is not other.array_type:
+            return False
+        if self.dtypes != other.dtypes:
+            return False
+        if self.dims != other.dims:
+            return False
+        if self.index_variadic != other.index_variadic:
+            return False
+        return True
+
+    def __hash__(self):
+        return hash((self.array_type, self.dtypes, self.dims, self.index_variadic))
+
     def __instancecheck__(cls, obj):
         if not isinstance(obj, cls.array_type):
             return False
@@ -232,6 +305,12 @@ class _MetaAbstractArray(type):
                     else:
                         return variadic_shape == obj.shape[i:j]
             assert False
+
+
+def _check_scalar(dtype, dtypes, dims):
+    if len(dims) != 0:
+        return False
+    return (_any_dtype is dtypes) or any(d.startswith(dtype) for d in dtypes)
 
 
 class AbstractArray(metaclass=_MetaAbstractArray):
@@ -383,31 +462,68 @@ class _MetaAbstractDtype(type):
                 elem = compile(elem, "<string>", "eval")
                 elem = _SymbolicDim(elem, broadcastable)
             dims.append(elem)
-        # In python 3.8, e.g., typing.Union lacks `__name__`.
-        try:
-            type_str = array_type.__name__
-        except AttributeError:
-            type_str = repr(array_type)
-        if _array_name_format == "dtype_and_shape":
-            name = f"{cls.__name__}[{type_str}, '{dim_str}']"
-        elif _array_name_format == "array":
-            name = type_str
+        dims = tuple(dims)
+
+        _not_made = object()
+
+        def _make(x):
+            # Allow Python built-in numeric types.
+            # TODO: do something more generic than this? Should we _make all types
+            # that have `shape` and `dtype` attributes or something?
+            if x is bool:
+                if _check_scalar("bool", cls.dtypes, dims):
+                    return x
+                else:
+                    return _not_made
+            elif x is int:
+                if _check_scalar("int", cls.dtypes, dims):
+                    return x
+                else:
+                    return _not_made
+            elif x is float:
+                if _check_scalar("float", cls.dtypes, dims):
+                    return x
+                else:
+                    return _not_made
+            elif x is complex:
+                if _check_scalar("complex", cls.dtypes, dims):
+                    return x
+                else:
+                    return _not_made
+            try:
+                type_str = x.__name__
+            except AttributeError:
+                type_str = repr(x)
+            if _array_name_format == "dtype_and_shape":
+                name = f"{cls.__name__}[{type_str}, '{dim_str}']"
+            elif _array_name_format == "array":
+                name = type_str
+            else:
+                raise ValueError(
+                    f"array_name_format {_array_name_format} not recognised"
+                )
+            out = _MetaAbstractArray(
+                name,
+                (AbstractArray,),
+                dict(
+                    array_type=x,
+                    dtypes=cls.dtypes,
+                    dims=dims,
+                    index_variadic=index_variadic,
+                ),
+            )
+            if getattr(typing, "GENERATING_DOCUMENTATION", False):
+                out.__module__ = "builtins"
+            else:
+                out.__module__ = "jaxtyping"
+            return out
+
+        if typing.get_origin(array_type) is typing.Union:
+            out = [_make(x) for x in typing.get_args(array_type)]
+            out = tuple(x for x in out if x is not _not_made)
+            out = Union[out]
         else:
-            raise ValueError(f"array_name_format {_array_name_format} not recognised")
-        out = _MetaAbstractArray(
-            name,
-            (AbstractArray,),
-            dict(
-                array_type=array_type,
-                dtypes=cls.dtypes,
-                dims=dims,
-                index_variadic=index_variadic,
-            ),
-        )
-        if getattr(typing, "GENERATING_DOCUMENTATION", False):
-            out.__module__ = "builtins"
-        else:
-            out.__module__ = "jaxtyping"
+            out = _make(array_type)
         return out
 
 
@@ -425,7 +541,9 @@ class AbstractDtype(metaclass=_MetaAbstractDtype):
 
         dtypes: Union[Literal[_any_dtype], str, List[str]] = cls.dtypes
         if isinstance(dtypes, str):
-            dtypes = [dtypes]
+            dtypes = (dtypes,)
+        elif dtypes is not _any_dtype:
+            dtypes = tuple(dtypes)
         cls.dtypes = dtypes
 
 
@@ -459,7 +577,8 @@ if TYPE_CHECKING:
         Annotated as UInt64,
     )
 else:
-    _bool = "bool_"
+    _bool = "bool"
+    _bool_ = "bool_"
     _uint8 = "uint8"
     _uint16 = "uint16"
     _uint32 = "uint32"
@@ -502,6 +621,7 @@ else:
     Complex64 = _make_dtype(_complex64, "Complex64")
     Complex128 = _make_dtype(_complex128, "Complex128")
 
+    bools = [_bool, _bool_]
     uints = [_uint8, _uint16, _uint32, _uint64]
     ints = [_int8, _int16, _int32, _int64]
     floats = [_bfloat16, _float16, _float32, _float64]
@@ -510,7 +630,7 @@ else:
     # We match NumPy's type hierarachy in what types to provide. See the diagram at
     # https://numpy.org/doc/stable/reference/arrays.scalars.html#scalars
 
-    Bool = _make_dtype(_bool, "Bool")
+    Bool = _make_dtype(bools, "Bool")
     UInt = _make_dtype(uints, "UInt")
     Int = _make_dtype(ints, "Int")
     Integer = _make_dtype(uints + ints, "Integer")

@@ -63,7 +63,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
 
-python_requires = "~=3.7"
+python_requires = "~=3.8"
 
 # We use typeguard internally (in a fairly minimal way), but it's not required that
 # end users make the same choice.

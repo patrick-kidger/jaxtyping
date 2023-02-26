@@ -29,6 +29,10 @@ def accepts_pytree_of_arrays(x: PyTree[Float[Array, "batch c1 c2"]]):
 pip install jaxtyping
 ```
 
+Requires Python 3.8+.
+
+JAX is an optional dependency, required for `jaxtyping.{Array, ArrayLike, PyTree}`. If JAX is not installed then these types will not be available, but you may still use jaxtyping alongside PyTorch/NumPy/etc.
+
 Also install your favourite runtime type-checking package. The two most popular are [typeguard](https://github.com/agronholm/typeguard) (which exhaustively checks every argument) and [beartype](https://github.com/beartype/beartype) (which checks random pieces of arguments).
 
 ## Documentation
@@ -48,12 +52,6 @@ Numerical differential equation solvers: [Diffrax](https://github.com/patrick-ki
 Computer vision models: [Eqxvision](https://github.com/paganpasta/eqxvision).
 
 SymPy<->JAX conversion; train symbolic expressions via gradient descent: [sympy2jax](https://github.com/google/sympy2jax).
-
-### Acknowledgements
-
-Shape annotations + runtime type checking is inspired by [TorchTyping](https://github.com/patrick-kidger/torchtyping).
-
-The concise syntax is partially inspired by [etils.array_types](https://github.com/google/etils/tree/main/etils/array_types).
 
 ### Disclaimer
 

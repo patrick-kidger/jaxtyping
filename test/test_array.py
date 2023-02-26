@@ -17,11 +17,14 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+from typing import get_args, get_origin, Union
+
 import jax.numpy as jnp
 import jax.random as jr
+import numpy as np
 import pytest
 
-from jaxtyping import AbstractDtype, Array, Float, Float32, jaxtyped, Shaped
+from jaxtyping import AbstractDtype, Array, ArrayLike, Float, Float32, jaxtyped, Shaped
 
 from .helpers import ParamError, ReturnError
 
@@ -409,3 +412,54 @@ def test_incomplete_symbolic(typecheck, getkey):
     x = jr.normal(getkey(), (4,))
     with pytest.raises(NameError):
         foo(x)
+
+
+def test_arraylike(typecheck, getkey):
+    floatlike1 = Float32[ArrayLike, ""]
+    floatlike2 = Float[ArrayLike, ""]
+    floatlike3 = Float32[ArrayLike, "4"]
+
+    assert get_origin(floatlike1) is Union
+    assert get_origin(floatlike2) is Union
+    assert get_origin(floatlike3) is Union
+    assert set(get_args(floatlike1)) == {
+        Float32[Array, ""],
+        Float32[np.ndarray, ""],
+        Float32[np.bool_, ""],
+        Float32[np.number, ""],
+        float,
+    }
+    assert set(get_args(floatlike2)) == {
+        Float[Array, ""],
+        Float[np.ndarray, ""],
+        Float[np.bool_, ""],
+        Float[np.number, ""],
+        float,
+    }
+    assert set(get_args(floatlike3)) == {
+        Float32[Array, "4"],
+        Float32[np.ndarray, "4"],
+        Float32[np.bool_, "4"],
+        Float32[np.number, "4"],
+    }
+
+    shaped1 = Shaped[ArrayLike, ""]
+    shaped2 = Shaped[ArrayLike, "4"]
+    assert get_origin(shaped1) is Union
+    assert get_origin(shaped2) is Union
+    assert set(get_args(shaped1)) == {
+        Shaped[Array, ""],
+        Shaped[np.ndarray, ""],
+        Shaped[np.bool_, ""],
+        Shaped[np.number, ""],
+        bool,
+        int,
+        float,
+        complex,
+    }
+    assert set(get_args(shaped2)) == {
+        Shaped[Array, "4"],
+        Shaped[np.ndarray, "4"],
+        Shaped[np.bool_, "4"],
+        Shaped[np.number, "4"],
+    }

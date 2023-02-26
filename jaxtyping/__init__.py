@@ -18,7 +18,6 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import typing
-import typing_extensions
 
 
 try:
@@ -35,6 +34,7 @@ if typing.TYPE_CHECKING:
     # For imports, we need to explicitly `import X as X` in order for Pyright to see
     # them as public. See discussion at https://github.com/microsoft/pyright/issues/2277
     from jax import Array as Array
+    from jax.typing import ArrayLike as ArrayLike
 elif has_jax:
     if getattr(typing, "GENERATING_DOCUMENTATION", False):
 
@@ -42,8 +42,18 @@ elif has_jax:
             pass
 
         Array.__module__ = "builtins"
+
+        class ArrayLike:
+            pass
+
+        ArrayLike.__module__ = "builtins"
     else:
         from jax import Array as Array
+
+        try:
+            from jax.typing import ArrayLike as ArrayLike
+        except (ModuleNotFoundError, ImportError):
+            pass
 
 from .array_types import (
     AbstractArray as AbstractArray,
