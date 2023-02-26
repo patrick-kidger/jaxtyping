@@ -31,8 +31,6 @@ class _ErrorableThread(threading.Thread):
             super().run()
         except Exception as e:
             self.exc = e
-        finally:
-            del self._target, self._args, self._kwargs
 
     def join(self, timeout=None):
         super().join(timeout)

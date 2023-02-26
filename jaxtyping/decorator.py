@@ -21,17 +21,24 @@ import dataclasses
 import functools as ft
 import inspect
 import threading
+import weakref
 
 
 storage = threading.local()
 
 
+_fns = weakref.WeakKeyDictionary()
+
+
 class _Jaxtyped:
     def __init__(self, fn):
-        self.fn = fn
+        # Stored externally so that it doesn't get blatted in the `ft.wraps` below by
+        # a function that already has a `fn` attribute.
+        _fns[self] = fn
 
     def __get__(self, instance, owner):
-        return ft.wraps(self.fn)(_Jaxtyped(self.fn.__get__(instance, owner)))
+        fn = _fns[self]
+        return ft.wraps(fn)(_Jaxtyped(fn.__get__(instance, owner)))
 
     def __call__(self, *args, **kwargs):
         try:
@@ -39,8 +46,9 @@ class _Jaxtyped:
         except AttributeError:
             memo_stack = storage.memo_stack = []
         memo_stack.append(({}, {}, {}))
+        fn = _fns[self]
         try:
-            return self.fn(*args, **kwargs)
+            return fn(*args, **kwargs)
         finally:
             memo_stack.pop()
 
