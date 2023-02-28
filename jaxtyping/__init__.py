@@ -90,7 +90,7 @@ from .import_hook import install_import_hook as install_import_hook
 
 if typing.TYPE_CHECKING:
     # Set up to deliberately confuse a static type checker.
-    PyTree = getattr(typing, "foo" + "bar")
+    PyTree: typing_extensions.TypeAlias = getattr(typing, "foo" + "bar")
     # What's going on with this madness?
     #
     # At static-type-checking-time, we want `PyTree` to be a type for which both
