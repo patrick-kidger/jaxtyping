@@ -185,20 +185,26 @@ def _check_dims(
 
 class _MetaAbstractArray(type):
     def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        if self.array_type is not other.array_type:
-            return False
-        if self.dtypes != other.dtypes:
-            return False
-        if self.dims != other.dims:
-            return False
-        if self.index_variadic != other.index_variadic:
-            return False
-        return True
+        if self is AbstractArray:
+            return other is AbstractArray
+        else:
+            if type(self) is not type(other):
+                return False
+            if self.array_type is not other.array_type:
+                return False
+            if self.dtypes != other.dtypes:
+                return False
+            if self.dims != other.dims:
+                return False
+            if self.index_variadic != other.index_variadic:
+                return False
+            return True
 
     def __hash__(self):
-        return hash((self.array_type, self.dtypes, self.dims, self.index_variadic))
+        if self is AbstractArray:
+            return 0
+        else:
+            return hash((self.array_type, self.dtypes, self.dims, self.index_variadic))
 
     def __instancecheck__(cls, obj):
         if not isinstance(obj, cls.array_type):
