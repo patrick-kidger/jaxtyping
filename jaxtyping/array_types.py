@@ -67,35 +67,11 @@ class _NamedDim:
         self.name = name
         self.broadcastable = broadcastable
 
-    def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        if self.name != other.name:
-            return False
-        if self.broadcastable != other.broadcastable:
-            return False
-        return True
-
-    def __hash__(self):
-        return hash((self.name, self.broadcastable))
-
 
 class _NamedVariadicDim:
     def __init__(self, name, broadcastable):
         self.name = name
         self.broadcastable = broadcastable
-
-    def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        if self.name != other.name:
-            return False
-        if self.broadcastable != other.broadcastable:
-            return False
-        return True
-
-    def __hash__(self):
-        return hash((self.name, self.broadcastable))
 
 
 class _FixedDim:
@@ -103,35 +79,11 @@ class _FixedDim:
         self.size = size
         self.broadcastable = broadcastable
 
-    def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        if self.size != other.size:
-            return False
-        if self.broadcastable != other.broadcastable:
-            return False
-        return True
-
-    def __hash__(self):
-        return hash((self.size, self.broadcastable))
-
 
 class _SymbolicDim:
     def __init__(self, expr, broadcastable):
         self.expr = expr
         self.broadcastable = broadcastable
-
-    def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        if self.expr != other.expr:
-            return False
-        if self.broadcastable != other.broadcastable:
-            return False
-        return True
-
-    def __hash__(self):
-        return hash((self.expr, self.broadcastable))
 
 
 _AbstractDimOrVariadicDim = Union[
@@ -184,28 +136,6 @@ def _check_dims(
 
 
 class _MetaAbstractArray(type):
-    def __eq__(self, other):
-        if self is AbstractArray:
-            return other is AbstractArray
-        else:
-            if type(self) is not type(other):
-                return False
-            if self.array_type is not other.array_type:
-                return False
-            if self.dtypes != other.dtypes:
-                return False
-            if self.dims != other.dims:
-                return False
-            if self.index_variadic != other.index_variadic:
-                return False
-            return True
-
-    def __hash__(self):
-        if self is AbstractArray:
-            return 0
-        else:
-            return hash((self.array_type, self.dtypes, self.dims, self.index_variadic))
-
     def __instancecheck__(cls, obj):
         if not isinstance(obj, cls.array_type):
             return False
