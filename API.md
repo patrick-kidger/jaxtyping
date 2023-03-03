@@ -144,13 +144,13 @@ from jaxtyping import install_import_hook
 # Plus any one of the following:
 
 # decorate @jaxtyped and @typeguard.typechecked
-with install_import_hook("foo", ("typeguard", "typechecked")):
+with install_import_hook("foo", "typeguard.typechecked"):
     import foo          # Any module imported inside this `with` block, whose name begins
     import foo.bar      # with the specified string, will automatically have both `@jaxtyped`
     import foo.bar.qux  # and the specified typechecker applied to all of their functions.
 
 # decorate @jaxtyped and @beartype.beartype
-with install_import_hook("foo", ("beartype", "beartype")):
+with install_import_hook("foo", "beartype.beartype"):
     ...
     
 # decorate only @jaxtyped (if you want that for some reason)
@@ -177,7 +177,7 @@ The import hook will automatically decorate all functions, and the `__init__` me
 ```python
 ### entry_point.py
 from jaxtyping import install_import_hook
-with install_import_hook("do_stuff", ("typeguard", "typechecked")):
+with install_import_hook("do_stuff", "typeguard.typechecked"):
     import do_stuff
 
 ### do_stuff.py
@@ -192,7 +192,7 @@ def g(x: Float32[Array, "..."]):
 ```python
 ### __init__.py
 from jaxtyping import install_import_hook
-with install_import_hook("my_library_name", ("beartype", "beartype")):
+with install_import_hook("my_library_name", "beartype.beartype"):
     from .subpackage import foo  # full name is my_library_name.subpackage so will be hook'd
     from .another_subpackage import bar  # full name is my_library_name.another_subpackage so will be hook'd.
 ```

@@ -55,7 +55,7 @@ from importlib.abc import MetaPathFinder
 from importlib.machinery import SourceFileLoader
 from importlib.util import cache_from_source, decode_source
 from inspect import isclass
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple, Union
 from unittest.mock import patch
 
 
@@ -70,7 +70,8 @@ def _optimized_cache_from_source(path, debug_override=None):
     # Version 3: now also annotating classes.
     # Version 4: I'm honestly not sure, but bumping this fixed some kind of odd error.
     #     Maybe I changed something with hte classes part way through version 3?
-    return cache_from_source(path, debug_override, optimization="jaxtyping4")
+    # Version 5: Added support for string-based `typechecker` argument.
+    return cache_from_source(path, debug_override, optimization="jaxtyping5")
 
 
 def _dot_lookup(*elements):
@@ -78,6 +79,12 @@ def _dot_lookup(*elements):
     for element in elements[1:]:
         out = ast.Attribute(out, element, ctx=ast.Load())
     return out
+
+
+def _str_lookup(string):
+    module = ast.parse(string)
+    (expr,) = module.body
+    return expr.value
 
 
 class _JaxtypingTransformer(ast.NodeVisitor):
@@ -96,7 +103,7 @@ class _JaxtypingTransformer(ast.NodeVisitor):
             else:
                 node.body.insert(i, ast.Import(names=[ast.alias("jaxtyping", None)]))
                 if self._typechecker is not None:
-                    typechecker_module, _ = self._typechecker
+                    typechecker_module, _ = self._typechecker.split(".", 1)
                     node.body.insert(
                         i, ast.Import(names=[ast.alias(typechecker_module, None)])
                     )
@@ -112,7 +119,7 @@ class _JaxtypingTransformer(ast.NodeVisitor):
         if self._typechecker is None:
             args = [ast.Constant(None)]
         else:
-            args = [_dot_lookup(*self._typechecker)]
+            args = [_str_lookup(self._typechecker)]
         node.decorator_list.insert(0, ast.Call(func, args, keywords=[]))
         self._parents.append(node)
         self.generic_visit(node)
@@ -137,7 +144,7 @@ class _JaxtypingTransformer(ast.NodeVisitor):
                 # Place at the end of the decorator list, as decorators
                 # frequently remove annotations from functions and we'd like to
                 # use those annotations.
-                node.decorator_list.append(_dot_lookup(*self._typechecker))
+                node.decorator_list.append(_str_lookup(self._typechecker))
         self._parents.append(node)
         self.generic_visit(node)
         self._parents.pop()
@@ -234,7 +241,7 @@ class ImportHookManager:
 # Deliberately no default for `typechecker` so that folks must opt-in to not having
 # a typechecker.
 def install_import_hook(
-    modules: Iterable[str], typechecker: Optional[Tuple[str, str]]
+    modules: Iterable[str], typechecker: Optional[Union[str, Tuple[str, str]]]
 ) -> ImportHookManager:
     """Automatically apply `@jaxtyped`, and optionally a type checker, to all classes
     and functions.
@@ -246,9 +253,9 @@ def install_import_hook(
     - `packages`: the names of the modules in which to automatically apply `@jaxtyped`
         and `@typechecked`.
     - `typechecker`: the module and function of the typechecker you want to use, as a
-        2-tuple of strings. For example `typechecker=("typeguard", "typechecked")` or
-        `typechecker=("beartype", "beartype")`. You may pass `typechecker=None` if you
-        do not want to automatically decorate with a typechecker as well.
+        string. For example `typechecker="typeguard.typechecked"`, or
+        `typechecker="beartype.beartype"`. You may pass `typechecker=None` if you do not
+        want to automatically decorate with a typechecker as well.
 
     If the function already has any decorators on it, then both the `@jaxtyped` and the
     typechecker decorators will go at the bottom of the decorator list, e.g.
@@ -285,6 +292,10 @@ def install_import_hook(
     """
     if isinstance(modules, str):
         modules = [modules]
+
+    # Support old less-flexible API.
+    if isinstance(typechecker, tuple):
+        typechecker = ".".join(typechecker)
 
     for i, finder in enumerate(sys.meta_path):
         if (

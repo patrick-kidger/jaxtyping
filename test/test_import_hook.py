@@ -22,12 +22,33 @@ import pytest
 from jaxtyping import install_import_hook
 
 
+def test_import_hook_typeguard_old():
+    hook = install_import_hook(
+        "test.import_hook_tester_typeguard_old", ("typeguard", "typechecked")
+    )
+    with hook:
+        from . import import_hook_tester_typeguard_old  # noqa: F401
+
+
 def test_import_hook_typeguard():
     hook = install_import_hook(
-        "test.import_hook_tester_typeguard", ("typeguard", "typechecked")
+        "test.import_hook_tester_typeguard", "typeguard.typechecked"
     )
     with hook:
         from . import import_hook_tester_typeguard  # noqa: F401
+
+
+def test_import_hook_beartype_old():
+    try:
+        import beartype  # noqa: F401
+    except ImportError:
+        pytest.skip("Beartype not installed")
+    else:
+        hook = install_import_hook(
+            "test.import_hook_tester_beartype_old", ("beartype", "beartype")
+        )
+        with hook:
+            from . import import_hook_tester_beartype_old  # noqa: F401
 
 
 def test_import_hook_beartype():
@@ -37,15 +58,27 @@ def test_import_hook_beartype():
         pytest.skip("Beartype not installed")
     else:
         hook = install_import_hook(
-            "test.import_hook_tester_beartype", ("beartype", "beartype")
+            "test.import_hook_tester_beartype", "beartype.beartype"
         )
         with hook:
             from . import import_hook_tester_beartype  # noqa: F401
 
 
+def test_import_hook_beartype_full():
+    try:
+        import beartype  # noqa: F401
+    except ImportError:
+        pytest.skip("Beartype not installed")
+    else:
+        bearchecker = "beartype.beartype(conf=beartype.BeartypeConf(strategy=beartype.BeartypeStrategy.On))"  # noqa: E501
+        hook = install_import_hook("test.import_hook_tester_beartype_full", bearchecker)
+        with hook:
+            from . import import_hook_tester_beartype_full  # noqa: F401
+
+
 def test_import_hook_transitive():
     hook = install_import_hook(
-        "test.import_hook_tester_transitive", ("typeguard", "typechecked")
+        "test.import_hook_tester_transitive", "typeguard.typechecked"
     )
     with hook:
         from . import import_hook_tester_transitive  # noqa: F401
@@ -53,7 +86,7 @@ def test_import_hook_transitive():
 
 def test_import_hook_broken_checker():
     hook = install_import_hook(
-        "test.import_hook_tester_broken_checker", ("jaxtyping", "does_not_exist")
+        "test.import_hook_tester_broken_checker", "jaxtyping.does_not_exist"
     )
     with hook, pytest.raises(AttributeError):
         from . import import_hook_tester_broken_checker  # noqa: F401
