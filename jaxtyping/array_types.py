@@ -17,6 +17,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import abc
 import enum
 import functools as ft
 import typing
@@ -460,6 +461,9 @@ class _MetaAbstractDtype(type):
             out = Union[out]
         else:
             out = _make(array_type)
+        # So that `issubclass(Float[Array, ""], Array) == True`.
+        if isinstance(array_type, abc.ABCMeta):
+            array_type.register(out)
         return out
 
 
