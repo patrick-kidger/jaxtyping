@@ -33,7 +33,8 @@ jobs:
         with:
             python-version: "3.8"
             test-script: |
-                python -m pip install pytest beartype equinox jaxlib
+                python -m pip install pytest beartype equinox jaxlib cloudpickle
+                python -m pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
                 cp -r ${{ github.workspace }}/test ./test
                 pytest
             pypi-token: ${{ secrets.pypi_token }}

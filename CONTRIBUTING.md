@@ -28,7 +28,8 @@ Now make your changes. Make sure to include additional tests if necessary.
 Next verify the tests all pass:
 
 ```bash
-pip install pytest
+pip install pytest cloudpickle
+pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
 pytest
 ```
 

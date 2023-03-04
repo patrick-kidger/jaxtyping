@@ -23,17 +23,9 @@ import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
 import pytest
+import torch
 
-from jaxtyping import (
-    AbstractArray,
-    AbstractDtype,
-    Array,
-    ArrayLike,
-    Float,
-    Float32,
-    jaxtyped,
-    Shaped,
-)
+from jaxtyping import AbstractDtype, Array, ArrayLike, Float, Float32, jaxtyped, Shaped
 
 from .helpers import ParamError, ReturnError
 
@@ -423,36 +415,6 @@ def test_incomplete_symbolic(typecheck, getkey):
         foo(x)
 
 
-def _eq(x, y):
-    assert type(x) is set
-    assert type(y) is set
-    assert len(x) == len(y)
-    for xi in x:
-        assert any(_eq_impl(xi, yi) for yi in y)
-
-
-def _eq_impl(x, y):
-    if issubclass(x, AbstractArray):
-        if type(x) is not type(y):
-            return False
-        if x.array_type is not y.array_type:
-            return False
-        if x.dtypes != y.dtypes:
-            return False
-        if x.index_variadic != y.index_variadic:
-            return False
-        if len(x.dims) != len(y.dims):
-            return False
-        for x_dim, y_dim in zip(x.dims, y.dims):
-            if type(x_dim) is not type(y_dim):
-                return False
-            if x_dim.__dict__ != y_dim.__dict__:
-                return False
-        return True
-    else:
-        return x is y
-
-
 def test_arraylike(typecheck, getkey):
     floatlike1 = Float32[ArrayLike, ""]
     floatlike2 = Float[ArrayLike, ""]
@@ -461,59 +423,50 @@ def test_arraylike(typecheck, getkey):
     assert get_origin(floatlike1) is Union
     assert get_origin(floatlike2) is Union
     assert get_origin(floatlike3) is Union
-    _eq(
-        set(get_args(floatlike1)),
-        {
-            Float32[Array, ""],
-            Float32[np.ndarray, ""],
-            Float32[np.bool_, ""],
-            Float32[np.number, ""],
-            float,
-        },
-    )
-    _eq(
-        set(get_args(floatlike2)),
-        {
-            Float[Array, ""],
-            Float[np.ndarray, ""],
-            Float[np.bool_, ""],
-            Float[np.number, ""],
-            float,
-        },
-    )
-    _eq(
-        set(get_args(floatlike3)),
-        {
-            Float32[Array, "4"],
-            Float32[np.ndarray, "4"],
-            Float32[np.bool_, "4"],
-            Float32[np.number, "4"],
-        },
-    )
+    assert set(get_args(floatlike1)) == {
+        Float32[Array, ""],
+        Float32[np.ndarray, ""],
+        Float32[np.bool_, ""],
+        Float32[np.number, ""],
+        float,
+    }
+    assert set(get_args(floatlike2)) == {
+        Float[Array, ""],
+        Float[np.ndarray, ""],
+        Float[np.bool_, ""],
+        Float[np.number, ""],
+        float,
+    }
+    assert set(get_args(floatlike3)) == {
+        Float32[Array, "4"],
+        Float32[np.ndarray, "4"],
+        Float32[np.bool_, "4"],
+        Float32[np.number, "4"],
+    }
 
     shaped1 = Shaped[ArrayLike, ""]
     shaped2 = Shaped[ArrayLike, "4"]
     assert get_origin(shaped1) is Union
     assert get_origin(shaped2) is Union
-    _eq(
-        set(get_args(shaped1)),
-        {
-            Shaped[Array, ""],
-            Shaped[np.ndarray, ""],
-            Shaped[np.bool_, ""],
-            Shaped[np.number, ""],
-            bool,
-            int,
-            float,
-            complex,
-        },
-    )
-    _eq(
-        set(get_args(shaped2)),
-        {
-            Shaped[Array, "4"],
-            Shaped[np.ndarray, "4"],
-            Shaped[np.bool_, "4"],
-            Shaped[np.number, "4"],
-        },
-    )
+    assert set(get_args(shaped1)) == {
+        Shaped[Array, ""],
+        Shaped[np.ndarray, ""],
+        Shaped[np.bool_, ""],
+        Shaped[np.number, ""],
+        bool,
+        int,
+        float,
+        complex,
+    }
+    assert set(get_args(shaped2)) == {
+        Shaped[Array, "4"],
+        Shaped[np.ndarray, "4"],
+        Shaped[np.bool_, "4"],
+        Shaped[np.number, "4"],
+    }
+
+
+def test_subclass():
+    assert issubclass(Float[Array, ""], Array)
+    assert issubclass(Float[np.ndarray, ""], np.ndarray)
+    assert issubclass(Float[torch.Tensor, ""], torch.Tensor)
