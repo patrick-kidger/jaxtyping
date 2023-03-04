@@ -17,7 +17,6 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import abc
 import enum
 import functools as ft
 import typing
@@ -244,6 +243,14 @@ class _MetaAbstractArray(type):
             assert False
 
 
+@ft.lru_cache(maxsize=None)
+def _make_metaclass(base_metaclass):
+    class MetaAbstractArray(_MetaAbstractArray, base_metaclass):
+        pass
+
+    return MetaAbstractArray
+
+
 def _check_scalar(dtype, dtypes, dims):
     if len(dims) != 0:
         return False
@@ -257,6 +264,186 @@ class AbstractArray(metaclass=_MetaAbstractArray):
     index_variadic: Optional[int]
 
 
+_not_made = object()
+
+
+@ft.lru_cache(maxsize=None)
+def _make_array(array_type, dim_str, dtypes, name):
+    if not isinstance(dim_str, str):
+        raise ValueError(
+            "Shape specification must be a string. Axes should be separated with "
+            "spaces."
+        )
+    dims = []
+    index_variadic = None
+    for index, elem in enumerate(dim_str.split()):
+        if "," in elem:
+            # Common mistake
+            raise ValueError("Dimensions should be separated with spaces, not commas")
+        if elem.endswith("#"):
+            raise ValueError(
+                "As of jaxtyping v0.1.0, broadcastable dimensions are now denoted "
+                "with a # at the start, rather than at the end"
+            )
+
+        if "..." in elem:
+            if elem != "...":
+                raise ValueError(
+                    "Anonymous multiple dimension '...' must be used on its own; "
+                    f"got {elem}"
+                )
+            broadcastable = False
+            variadic = True
+            anonymous = True
+            dim_type = _DimType.named
+        else:
+            broadcastable = False
+            variadic = False
+            anonymous = False
+            while True:
+                if len(elem) == 0:
+                    # This branch needed as just `_` is valid
+                    break
+                first_char = elem[0]
+                if first_char == "#":
+                    if broadcastable:
+                        raise ValueError(
+                            "Do not use # twice to denote broadcastability, e.g. "
+                            "`##foo` is not allowed"
+                        )
+                    broadcastable = True
+                    elem = elem[1:]
+                elif first_char == "*":
+                    if variadic:
+                        raise ValueError(
+                            "Do not use * twice to denote accepting multiple "
+                            "dimensions, e.g. `**foo` is not allowed"
+                        )
+                    variadic = True
+                    elem = elem[1:]
+                elif first_char == "_":
+                    if anonymous:
+                        raise ValueError(
+                            "Do not use _ twice to denote anonymity, e.g. `__foo` "
+                            "is not allowed"
+                        )
+                    anonymous = True
+                    elem = elem[1:]
+                else:
+                    break
+            try:
+                elem = int(elem)
+            except ValueError:
+                if len(elem) == 0 or elem.isidentifier():
+                    dim_type = _DimType.named
+                else:
+                    dim_type = _DimType.symbolic
+            else:
+                dim_type = _DimType.fixed
+
+        if variadic:
+            if index_variadic is not None:
+                raise ValueError(
+                    "Cannot use multiple-dimension specifiers (`*name` or `...`) "
+                    "more than once"
+                )
+            index_variadic = index
+
+        if dim_type is _DimType.fixed:
+            if variadic:
+                raise ValueError(
+                    "Cannot have a fixed axis bind to multiple dimensions, e.g. "
+                    "`*4` is not allowed"
+                )
+            if anonymous:
+                raise ValueError(
+                    "Cannot have a fixed axis be anonymous, e.g. `_4` is not " "allowed"
+                )
+            elem = _FixedDim(elem, broadcastable)
+        elif dim_type is _DimType.named:
+            if anonymous:
+                if broadcastable:
+                    raise ValueError(
+                        "Cannot have a dimension be both anonymous and "
+                        "broadcastable, e.g. `#_` is not allowed"
+                    )
+                if variadic:
+                    elem = _anonymous_variadic_dim
+                else:
+                    elem = _anonymous_dim
+            else:
+                if variadic:
+                    elem = _NamedVariadicDim(elem, broadcastable)
+                else:
+                    elem = _NamedDim(elem, broadcastable)
+        else:
+            assert dim_type is _DimType.symbolic
+            if anonymous:
+                raise ValueError(
+                    "Cannot have a symbolic dimension be anonymous, e.g. "
+                    "`_foo+bar` is not allowed"
+                )
+            if variadic:
+                raise ValueError(
+                    "Cannot have symbolic multiple-dimensions, e.g. "
+                    "`*foo+bar` is not allowed"
+                )
+            elem = compile(elem, "<string>", "eval")
+            elem = _SymbolicDim(elem, broadcastable)
+        dims.append(elem)
+    dims = tuple(dims)
+
+    # Allow Python built-in numeric types.
+    # TODO: do something more generic than this? Should we _make all types
+    # that have `shape` and `dtype` attributes or something?
+    if array_type is bool:
+        if _check_scalar("bool", dtypes, dims):
+            return array_type
+        else:
+            return _not_made
+    elif array_type is int:
+        if _check_scalar("int", dtypes, dims):
+            return array_type
+        else:
+            return _not_made
+    elif array_type is float:
+        if _check_scalar("float", dtypes, dims):
+            return array_type
+        else:
+            return _not_made
+    elif array_type is complex:
+        if _check_scalar("complex", dtypes, dims):
+            return array_type
+        else:
+            return _not_made
+    try:
+        type_str = array_type.__name__
+    except AttributeError:
+        type_str = repr(array_type)
+    if _array_name_format == "dtype_and_shape":
+        name = f"{name}[{type_str}, '{dim_str}']"
+    elif _array_name_format == "array":
+        name = type_str
+    else:
+        raise ValueError(f"array_name_format {_array_name_format} not recognised")
+    metaclass = _make_metaclass(type(array_type))
+    out = metaclass(
+        name,
+        (array_type, AbstractArray),
+        dict(
+            array_type=array_type,
+            dtypes=dtypes,
+            dims=dims,
+            index_variadic=index_variadic,
+        ),
+    )
+    if getattr(typing, "GENERATING_DOCUMENTATION", False):
+        out.__module__ = "builtins"
+    else:
+        out.__module__ = "jaxtyping"
+    return out
+
+
 class _MetaAbstractDtype(type):
     def __instancecheck__(cls, obj: Any) -> NoReturn:
         raise RuntimeError(
@@ -265,8 +452,7 @@ class _MetaAbstractDtype(type):
             f'`jaxtyping.{cls.__name__}[jnp.ndarray, "..."]`.'
         )
 
-    @ft.lru_cache(maxsize=None)
-    def __getitem__(cls, item: Tuple[Any, str]) -> _MetaAbstractArray:
+    def __getitem__(cls, item: Tuple[Any, str]):
         if not isinstance(item, tuple) or len(item) != 2:
             raise ValueError(
                 "As of jaxtyping v0.2.0, type annotations must now include an explicit "
@@ -274,196 +460,15 @@ class _MetaAbstractDtype(type):
             )
         array_type, dim_str = item
         del item
-        if not isinstance(dim_str, str):
-            raise ValueError(
-                "Shape specification must be a string. Axes should be separated with "
-                "spaces."
-            )
-        dims = []
-        index_variadic = None
-        for index, elem in enumerate(dim_str.split()):
-            if "," in elem:
-                # Common mistake
-                raise ValueError(
-                    "Dimensions should be separated with spaces, not commas"
-                )
-            if elem.endswith("#"):
-                raise ValueError(
-                    "As of jaxtyping v0.1.0, broadcastable dimensions are now denoted "
-                    "with a # at the start, rather than at the end"
-                )
-
-            if "..." in elem:
-                if elem != "...":
-                    raise ValueError(
-                        "Anonymous multiple dimension '...' must be used on its own; "
-                        f"got {elem}"
-                    )
-                broadcastable = False
-                variadic = True
-                anonymous = True
-                dim_type = _DimType.named
-            else:
-                broadcastable = False
-                variadic = False
-                anonymous = False
-                while True:
-                    if len(elem) == 0:
-                        # This branch needed as just `_` is valid
-                        break
-                    first_char = elem[0]
-                    if first_char == "#":
-                        if broadcastable:
-                            raise ValueError(
-                                "Do not use # twice to denote broadcastability, e.g. "
-                                "`##foo` is not allowed"
-                            )
-                        broadcastable = True
-                        elem = elem[1:]
-                    elif first_char == "*":
-                        if variadic:
-                            raise ValueError(
-                                "Do not use * twice to denote accepting multiple "
-                                "dimensions, e.g. `**foo` is not allowed"
-                            )
-                        variadic = True
-                        elem = elem[1:]
-                    elif first_char == "_":
-                        if anonymous:
-                            raise ValueError(
-                                "Do not use _ twice to denote anonymity, e.g. `__foo` "
-                                "is not allowed"
-                            )
-                        anonymous = True
-                        elem = elem[1:]
-                    else:
-                        break
-                try:
-                    elem = int(elem)
-                except ValueError:
-                    if len(elem) == 0 or elem.isidentifier():
-                        dim_type = _DimType.named
-                    else:
-                        dim_type = _DimType.symbolic
-                else:
-                    dim_type = _DimType.fixed
-
-            if variadic:
-                if index_variadic is not None:
-                    raise ValueError(
-                        "Cannot use multiple-dimension specifiers (`*name` or `...`) "
-                        "more than once"
-                    )
-                index_variadic = index
-
-            if dim_type is _DimType.fixed:
-                if variadic:
-                    raise ValueError(
-                        "Cannot have a fixed axis bind to multiple dimensions, e.g. "
-                        "`*4` is not allowed"
-                    )
-                if anonymous:
-                    raise ValueError(
-                        "Cannot have a fixed axis be anonymous, e.g. `_4` is not "
-                        "allowed"
-                    )
-                elem = _FixedDim(elem, broadcastable)
-            elif dim_type is _DimType.named:
-                if anonymous:
-                    if broadcastable:
-                        raise ValueError(
-                            "Cannot have a dimension be both anonymous and "
-                            "broadcastable, e.g. `#_` is not allowed"
-                        )
-                    if variadic:
-                        elem = _anonymous_variadic_dim
-                    else:
-                        elem = _anonymous_dim
-                else:
-                    if variadic:
-                        elem = _NamedVariadicDim(elem, broadcastable)
-                    else:
-                        elem = _NamedDim(elem, broadcastable)
-            else:
-                assert dim_type is _DimType.symbolic
-                if anonymous:
-                    raise ValueError(
-                        "Cannot have a symbolic dimension be anonymous, e.g. "
-                        "`_foo+bar` is not allowed"
-                    )
-                if variadic:
-                    raise ValueError(
-                        "Cannot have symbolic multiple-dimensions, e.g. "
-                        "`*foo+bar` is not allowed"
-                    )
-                elem = compile(elem, "<string>", "eval")
-                elem = _SymbolicDim(elem, broadcastable)
-            dims.append(elem)
-        dims = tuple(dims)
-
-        _not_made = object()
-
-        def _make(x):
-            # Allow Python built-in numeric types.
-            # TODO: do something more generic than this? Should we _make all types
-            # that have `shape` and `dtype` attributes or something?
-            if x is bool:
-                if _check_scalar("bool", cls.dtypes, dims):
-                    return x
-                else:
-                    return _not_made
-            elif x is int:
-                if _check_scalar("int", cls.dtypes, dims):
-                    return x
-                else:
-                    return _not_made
-            elif x is float:
-                if _check_scalar("float", cls.dtypes, dims):
-                    return x
-                else:
-                    return _not_made
-            elif x is complex:
-                if _check_scalar("complex", cls.dtypes, dims):
-                    return x
-                else:
-                    return _not_made
-            try:
-                type_str = x.__name__
-            except AttributeError:
-                type_str = repr(x)
-            if _array_name_format == "dtype_and_shape":
-                name = f"{cls.__name__}[{type_str}, '{dim_str}']"
-            elif _array_name_format == "array":
-                name = type_str
-            else:
-                raise ValueError(
-                    f"array_name_format {_array_name_format} not recognised"
-                )
-            out = _MetaAbstractArray(
-                name,
-                (AbstractArray,),
-                dict(
-                    array_type=x,
-                    dtypes=cls.dtypes,
-                    dims=dims,
-                    index_variadic=index_variadic,
-                ),
-            )
-            if getattr(typing, "GENERATING_DOCUMENTATION", False):
-                out.__module__ = "builtins"
-            else:
-                out.__module__ = "jaxtyping"
-            return out
-
         if typing.get_origin(array_type) is typing.Union:
-            out = [_make(x) for x in typing.get_args(array_type)]
+            out = [
+                _make_array(x, dim_str, cls.dtypes, cls.__name__)
+                for x in typing.get_args(array_type)
+            ]
             out = tuple(x for x in out if x is not _not_made)
             out = Union[out]
         else:
-            out = _make(array_type)
-        # So that `issubclass(Float[Array, ""], Array) == True`.
-        if isinstance(array_type, abc.ABCMeta):
-            array_type.register(out)
+            out = _make_array(array_type, dim_str, cls.dtypes, cls.__name__)
         return out
 
 
