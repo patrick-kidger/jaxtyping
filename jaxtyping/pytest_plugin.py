@@ -52,4 +52,4 @@ def pytest_configure(config):
         )
         raise RuntimeError(message.format(", ".join(already_imported_packages)))
 
-    install_import_hook(packages, typechecker.rsplit(".", 1))
+    install_import_hook(packages, typechecker)
