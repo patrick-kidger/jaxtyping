@@ -50,6 +50,7 @@
 
 
 import ast
+import functools as ft
 import sys
 from importlib.abc import MetaPathFinder
 from importlib.machinery import SourceFileLoader
@@ -64,14 +65,18 @@ def _call_with_frames_removed(f, *args, **kwargs):
     return f(*args, **kwargs)
 
 
-def _optimized_cache_from_source(path, debug_override=None):
+def _optimized_cache_from_source(typechecker_hash, /, path, debug_override=None):
     # Version 2: change the position of the `@jaxtyped` decorator, so need a
     #     different name to avoid hitting old __pycache__.
     # Version 3: now also annotating classes.
     # Version 4: I'm honestly not sure, but bumping this fixed some kind of odd error.
     #     Maybe I changed something with hte classes part way through version 3?
     # Version 5: Added support for string-based `typechecker` argument.
-    return cache_from_source(path, debug_override, optimization="jaxtyping5")
+    # Version 6: optimization tag now depends on `typechecker` argument, so that
+    #    changing the typechecker will hit a different cache.
+    return cache_from_source(
+        path, debug_override, optimization=f"jaxtyping6{typechecker_hash}"
+    )
 
 
 def _dot_lookup(*elements):
@@ -155,6 +160,7 @@ class _JaxtypingLoader(SourceFileLoader):
     def __init__(self, *args, typechecker, **kwargs):
         super().__init__(*args, **kwargs)
         self._typechecker = typechecker
+        self._typechecker_hash = str(abs(hash(self._typechecker)))
 
     def source_to_code(self, data, path, *, _optimize=-1):
         source = decode_source(data)
@@ -178,7 +184,7 @@ class _JaxtypingLoader(SourceFileLoader):
         # patch safe
         with patch(
             "importlib._bootstrap_external.cache_from_source",
-            _optimized_cache_from_source,
+            ft.partial(_optimized_cache_from_source, self._typechecker_hash),
         ):
             return super().exec_module(module)
 
