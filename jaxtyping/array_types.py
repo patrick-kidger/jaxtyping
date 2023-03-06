@@ -253,7 +253,7 @@ def _make_metaclass(base_metaclass):
 
 def _check_scalar(dtype, dtypes, dims):
     if len(dims) != 0:
-        return False
+        return dims == (_anonymous_variadic_dim,)
     return (_any_dtype is dtypes) or any(d.startswith(dtype) for d in dtypes)
 
 
@@ -469,6 +469,8 @@ class _MetaAbstractDtype(type):
             out = Union[out]
         else:
             out = _make_array(array_type, dim_str, cls.dtypes, cls.__name__)
+            if out is _not_made:
+                raise ValueError("Invalid jaxtyping type annotation.")
         return out
 
 

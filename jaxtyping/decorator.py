@@ -77,8 +77,10 @@ def _jaxtyped_typechecker(typechecker):
     def _wrapper(kls):
         assert inspect.isclass(kls)
         if dataclasses.is_dataclass(kls):
-            init = jaxtyped(typechecker(kls.__init__))
-            kls.__init__ = init
+            if type(kls.__init__) is not _Jaxtyped:
+                # Extra `if` check to work around beartype bug #211
+                init = jaxtyped(typechecker(kls.__init__))
+                kls.__init__ = init
         return kls
 
     return _wrapper
