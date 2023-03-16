@@ -110,7 +110,7 @@ if typing.TYPE_CHECKING:
     # anything. (I believe this is sometimes called `Unknown`.) Thus, this odd-looking
     # annotation, which static type checkers aren't smart enough to resolve.
 elif has_jax:
-    from .pytree_type import PyTree
+    from .pytree_type import PyTree as PyTree  # noqa: F401
 
 del has_jax
 

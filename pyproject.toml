@@ -1,0 +1,10 @@
+[tool.ruff]
+select = ["E", "F", "I001"]
+ignore = ["E721", "E731", "F722"]
+ignore-init-module-imports = true
+
+[tool.ruff.isort]
+combine-as-imports = true
+lines-after-imports = 2
+extra-standard-library = ["typing_extensions"]
+order-by-type = false
