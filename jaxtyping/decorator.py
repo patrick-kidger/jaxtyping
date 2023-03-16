@@ -21,24 +21,19 @@ import dataclasses
 import functools as ft
 import inspect
 import threading
-import weakref
 
 
 storage = threading.local()
 
 
-_fns = weakref.WeakKeyDictionary()
-
-
 class _Jaxtyped:
-    def __init__(self, fn):
-        # Stored externally so that it doesn't get blatted in the `ft.wraps` below by
-        # a function that already has a `fn` attribute.
-        _fns[self] = fn
-
     def __get__(self, instance, owner):
-        fn = _fns[self]
-        return ft.wraps(fn)(_Jaxtyped(fn.__get__(instance, owner)))
+        fn = self.__wrapped__
+        got = fn.__get__(instance, owner)
+        if fn is got:
+            return self
+        else:
+            return ft.wraps(got)(_Jaxtyped())
 
     def __call__(self, *args, **kwargs):
         try:
@@ -46,7 +41,7 @@ class _Jaxtyped:
         except AttributeError:
             memo_stack = storage.memo_stack = []
         memo_stack.append(({}, {}, {}))
-        fn = _fns[self]
+        fn = self.__wrapped__
         try:
             return fn(*args, **kwargs)
         finally:
@@ -64,7 +59,7 @@ def jaxtyped(fn):
                 "jaxtyped may only be added as a class decorator to dataclasses"
             )
     else:
-        return ft.wraps(fn)(_Jaxtyped(fn))
+        return ft.wraps(fn)(_Jaxtyped())
 
 
 def _jaxtyped_typechecker(typechecker):
