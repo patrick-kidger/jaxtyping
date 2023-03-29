@@ -17,9 +17,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import dataclasses
 
-import equinox as eqx
 import jax.numpy as jnp
 import pytest
 
@@ -37,26 +35,29 @@ with pytest.raises(ParamError):
     g(jnp.array(1))
 
 
-class M(eqx.Module):
-    foo: int
-    bar: Float32[jnp.ndarray, " a"]
-
-
-M(1, jnp.array([1.0]))
-with pytest.raises(ParamError):
-    M(1.0, jnp.array([1.0]))
-with pytest.raises(ParamError):
-    M(1, jnp.array(1.0))
-
-
-@dataclasses.dataclass
-class D:
-    foo: int
-    bar: Float32[jnp.ndarray, " a"]
-
-
-D(1, jnp.array([1.0]))
-with pytest.raises(ParamError):
-    D(1.0, jnp.array([1.0]))
-with pytest.raises(ParamError):
-    D(1, jnp.array(1.0))
+# Typeguard 3.0 no longer supports this.
+#
+# class M(eqx.Module):
+#     foo: int
+#     bar: Float32[jnp.ndarray, " a"]
+#
+#
+# M(1, jnp.array([1.0]))
+# with pytest.raises(ParamError):
+#     M(1.0, jnp.array([1.0]))
+# with pytest.raises(ParamError):
+#     M(1, jnp.array(1.0))
+#
+#
+#
+# @dataclasses.dataclass
+# class D:
+#     foo: int
+#     bar: Float32[jnp.ndarray, " a"]
+#
+#
+# D(1, jnp.array([1.0]))
+# with pytest.raises(ParamError):
+#     D(1.0, jnp.array([1.0]))
+# with pytest.raises(ParamError):
+#     D(1, jnp.array(1.0))
