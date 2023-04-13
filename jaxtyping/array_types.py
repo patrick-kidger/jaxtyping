@@ -277,8 +277,10 @@ def _make_array(array_type, dim_str, dtypes, name):
     dims = []
     index_variadic = None
     for index, elem in enumerate(dim_str.split()):
-        if "," in elem:
-            # Common mistake
+        if "," in elem and "(" not in elem:
+            # Common mistake.
+            # Disable in the case that there's brackets to allow for function calls,
+            # e.g. `min(foo,bar)`, in symbolic dimensions.
             raise ValueError("Dimensions should be separated with spaces, not commas")
         if elem.endswith("#"):
             raise ValueError(
@@ -329,17 +331,21 @@ def _make_array(array_type, dim_str, dtypes, name):
                         )
                     anonymous = True
                     elem = elem[1:]
+                # Allow e.g. `foo=4` as an alternate syntax for just `4`, so that one
+                # can write e.g. `Float[Array, "rows=3 cols=4"]`
+                elif elem.count("=") == 1:
+                    _, elem = elem.split("=")
                 else:
                     break
-            try:
-                elem = int(elem)
-            except ValueError:
-                if len(elem) == 0 or elem.isidentifier():
-                    dim_type = _DimType.named
-                else:
-                    dim_type = _DimType.symbolic
+            if len(elem) == 0 or elem.isidentifier():
+                dim_type = _DimType.named
             else:
-                dim_type = _DimType.fixed
+                try:
+                    elem = int(elem)
+                except ValueError:
+                    dim_type = _DimType.symbolic
+                else:
+                    dim_type = _DimType.fixed
 
         if variadic:
             if index_variadic is not None:
