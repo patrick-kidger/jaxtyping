@@ -17,6 +17,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import sys
 from typing import get_args, get_origin, Union
 
 import jax.numpy as jnp
@@ -504,3 +505,10 @@ def test_symbolic_functions():
     assert isinstance(np.zeros((2, 3, 2)), x)
     assert isinstance(np.zeros((3, 2, 2)), x)
     assert not isinstance(np.zeros((3, 2, 4)), x)
+
+
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="requires Python 3.10")
+def test_py310_unions():
+    x = np.zeros(3)
+    y = Shaped[Array | np.ndarray, "_"]
+    assert isinstance(x, get_args(y))

@@ -19,6 +19,8 @@
 
 import enum
 import functools as ft
+import sys
+import types
 import typing
 from typing import (
     Any,
@@ -267,6 +269,11 @@ class AbstractArray(metaclass=_MetaAbstractArray):
 _not_made = object()
 
 
+_union_types = [typing.Union]
+if sys.version_info >= (3, 10):
+    _union_types.append(types.UnionType)
+
+
 @ft.lru_cache(maxsize=None)
 def _make_array(array_type, dim_str, dtypes, name):
     if not isinstance(dim_str, str):
@@ -466,7 +473,7 @@ class _MetaAbstractDtype(type):
             )
         array_type, dim_str = item
         del item
-        if typing.get_origin(array_type) is typing.Union:
+        if typing.get_origin(array_type) in _union_types:
             out = [
                 _make_array(x, dim_str, cls.dtypes, cls.__name__)
                 for x in typing.get_args(array_type)
