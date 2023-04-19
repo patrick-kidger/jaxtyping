@@ -78,7 +78,7 @@ def test_import_hook_beartype_full():
 
 def test_import_hook_transitive():
     hook = install_import_hook(
-        "test.import_hook_tester_transitive", "beartype.beartype"
+        "test.import_hook_tester_transitive", "typeguard.typechecked"
     )
     with hook:
         from . import import_hook_tester_transitive  # noqa: F401
