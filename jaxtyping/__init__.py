@@ -69,62 +69,60 @@ elif has_jax:
 
 # Import our dtypes
 if typing.TYPE_CHECKING:
-    # Note that `from typing_extensions import Annotated; Bool = Annotated`
-    # does not work with static type checkers. `Annotated` is a typeform rather
-    # than a type, meaning it cannot be assigned.
-    from typing_extensions import (
-        Annotated as BFloat16,
-        Annotated as Bool,
-        Annotated as Complex,
-        Annotated as Complex64,
-        Annotated as Complex128,
-        Annotated as Float,
-        Annotated as Float16,
-        Annotated as Float32,
-        Annotated as Float64,
-        Annotated as Inexact,
-        Annotated as Int,
-        Annotated as Int8,
-        Annotated as Int16,
-        Annotated as Int32,
-        Annotated as Int64,
-        Annotated as Integer,
-        Annotated as Key,
-        Annotated as Num,
-        Annotated as Shaped,
-        Annotated as UInt,
-        Annotated as UInt8,
-        Annotated as UInt16,
-        Annotated as UInt32,
-        Annotated as UInt64,
+    # Introduce an indirection so that we can `import X as X` to make it clear that
+    # these are public.
+    from .indirection import (
+        BFloat16 as BFloat16,
+        Bool as Bool,
+        Complex as Complex,
+        Complex64 as Complex64,
+        Complex128 as Complex128,
+        Float as Float,
+        Float16 as Float16,
+        Float32 as Float32,
+        Float64 as Float64,
+        Inexact as Inexact,
+        Int as Int,
+        Int8 as Int8,
+        Int16 as Int16,
+        Int32 as Int32,
+        Int64 as Int64,
+        Integer as Integer,
+        Key as Key,
+        Num as Num,
+        Shaped as Shaped,
+        UInt as UInt,
+        UInt8 as UInt8,
+        UInt16 as UInt16,
+        UInt32 as UInt32,
+        UInt64 as UInt64,
     )
 else:
-    # noqas to work around ruff bug
     from .array_types import (
-        BFloat16 as BFloat16,  # noqa: F401
-        Bool as Bool,  # noqa: F401
-        Complex as Complex,  # noqa: F401
-        Complex64 as Complex64,  # noqa: F401
-        Complex128 as Complex128,  # noqa: F401
-        Float as Float,  # noqa: F401
-        Float16 as Float16,  # noqa: F401
-        Float32 as Float32,  # noqa: F401
-        Float64 as Float64,  # noqa: F401
-        Inexact as Inexact,  # noqa: F401
-        Int as Int,  # noqa: F401
-        Int8 as Int8,  # noqa: F401
-        Int16 as Int16,  # noqa: F401
-        Int32 as Int32,  # noqa: F401
-        Int64 as Int64,  # noqa: F401
-        Integer as Integer,  # noqa: F401
-        Key as Key,  # noqa: F401
-        Num as Num,  # noqa: F401
-        Shaped as Shaped,  # noqa: F401
-        UInt as UInt,  # noqa: F401
-        UInt8 as UInt8,  # noqa: F401
-        UInt16 as UInt16,  # noqa: F401
-        UInt32 as UInt32,  # noqa: F401
-        UInt64 as UInt64,  # noqa: F401
+        BFloat16 as BFloat16,
+        Bool as Bool,
+        Complex as Complex,
+        Complex64 as Complex64,
+        Complex128 as Complex128,
+        Float as Float,
+        Float16 as Float16,
+        Float32 as Float32,
+        Float64 as Float64,
+        Inexact as Inexact,
+        Int as Int,
+        Int8 as Int8,
+        Int16 as Int16,
+        Int32 as Int32,
+        Int64 as Int64,
+        Integer as Integer,
+        Key as Key,
+        Num as Num,
+        Shaped as Shaped,
+        UInt as UInt,
+        UInt8 as UInt8,
+        UInt16 as UInt16,
+        UInt32 as UInt32,
+        UInt64 as UInt64,
     )
 
 
@@ -156,9 +154,9 @@ elif has_jax:
 
 # Conveniences
 if typing.TYPE_CHECKING:
-    from jax import Array as Scalar
     from jax.random import PRNGKeyArray as PRNGKeyArray
-    from jax.typing import ArrayLike as ScalarLike
+
+    from .indirection import Scalar as Scalar, ScalarLike as ScalarLike
 elif has_jax:
     from .array_types import PRNGKeyArray, Scalar, ScalarLike  # noqa: F401
 
