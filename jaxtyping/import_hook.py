@@ -56,7 +56,7 @@ from importlib.abc import MetaPathFinder
 from importlib.machinery import SourceFileLoader
 from importlib.util import cache_from_source, decode_source
 from inspect import isclass
-from typing import Iterable, List, Optional, Tuple, Union
+from typing import List, Optional, Sequence, Union
 from unittest.mock import patch
 
 
@@ -144,6 +144,10 @@ class _JaxtypingTransformer(ast.NodeVisitor):
             # case we're just going to have to need to ask the user to remove their
             # typechecking annotation (and let this decorator do it instead).
             # It's more important we be compatible with normal JAX code.
+            #
+            #
+            # FWIW, typeguard also wants to be at the end of the decorator list, as it
+            # works by recompiling the wrapped function.
             node.decorator_list.append(_dot_lookup("jaxtyping", "jaxtyped"))
             if self._typechecker is not None:
                 # Place at the end of the decorator list, as decorators
@@ -246,25 +250,48 @@ class ImportHookManager:
 
 # Deliberately no default for `typechecker` so that folks must opt-in to not having
 # a typechecker.
-def install_import_hook(
-    modules: Iterable[str], typechecker: Optional[Union[str, Tuple[str, str]]]
-) -> ImportHookManager:
-    """Automatically apply `@jaxtyped`, and optionally a type checker, to all classes
-    and functions.
+def install_import_hook(modules: Union[str, Sequence[str]], typechecker: Optional[str]):
+    """Automatically apply `@jaxtyped`, and optionally a type checker, as decorators.
 
-    It will only be applied to modules loaded **after** this hook has been installed.
+    !!! Tip "Usage"
 
-    **Arguments:**:
+        ```python
+        from jaxtyping import install_import_hook
+        # Plus any one of the following:
 
-    - `packages`: the names of the modules in which to automatically apply `@jaxtyped`
-        and `@typechecked`.
-    - `typechecker`: the module and function of the typechecker you want to use, as a
-        string. For example `typechecker="typeguard.typechecked"`, or
-        `typechecker="beartype.beartype"`. You may pass `typechecker=None` if you do not
-        want to automatically decorate with a typechecker as well.
+        # decorate @jaxtyped and @typeguard.typechecked
+        with install_import_hook("foo", "typeguard.typechecked"):
+            import foo          # Any module imported inside this `with` block, whose
+            import foo.bar      # name begins with the specified string, will
+            import foo.bar.qux  # automatically have both `@jaxtyped` and the specified
+                                # typechecker applied to all of their functions.
+
+        # decorate @jaxtyped and @beartype.beartype
+        with install_import_hook("foo", "beartype.beartype"):
+            ...
+
+        # decorate only @jaxtyped (if you want that for some reason)
+        with install_import_hook("foo", None):
+            ...
+        ```
+
+        If you don't like using the `with` block, the hook can be used without that:
+        ```python
+        hook = install_import_hook(...):
+        import ...
+        hook.uninstall()
+        ```
+
+        The import hook can be applied to multiple packages via
+        ```python
+        install_import_hook(["foo", "bar.baz"], ...)
+        ```
+
+    The import hook will automatically decorate all functions, and the `__init__` method
+    of dataclasses.
 
     If the function already has any decorators on it, then both the `@jaxtyped` and the
-    typechecker decorators will go at the bottom of the decorator list, e.g.
+    typechecker decorators will get added at the bottom of the decorator list, e.g.
     ```python
     @some_other_decorator
     @jaxtyped
@@ -272,30 +299,71 @@ def install_import_hook(
     def foo(...): ...
     ```
 
+    **Arguments:**:
+
+    - `modules`: the names of the modules in which to automatically apply `@jaxtyped`
+        and `@typechecked`.
+    - `typechecker`: the module and function of the typechecker you want to use, as a
+        string. For example `typechecker="typeguard.typechecked"`, or
+        `typechecker="beartype.beartype"`. You may pass `typechecker=None` if you do not
+        want to automatically decorate with a typechecker as well.
+
     **Returns:**
 
     A context manager that uninstalls the hook on exit, or when you call `.uninstall()`.
 
-    **Example:**
+    ??? Example "Example: end-user script"
 
-    Typically you should apply this import hook at the entry point for your own scripts:
-    ```python
-    # entry_point.py
-    from jaxtyped import install_import_hook
-    with install_import_hook("main", ("beartype", "beartype"))
-        import main
-    ...  # do whatever you're doing
+        ```python
+        ### entry_point.py
+        from jaxtyping import install_import_hook
+        with install_import_hook("main", "typeguard.typechecked"):
+            import main
 
-    # main.py
-    from jaxtyped import f32
+        ### main.py
+        from jaxtyping import Array, Float32
 
-    def f(x: f32["b c"]):
-        pass
-    ```
-    Which as you can see means you never to import `@jaxtyped`, nor do you need to
-    import the typechecker directly (e.g. `beartype.beartype` or
-    `typeguard.typechecked`).
-    """
+        def f(x: Float32[Array, "batch channels"]):
+            ...
+        ```
+
+    ??? Example "Example: writing a library"
+
+        ```python
+        ### __init__.py
+        from jaxtyping import install_import_hook
+        with install_import_hook("my_library_name", "beartype.beartype"):
+            from .subpackage import foo  # full name is my_library_name.subpackage so
+                                         # will be hook'd
+            from .another_subpackage import bar  # full name is my_library_name.another_subpackage
+                                                 # so will be hook'd.
+        ```
+
+    ??? info "Pytest hook"
+
+        The import hook can be installed at test-time only, as a pytest hook. From the
+        command line the syntax is:
+        ```
+        pytest --jaxtyping-packages=foo,bar.baz,beartype.beartype
+        ```
+        or in `pyproject.toml`:
+        ```toml
+        [tool.pytest.ini_options]
+        addopts = "--jaxtyping-packages=foo,bar.baz,beartype.beartype"
+        ```
+        or in `pytest.ini`:
+        ```ini
+        [pytest]
+        addopts = --jaxtyping-packages=foo,bar.baz,beartype.beartype
+        ```
+        This example will apply the import hook to all modules whose names start with
+        either `foo` or `bar.baz`. The typechecker used in this example is
+        `beartype.beartype`.
+
+        (This is the author's preferred approach to performing runtime type-checking
+        with jaxtyping!)
+    """  # noqa: E501
+
     if isinstance(modules, str):
         modules = [modules]
 

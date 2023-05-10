@@ -1,6 +1,6 @@
 <h1 align="center">jaxtyping</h1>
 
-Type annotations **and runtime checking** for:
+Type annotations **and runtime type-checking** for:
 
 1. shape and dtype of [JAX](https://github.com/google/jax) arrays; *(Now also supports PyTorch, NumPy, and TensorFlow!)*
 2. [PyTrees](https://jax.readthedocs.io/en/latest/pytrees.html).
@@ -31,15 +31,13 @@ pip install jaxtyping
 
 Requires Python 3.8+.
 
-JAX is an optional dependency, required for `jaxtyping.{Array, ArrayLike, PyTree}`. If JAX is not installed then these types will not be available, but you may still use jaxtyping alongside PyTorch/NumPy/etc.
+JAX is an optional dependency, required for a few JAX-specific types. If JAX is not installed then these will not be available, but you may still use jaxtyping to provide shape/dtype annotations for PyTorch/NumPy/TensorFlow/etc.
 
-Also install your favourite runtime type-checking package. The two most popular are [typeguard](https://github.com/agronholm/typeguard) (which exhaustively checks every argument) and [beartype](https://github.com/beartype/beartype) (which checks random pieces of arguments).
+The annotations provided by jaxtyping are compatible with runtime type-checking packages, so it is common to also install one of these. The two most popular are [typeguard](https://github.com/agronholm/typeguard) (which exhaustively checks every argument) and [beartype](https://github.com/beartype/beartype) (which checks random pieces of arguments).
 
 ## Documentation
 
-[Full API reference](./API.md)
-
-[FAQ (static type checking, flake8, etc.)](./FAQ.md)
+Available at [https://docs.kidger.site/jaxtyping](https://docs.kidger.site/jaxtyping).
 
 ## Finally
 

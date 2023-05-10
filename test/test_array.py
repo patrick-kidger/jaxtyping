@@ -26,7 +26,16 @@ import numpy as np
 import pytest
 import torch
 
-from jaxtyping import AbstractDtype, Array, ArrayLike, Float, Float32, jaxtyped, Shaped
+from jaxtyping import (
+    AbstractDtype,
+    Array,
+    ArrayLike,
+    Float,
+    Float32,
+    jaxtyped,
+    PRNGKeyArray,
+    Shaped,
+)
 
 from .helpers import ParamError, ReturnError
 
@@ -512,3 +521,57 @@ def test_py310_unions():
     x = np.zeros(3)
     y = Shaped[Array | np.ndarray, "_"]
     assert isinstance(x, get_args(y))
+
+
+def test_key(typecheck):
+    @jaxtyped
+    @typecheck
+    def f(x: PRNGKeyArray):
+        pass
+
+    x = jr.PRNGKey(0)
+    f(x)
+
+    with pytest.raises(ParamError):
+        f(object())
+    with pytest.raises(ParamError):
+        f(1)
+    with pytest.raises(ParamError):
+        f(jnp.array(3))
+    with pytest.raises(ParamError):
+        f(jnp.array(3.0))
+
+
+def test_extension(typecheck, getkey):
+    X = Shaped[Array, "a b"]
+    Y = Shaped[X, "c d"]
+    Z = Shaped[Array, "c d a b"]
+    assert str(Z) == str(Y)
+
+    X = Float[Array, "a"]
+    Y = Float[X, "b"]
+
+    @jaxtyped
+    @typecheck
+    def f(a: X, b: Y):
+        ...
+
+    a = jr.normal(getkey(), (3, 4))
+    b = jr.normal(getkey(), (4,))
+    c = jr.normal(getkey(), (3,))
+
+    f(b, a)
+    with pytest.raises(ParamError):
+        f(c, a)
+    with pytest.raises(ParamError):
+        f(a, a)
+
+    @typecheck
+    def g(a: Shaped[PRNGKeyArray, "2"]):
+        ...
+
+    with pytest.raises(ParamError):
+        g(jr.PRNGKey(0))
+    g(jr.split(jr.PRNGKey(0)))
+    with pytest.raises(ParamError):
+        g(jr.split(jr.PRNGKey(0), 3))
