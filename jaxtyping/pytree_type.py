@@ -102,3 +102,12 @@ if getattr(typing, "GENERATING_DOCUMENTATION", False):
     PyTree.__module__ = "builtins"
 else:
     PyTree.__module__ = "jaxtyping"
+PyTree.__doc__ = """Represents a PyTree.
+
+Each PyTree is denoted by a type `PyTree[LeafType]`, such as `PyTree[int]` or
+`PyTree[Union[str, Float32[Array, "b c"]]]`.
+
+You can leave off the `[...]`, in which case `PyTree` is simply a suggestively-named
+alternative to `Any`.
+([By definition all types are PyTrees.](https://jax.readthedocs.io/en/latest/pytrees.html))
+"""  # noqa: E501

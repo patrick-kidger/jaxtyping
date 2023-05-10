@@ -1,6 +1,6 @@
 # FAQ
 
-## Does jaxtyping work with static type checkers like `mypy`/`pyright`/`pytype`?
+## Is jaxtyping compatible with static type checkers like `mypy`/`pyright`/`pytype`?
 
 There is partial support for these. An annotation of the form `dtype[array, shape]` should be treated as just `array` by a static type checker. Unfortunately full dtype/shape checking is beyond the scope of what static type checking is currently capable of.
 

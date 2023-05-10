@@ -19,6 +19,7 @@
 
 import enum
 import functools as ft
+import re
 import sys
 import types
 import typing
@@ -30,13 +31,20 @@ from typing import (
     NoReturn,
     Optional,
     Tuple,
-    TYPE_CHECKING,
     Union,
 )
 
 import numpy as np
 
 from .decorator import storage
+
+
+try:
+    import jax
+except ImportError:
+    has_jax = False
+else:
+    has_jax = True
 
 
 _array_name_format = "dtype_and_shape"
@@ -142,7 +150,9 @@ class _MetaAbstractArray(type):
         if not isinstance(obj, cls.array_type):
             return False
 
-        if hasattr(obj.dtype, "type") and hasattr(obj.dtype.type, "__name__"):
+        if has_jax and jax.core.is_opaque_dtype(obj.dtype):
+            dtype = str(obj.dtype)
+        elif hasattr(obj.dtype, "type") and hasattr(obj.dtype.type, "__name__"):
             # JAX, numpy
             dtype = obj.dtype.type.__name__
         elif hasattr(obj.dtype, "as_numpy_dtype"):
@@ -158,8 +168,19 @@ class _MetaAbstractArray(type):
                     "Unrecognised array/tensor type to extract dtype from"
                 )
 
-        if cls.dtypes is not _any_dtype and dtype not in cls.dtypes:
-            return False
+        if cls.dtypes is not _any_dtype:
+            in_dtypes = False
+            for cls_dtype in cls.dtypes:
+                if type(cls_dtype) is str:
+                    in_dtypes = dtype == cls_dtype
+                elif type(cls_dtype) is re.Pattern:
+                    in_dtypes = bool(cls_dtype.match(dtype))
+                else:
+                    assert False
+                if in_dtypes:
+                    break
+            if not in_dtypes:
+                return False
 
         no_temp_memo = hasattr(storage, "memo_stack") and len(storage.memo_stack) != 0
 
@@ -260,10 +281,18 @@ def _check_scalar(dtype, dtypes, dims):
 
 
 class AbstractArray(metaclass=_MetaAbstractArray):
+    """This is the base class of all shape-and-dtype-specified arrays, e.g. it's a base
+    class for `Float32[Array, "foo"]`.
+
+    This might be useful if you're trying to inspect type annotations yourself, e.g.
+    you can check `issubclass(annotation, jaxtyping.AbstractArray)`.
+    """
+
     array_type: Any
     dtypes: List[str]
-    dims: List[_AbstractDimOrVariadicDim]
+    dims: Tuple[_AbstractDimOrVariadicDim, ...]
     index_variadic: Optional[int]
+    dim_str: str
 
 
 _not_made = object()
@@ -429,6 +458,28 @@ def _make_array(array_type, dim_str, dtypes, name):
             return array_type
         else:
             return _not_made
+    if issubclass(array_type, AbstractArray):
+        if dtypes is _any_dtype:
+            dtypes = array_type.dtypes
+        elif array_type.dtypes is not _any_dtype:
+            dtypes = tuple(x for x in dtypes if x in array_type.dtypes)
+            if len(dtypes) == 0:
+                raise ValueError(
+                    "A jaxtyping annotation cannot be extended with no overlapping "
+                    "dtypes. For example, `Bool[Float[Array, 'dim1'], 'dim2']` is an "
+                    "error. You probably want to make the outer wrapper be `Shaped`."
+                )
+        if array_type.index_variadic is not None:
+            if index_variadic is None:
+                index_variadic = array_type.index_variadic + len(dims)
+            else:
+                raise ValueError(
+                    "Cannot use multiple-dimension specifiers (`*name` or `...`) "
+                    "in both the original array and the extended array"
+                )
+        dims = dims + array_type.dims
+        dim_str = dim_str + " " + array_type.dim_str
+        array_type = array_type.array_type
     try:
         type_str = array_type.__name__
     except AttributeError:
@@ -448,6 +499,7 @@ def _make_array(array_type, dim_str, dtypes, name):
             dtypes=dtypes,
             dims=dims,
             index_variadic=index_variadic,
+            dim_str=dim_str,
         ),
     )
     if getattr(typing, "GENERATING_DOCUMENTATION", False):
@@ -469,7 +521,7 @@ class _MetaAbstractDtype(type):
         if not isinstance(item, tuple) or len(item) != 2:
             raise ValueError(
                 "As of jaxtyping v0.2.0, type annotations must now include an explicit "
-                "array type. For example `jaxtyping.Float32[jnp.ndarray, 'foo bar']`."
+                "array type. For example `jaxtyping.Float32[jax.Array, 'foo bar']`."
             )
         array_type, dim_str = item
         del item
@@ -479,7 +531,12 @@ class _MetaAbstractDtype(type):
                 for x in typing.get_args(array_type)
             ]
             out = tuple(x for x in out if x is not _not_made)
-            out = Union[out]
+            if len(out) == 0:
+                raise ValueError("Invalid jaxtyping type annotation.")
+            elif len(out) == 1:
+                (out,) = out
+            else:
+                out = Union[out]
         else:
             out = _make_array(array_type, dim_str, cls.dtypes, cls.__name__)
             if out is _not_made:
@@ -488,7 +545,32 @@ class _MetaAbstractDtype(type):
 
 
 class AbstractDtype(metaclass=_MetaAbstractDtype):
-    dtypes: Union[Literal[_any_dtype], List[str]]
+    """This is the base class of all dtypes. This can be used to create your own custom
+    collection of dtypes (analogous to `Float`, `Inexact` etc.)
+
+    You must specify the class attribute `dtypes`. This can either be a string, a
+    regex (as returned by `re.compile(...)`), or a tuple/list of strings/regexes.
+
+    At runtime, the array or tensor's dtype is converted to a string and compared
+    against the string (an exact match is required) or regex. (String matching is
+    performed, rather than just e.g. `array.dtype == dtype`, to provide cross-library
+    compatibility between JAX/PyTorch/etc.)
+
+    !!! Example
+
+        ```python
+        class UInt8or16(AbstractDtype):
+            dtypes = ["uint8", "uint16"]
+
+        UInt8or16[Array, "shape"]
+        ```
+        which is essentially equivalent to
+        ```python
+        Union[UInt8[Array, "shape"], UInt16[Array, "shape"]]
+        ```
+    """
+
+    dtypes: Union[Literal[_any_dtype], List[Union[str, re.Pattern]]]
 
     def __init__(self, *args, **kwargs):
         raise RuntimeError(
@@ -500,103 +582,86 @@ class AbstractDtype(metaclass=_MetaAbstractDtype):
         super().__init_subclass__(**kwargs)
 
         dtypes: Union[Literal[_any_dtype], str, List[str]] = cls.dtypes
-        if isinstance(dtypes, str):
+        if isinstance(dtypes, (str, re.Pattern)):
             dtypes = (dtypes,)
         elif dtypes is not _any_dtype:
             dtypes = tuple(dtypes)
         cls.dtypes = dtypes
 
 
-if TYPE_CHECKING:
-    # Note that `from typing_extensions import Annotated; ... = Annotated`
-    # does not work with static type checkers. `Annotated` is a typeform rather
-    # than a type, meaning it cannot be assigned.
-    from typing_extensions import (
-        Annotated as BFloat16,
-        Annotated as Bool,
-        Annotated as Complex,
-        Annotated as Complex64,
-        Annotated as Complex128,
-        Annotated as Float,
-        Annotated as Float16,
-        Annotated as Float32,
-        Annotated as Float64,
-        Annotated as Inexact,
-        Annotated as Int,
-        Annotated as Int8,
-        Annotated as Int16,
-        Annotated as Int32,
-        Annotated as Int64,
-        Annotated as Integer,
-        Annotated as Num,
-        Annotated as Shaped,
-        Annotated as UInt,
-        Annotated as UInt8,
-        Annotated as UInt16,
-        Annotated as UInt32,
-        Annotated as UInt64,
-    )
-else:
-    _bool = "bool"
-    _bool_ = "bool_"
-    _uint8 = "uint8"
-    _uint16 = "uint16"
-    _uint32 = "uint32"
-    _uint64 = "uint64"
-    _int8 = "int8"
-    _int16 = "int16"
-    _int32 = "int32"
-    _int64 = "int64"
-    _bfloat16 = "bfloat16"
-    _float16 = "float16"
-    _float32 = "float32"
-    _float64 = "float64"
-    _complex64 = "complex64"
-    _complex128 = "complex128"
+_bool = "bool"
+_bool_ = "bool_"
+_uint8 = "uint8"
+_uint16 = "uint16"
+_uint32 = "uint32"
+_uint64 = "uint64"
+_int8 = "int8"
+_int16 = "int16"
+_int32 = "int32"
+_int64 = "int64"
+_bfloat16 = "bfloat16"
+_float16 = "float16"
+_float32 = "float32"
+_float64 = "float64"
+_complex64 = "complex64"
+_complex128 = "complex128"
 
-    def _make_dtype(_dtypes, name):
-        class _Cls(AbstractDtype):
-            dtypes = _dtypes
 
-        _Cls.__name__ = name
-        _Cls.__qualname__ = name
-        if getattr(typing, "GENERATING_DOCUMENTATION", False):
-            _Cls.__module__ = "builtins"
-        else:
-            _Cls.__module__ = "jaxtyping"
-        return _Cls
+def _make_dtype(_dtypes, name):
+    class _Cls(AbstractDtype):
+        dtypes = _dtypes
 
-    UInt8 = _make_dtype(_uint8, "UInt8")
-    UInt16 = _make_dtype(_uint16, "UInt16")
-    UInt32 = _make_dtype(_uint32, "UInt32")
-    UInt64 = _make_dtype(_uint64, "UInt64")
-    Int8 = _make_dtype(_int8, "Int8")
-    Int16 = _make_dtype(_int16, "Int16")
-    Int32 = _make_dtype(_int32, "Int32")
-    Int64 = _make_dtype(_int64, "Int64")
-    BFloat16 = _make_dtype(_bfloat16, "BFloat16")
-    Float16 = _make_dtype(_float16, "Float16")
-    Float32 = _make_dtype(_float32, "Float32")
-    Float64 = _make_dtype(_float64, "Float64")
-    Complex64 = _make_dtype(_complex64, "Complex64")
-    Complex128 = _make_dtype(_complex128, "Complex128")
+    _Cls.__name__ = name
+    _Cls.__qualname__ = name
+    if getattr(typing, "GENERATING_DOCUMENTATION", False):
+        _Cls.__module__ = "builtins"
+    else:
+        _Cls.__module__ = "jaxtyping"
+    return _Cls
 
-    bools = [_bool, _bool_]
-    uints = [_uint8, _uint16, _uint32, _uint64]
-    ints = [_int8, _int16, _int32, _int64]
-    floats = [_bfloat16, _float16, _float32, _float64]
-    complexes = [_complex64, _complex128]
 
-    # We match NumPy's type hierarachy in what types to provide. See the diagram at
-    # https://numpy.org/doc/stable/reference/arrays.scalars.html#scalars
+UInt8 = _make_dtype(_uint8, "UInt8")
+UInt16 = _make_dtype(_uint16, "UInt16")
+UInt32 = _make_dtype(_uint32, "UInt32")
+UInt64 = _make_dtype(_uint64, "UInt64")
+Int8 = _make_dtype(_int8, "Int8")
+Int16 = _make_dtype(_int16, "Int16")
+Int32 = _make_dtype(_int32, "Int32")
+Int64 = _make_dtype(_int64, "Int64")
+BFloat16 = _make_dtype(_bfloat16, "BFloat16")
+Float16 = _make_dtype(_float16, "Float16")
+Float32 = _make_dtype(_float32, "Float32")
+Float64 = _make_dtype(_float64, "Float64")
+Complex64 = _make_dtype(_complex64, "Complex64")
+Complex128 = _make_dtype(_complex128, "Complex128")
 
-    Bool = _make_dtype(bools, "Bool")
-    UInt = _make_dtype(uints, "UInt")
-    Int = _make_dtype(ints, "Int")
-    Integer = _make_dtype(uints + ints, "Integer")
-    Float = _make_dtype(floats, "Float")
-    Complex = _make_dtype(complexes, "Complex")
-    Inexact = _make_dtype(floats + complexes, "Inexact")
-    Num = _make_dtype(uints + ints + floats + complexes, "Num")
+bools = [_bool, _bool_]
+uints = [_uint8, _uint16, _uint32, _uint64]
+ints = [_int8, _int16, _int32, _int64]
+floats = [_bfloat16, _float16, _float32, _float64]
+complexes = [_complex64, _complex128]
 
-    Shaped = _make_dtype(_any_dtype, "Shaped")
+# We match NumPy's type hierarachy in what types to provide. See the diagram at
+# https://numpy.org/doc/stable/reference/arrays.scalars.html#scalars
+
+Bool = _make_dtype(bools, "Bool")
+UInt = _make_dtype(uints, "UInt")
+Int = _make_dtype(ints, "Int")
+Integer = _make_dtype(uints + ints, "Integer")
+Float = _make_dtype(floats, "Float")
+Complex = _make_dtype(complexes, "Complex")
+Inexact = _make_dtype(floats + complexes, "Inexact")
+Num = _make_dtype(uints + ints + floats + complexes, "Num")
+
+Shaped = _make_dtype(_any_dtype, "Shaped")
+
+if has_jax:
+    if jax.config.jax_enable_custom_prng:
+        _key_regex = re.compile(r"^key<\w+>$")
+        Key = _make_dtype(_key_regex, "Key")
+        PRNGKeyArray = Key[jax.Array, ""]
+    else:
+        Key = UInt32
+        PRNGKeyArray = Key[jax.Array, "2"]
+    Scalar = Shaped[jax.Array, ""]
+    ScalarLike = Shaped[jax.typing.ArrayLike, ""]

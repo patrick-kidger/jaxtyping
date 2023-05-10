@@ -17,6 +17,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import importlib.metadata
 import typing
 
 
@@ -28,8 +29,18 @@ else:
     has_jax = True
     del jax
 
+# First import some things as normal
+from .array_types import (
+    AbstractArray as AbstractArray,
+    AbstractDtype as AbstractDtype,
+    get_array_name_format as get_array_name_format,
+    set_array_name_format as set_array_name_format,
+)
+from .decorator import jaxtyped as jaxtyped
+from .import_hook import install_import_hook as install_import_hook
 
-# Type checkers don't know which branch below will be executed.
+
+# Now import Array and ArrayLike
 if typing.TYPE_CHECKING:
     # For imports, we need to explicitly `import X as X` in order for Pyright to see
     # them as public. See discussion at https://github.com/microsoft/pyright/issues/2277
@@ -55,39 +66,69 @@ elif has_jax:
         except (ModuleNotFoundError, ImportError):
             pass
 
-from .array_types import (
-    AbstractArray as AbstractArray,
-    AbstractDtype as AbstractDtype,
-    BFloat16 as BFloat16,
-    Bool as Bool,
-    Complex as Complex,
-    Complex64 as Complex64,
-    Complex128 as Complex128,
-    Float as Float,
-    Float16 as Float16,
-    Float32 as Float32,
-    Float64 as Float64,
-    get_array_name_format as get_array_name_format,
-    Inexact as Inexact,
-    Int as Int,
-    Int8 as Int8,
-    Int16 as Int16,
-    Int32 as Int32,
-    Int64 as Int64,
-    Integer as Integer,
-    Num as Num,
-    set_array_name_format as set_array_name_format,
-    Shaped as Shaped,
-    UInt as UInt,
-    UInt8 as UInt8,
-    UInt16 as UInt16,
-    UInt32 as UInt32,
-    UInt64 as UInt64,
-)
-from .decorator import jaxtyped as jaxtyped
-from .import_hook import install_import_hook as install_import_hook
+
+# Import our dtypes
+if typing.TYPE_CHECKING:
+    # Note that `from typing_extensions import Annotated; Bool = Annotated`
+    # does not work with static type checkers. `Annotated` is a typeform rather
+    # than a type, meaning it cannot be assigned.
+    from typing_extensions import (
+        Annotated as BFloat16,
+        Annotated as Bool,
+        Annotated as Complex,
+        Annotated as Complex64,
+        Annotated as Complex128,
+        Annotated as Float,
+        Annotated as Float16,
+        Annotated as Float32,
+        Annotated as Float64,
+        Annotated as Inexact,
+        Annotated as Int,
+        Annotated as Int8,
+        Annotated as Int16,
+        Annotated as Int32,
+        Annotated as Int64,
+        Annotated as Integer,
+        Annotated as Key,
+        Annotated as Num,
+        Annotated as Shaped,
+        Annotated as UInt,
+        Annotated as UInt8,
+        Annotated as UInt16,
+        Annotated as UInt32,
+        Annotated as UInt64,
+    )
+else:
+    # noqas to work around ruff bug
+    from .array_types import (
+        BFloat16 as BFloat16,  # noqa: F401
+        Bool as Bool,  # noqa: F401
+        Complex as Complex,  # noqa: F401
+        Complex64 as Complex64,  # noqa: F401
+        Complex128 as Complex128,  # noqa: F401
+        Float as Float,  # noqa: F401
+        Float16 as Float16,  # noqa: F401
+        Float32 as Float32,  # noqa: F401
+        Float64 as Float64,  # noqa: F401
+        Inexact as Inexact,  # noqa: F401
+        Int as Int,  # noqa: F401
+        Int8 as Int8,  # noqa: F401
+        Int16 as Int16,  # noqa: F401
+        Int32 as Int32,  # noqa: F401
+        Int64 as Int64,  # noqa: F401
+        Integer as Integer,  # noqa: F401
+        Key as Key,  # noqa: F401
+        Num as Num,  # noqa: F401
+        Shaped as Shaped,  # noqa: F401
+        UInt as UInt,  # noqa: F401
+        UInt8 as UInt8,  # noqa: F401
+        UInt16 as UInt16,  # noqa: F401
+        UInt32 as UInt32,  # noqa: F401
+        UInt64 as UInt64,  # noqa: F401
+    )
 
 
+# Now import PyTree
 if typing.TYPE_CHECKING:
     # Set up to deliberately confuse a static type checker.
     import typing_extensions
@@ -112,6 +153,16 @@ if typing.TYPE_CHECKING:
 elif has_jax:
     from .pytree_type import PyTree as PyTree  # noqa: F401
 
+
+# Conveniences
+if typing.TYPE_CHECKING:
+    from jax import Array as Scalar
+    from jax.random import PRNGKeyArray as PRNGKeyArray
+    from jax.typing import ArrayLike as ScalarLike
+elif has_jax:
+    from .array_types import PRNGKeyArray, Scalar, ScalarLike  # noqa: F401
+
 del has_jax
 
-__version__ = "0.2.15"
+
+__version__ = importlib.metadata.version("jaxtyping")
