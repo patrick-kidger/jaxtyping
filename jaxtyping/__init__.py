@@ -115,7 +115,6 @@ else:
         Int32 as Int32,
         Int64 as Int64,
         Integer as Integer,
-        Key as Key,
         Num as Num,
         Shaped as Shaped,
         UInt as UInt,
@@ -124,6 +123,9 @@ else:
         UInt32 as UInt32,
         UInt64 as UInt64,
     )
+
+    if has_jax:
+        from .array_types import Key as Key
 
 
 # Now import PyTree
