@@ -35,10 +35,6 @@ class _FakePyTree(Generic[_T]):
 _FakePyTree.__name__ = "PyTree"
 _FakePyTree.__qualname__ = "PyTree"
 _FakePyTree.__module__ = "builtins"
-# Can't do type("PyTree", (Generic[_T],), {}) because dynamic subclassing of typeforms
-# isn't allowed.
-# Can't do types.new_class("PyTree", (Generic[_T],), {}) because that has __module__
-# "types", e.g. we get types.PyTree[int].
 
 
 class _MetaPyTree(type):
@@ -46,32 +42,9 @@ class _MetaPyTree(type):
         raise RuntimeError("PyTree cannot be instantiated")
 
     def __instancecheck__(cls, obj):
-        return True
+        if not hasattr(cls, "leaftype"):
+            return True  # Just `isinstance(x, PyTree)`
 
-    @ft.lru_cache(maxsize=None)
-    def __getitem__(cls, item):
-        name = str(_FakePyTree[item])
-        out = _MetaSubscriptPyTree(name, (), {"leaftype": item})
-        if getattr(typing, "GENERATING_DOCUMENTATION", False):
-            out.__module__ = "builtins"
-        else:
-            out.__module__ = "jaxtyping"
-        return out
-
-
-try:
-    # new typeguard
-    _TypeCheckError = (TypeError, typeguard.TypeCheckError)
-except AttributeError:
-    # old typeguard
-    _TypeCheckError = TypeError
-
-
-class _MetaSubscriptPyTree(type):
-    def __call__(self, *args, **kwargs):
-        raise RuntimeError("PyTree cannot be instantiated")
-
-    def __instancecheck__(cls, obj):
         # We could use `isinstance` here but that would fail for more complicated
         # types, e.g. PyTree[Tuple[int]]. So at least internally we make a particular
         # choice of typechecker.
@@ -92,6 +65,36 @@ class _MetaSubscriptPyTree(type):
 
         leaves = jtu.tree_leaves(obj, is_leaf=is_leaftype)
         return all(map(is_leaftype, leaves))
+
+    # Can't return a generic (e.g. _FakePyTree[item]) because generic aliases don't do
+    # the custom __instancecheck__ that we want.
+    # We can't add that __instancecheck__  via subclassing, e.g.
+    # type("PyTree", (Generic[_T],), {}), because dynamic subclassing of typeforms
+    # isn't allowed.
+    # Likewise we can't do types.new_class("PyTree", (Generic[_T],), {}) because that
+    # has __module__ "types", e.g. we get types.PyTree[int].
+    @ft.lru_cache(maxsize=None)
+    def __getitem__(cls, item):
+        name = str(_FakePyTree[item])
+
+        class X(PyTree):
+            leaftype = item
+
+        X.__name__ = name
+        X.__qualname__ = name
+        if getattr(typing, "GENERATING_DOCUMENTATION", False):
+            X.__module__ = "builtins"
+        else:
+            X.__module__ = "jaxtyping"
+        return X
+
+
+try:
+    # new typeguard
+    _TypeCheckError = (TypeError, typeguard.TypeCheckError)
+except AttributeError:
+    # old typeguard
+    _TypeCheckError = TypeError
 
 
 # Can't do `class PyTree(Generic[_T]): ...` because we need to override the
