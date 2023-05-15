@@ -185,3 +185,11 @@ def test_pytree_namedtuple(typecheck):
                 y=jax.random.normal(jax.random.PRNGKey(420), (2, 5)),
             )
         )
+
+
+def test_subclass_pytree():
+    x = PyTree
+    y = PyTree[int]
+    assert issubclass(x, PyTree)
+    assert issubclass(y, PyTree)
+    assert not issubclass(int, PyTree)

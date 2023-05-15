@@ -128,11 +128,13 @@ else:
         from .array_types import Key as Key
 
 
-# Now import PyTree
+# Now import PyTreeDef and PyTree
 if typing.TYPE_CHECKING:
-    # Set up to deliberately confuse a static type checker.
     import typing_extensions
 
+    from jax.tree_util import PyTreeDef as PyTreeDef
+
+    # Set up to deliberately confuse a static type checker.
     PyTree: typing_extensions.TypeAlias = getattr(typing, "foo" + "bar")
     # What's going on with this madness?
     #
@@ -151,6 +153,8 @@ if typing.TYPE_CHECKING:
     # anything. (I believe this is sometimes called `Unknown`.) Thus, this odd-looking
     # annotation, which static type checkers aren't smart enough to resolve.
 elif has_jax:
+    from jax.tree_util import PyTreeDef as PyTreeDef
+
     from .pytree_type import PyTree as PyTree  # noqa: F401
 
 
