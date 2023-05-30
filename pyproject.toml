@@ -1,6 +1,6 @@
 [project]
 name = "jaxtyping"
-version = "0.2.19"
+version = "0.2.20"
 description = "Type annotations and runtime checking for shape and dtype of JAX arrays, and PyTrees."
 readme = "README.md"
 requires-python ="~=3.8"
@@ -24,7 +24,7 @@ classifiers = [
 ]
 urls = {repository = "https://github.com/google/jaxtyping" }
 dependencies = ["numpy>=1.20.0", "typeguard>=2.13.3", "typing_extensions>=3.7.4.1"]
-entry-points = {pytest11 = {jaxtyping = "jaxtyping.pytest_plugin"}}
+entry-points = {pytest11 = {jaxtyping = "jaxtyping._pytest_plugin"}}
 
 [build-system]
 requires = ["hatchling"]

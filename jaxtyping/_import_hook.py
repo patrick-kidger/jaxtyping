@@ -120,7 +120,7 @@ class _JaxtypingTransformer(ast.NodeVisitor):
         return node
 
     def visit_ClassDef(self, node: ast.ClassDef):
-        func = _dot_lookup("jaxtyping", "decorator", "_jaxtyped_typechecker")
+        func = _dot_lookup("jaxtyping", "_decorator", "_jaxtyped_typechecker")
         if self._typechecker is None:
             args = [ast.Constant(None)]
         else:
