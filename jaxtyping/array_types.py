@@ -123,7 +123,8 @@ def _check_dims(
                 return False
         elif type(cls_dim) is _SymbolicDim:
             try:
-                eval_size = eval(cls_dim.expr, single_memo)
+                # Make a copy to avoid `__builtins__` getting added as a key.
+                eval_size = eval(cls_dim.expr, single_memo.copy())
             except NameError as e:
                 raise NameError(
                     f"Cannot process symbolic dimension '{cls_dim.expr}' as some "
