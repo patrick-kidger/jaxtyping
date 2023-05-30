@@ -36,7 +36,7 @@ from typing import (
 
 import numpy as np
 
-from .decorator import storage
+from ._decorator import storage
 
 
 try:

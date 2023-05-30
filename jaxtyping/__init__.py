@@ -30,14 +30,14 @@ else:
     del jax
 
 # First import some things as normal
-from .array_types import (
+from ._array_types import (
     AbstractArray as AbstractArray,
     AbstractDtype as AbstractDtype,
     get_array_name_format as get_array_name_format,
     set_array_name_format as set_array_name_format,
 )
-from .decorator import jaxtyped as jaxtyped
-from .import_hook import install_import_hook as install_import_hook
+from ._decorator import jaxtyped as jaxtyped
+from ._import_hook import install_import_hook as install_import_hook
 
 
 # Now import Array and ArrayLike
@@ -71,7 +71,7 @@ elif has_jax:
 if typing.TYPE_CHECKING:
     # Introduce an indirection so that we can `import X as X` to make it clear that
     # these are public.
-    from .indirection import (
+    from ._indirection import (
         BFloat16 as BFloat16,
         Bool as Bool,
         Complex as Complex,
@@ -98,7 +98,7 @@ if typing.TYPE_CHECKING:
         UInt64 as UInt64,
     )
 else:
-    from .array_types import (
+    from ._array_types import (
         BFloat16 as BFloat16,
         Bool as Bool,
         Complex as Complex,
@@ -125,7 +125,7 @@ else:
     )
 
     if has_jax:
-        from .array_types import Key as Key
+        from ._array_types import Key as Key
 
 
 # Now import PyTreeDef and PyTree
@@ -155,16 +155,16 @@ if typing.TYPE_CHECKING:
 elif has_jax:
     from jax.tree_util import PyTreeDef as PyTreeDef
 
-    from .pytree_type import PyTree as PyTree  # noqa: F401
+    from ._pytree_type import PyTree as PyTree  # noqa: F401
 
 
 # Conveniences
 if typing.TYPE_CHECKING:
     from jax.random import PRNGKeyArray as PRNGKeyArray
 
-    from .indirection import Scalar as Scalar, ScalarLike as ScalarLike
+    from ._indirection import Scalar as Scalar, ScalarLike as ScalarLike
 elif has_jax:
-    from .array_types import PRNGKeyArray, Scalar, ScalarLike  # noqa: F401
+    from ._array_types import PRNGKeyArray, Scalar, ScalarLike  # noqa: F401
 
 del has_jax
 

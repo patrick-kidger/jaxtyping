@@ -19,7 +19,7 @@
 
 import sys
 
-from .import_hook import install_import_hook
+from ._import_hook import install_import_hook
 
 
 def pytest_addoption(parser):
