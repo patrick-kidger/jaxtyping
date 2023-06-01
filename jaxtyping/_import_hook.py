@@ -52,11 +52,12 @@
 import ast
 import functools as ft
 import sys
+from collections.abc import Sequence
 from importlib.abc import MetaPathFinder
 from importlib.machinery import SourceFileLoader
 from importlib.util import cache_from_source, decode_source
 from inspect import isclass
-from typing import List, Optional, Sequence, Union
+from typing import Optional, Union
 from unittest.mock import patch
 
 
@@ -94,7 +95,7 @@ def _str_lookup(string):
 
 class _JaxtypingTransformer(ast.NodeVisitor):
     def __init__(self, *, typechecker) -> None:
-        self._parents: List[ast.AST] = []
+        self._parents: list[ast.AST] = []
         self._typechecker = typechecker
 
     def visit_Module(self, node: ast.Module):

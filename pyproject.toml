@@ -3,7 +3,7 @@ name = "jaxtyping"
 version = "0.2.20"
 description = "Type annotations and runtime checking for shape and dtype of JAX arrays, and PyTrees."
 readme = "README.md"
-requires-python ="~=3.8"
+requires-python ="~=3.9"
 license = {file = "LICENSE"}
 authors = [
   {name = "Patrick Kidger", email = "contact@kidger.site"},
