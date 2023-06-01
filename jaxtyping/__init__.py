@@ -153,7 +153,15 @@ if typing.TYPE_CHECKING:
     # anything. (I believe this is sometimes called `Unknown`.) Thus, this odd-looking
     # annotation, which static type checkers aren't smart enough to resolve.
 elif has_jax:
-    from jax.tree_util import PyTreeDef as PyTreeDef
+    if hasattr(typing, "GENERATING_DOCUMENTATION"):
+
+        class PyTreeDef:
+            """Alias for `jax.tree_util.PyTreeDef`, which is the type of the return
+            from `jax.tree_util.tree_structure(...)`.
+            """
+
+    else:
+        from jax.tree_util import PyTreeDef as PyTreeDef
 
     from ._pytree_type import PyTree as PyTree  # noqa: F401
 
