@@ -23,16 +23,7 @@ import re
 import sys
 import types
 import typing
-from typing import (
-    Any,
-    Dict,
-    List,
-    Literal,
-    NoReturn,
-    Optional,
-    Tuple,
-    Union,
-)
+from typing import Any, Literal, NoReturn, Optional, Union
 
 import numpy as np
 
@@ -108,9 +99,9 @@ _AbstractDim = Union[Literal[_anonymous_dim], _NamedDim, _FixedDim, _SymbolicDim
 
 
 def _check_dims(
-    cls_dims: List[_AbstractDim],
-    obj_shape: Tuple[int],
-    single_memo: Dict[str, int],
+    cls_dims: list[_AbstractDim],
+    obj_shape: tuple[int],
+    single_memo: dict[str, int],
 ) -> bool:
     assert len(cls_dims) == len(obj_shape)
     for cls_dim, obj_size in zip(cls_dims, obj_shape):
@@ -214,9 +205,9 @@ class _MetaAbstractArray(type):
     def _check_shape(
         cls,
         obj,
-        single_memo: Dict[str, int],
-        variadic_memo: Dict[str, Tuple[int, ...]],
-        variadic_broadcast_memo: Dict[str, List[Tuple[int, ...]]],
+        single_memo: dict[str, int],
+        variadic_memo: dict[str, tuple[int, ...]],
+        variadic_broadcast_memo: dict[str, list[tuple[int, ...]]],
     ):
         if cls.index_variadic is None:
             if obj.ndim != len(cls.dims):
@@ -290,8 +281,8 @@ class AbstractArray(metaclass=_MetaAbstractArray):
     """
 
     array_type: Any
-    dtypes: List[str]
-    dims: Tuple[_AbstractDimOrVariadicDim, ...]
+    dtypes: list[str]
+    dims: tuple[_AbstractDimOrVariadicDim, ...]
     index_variadic: Optional[int]
     dim_str: str
 
@@ -518,7 +509,7 @@ class _MetaAbstractDtype(type):
             f'`jaxtyping.{cls.__name__}[jnp.ndarray, "..."]`.'
         )
 
-    def __getitem__(cls, item: Tuple[Any, str]):
+    def __getitem__(cls, item: tuple[Any, str]):
         if not isinstance(item, tuple) or len(item) != 2:
             raise ValueError(
                 "As of jaxtyping v0.2.0, type annotations must now include an explicit "
@@ -571,7 +562,7 @@ class AbstractDtype(metaclass=_MetaAbstractDtype):
         ```
     """
 
-    dtypes: Union[Literal[_any_dtype], List[Union[str, re.Pattern]]]
+    dtypes: Union[Literal[_any_dtype], list[Union[str, re.Pattern]]]
 
     def __init__(self, *args, **kwargs):
         raise RuntimeError(
@@ -582,7 +573,7 @@ class AbstractDtype(metaclass=_MetaAbstractDtype):
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
 
-        dtypes: Union[Literal[_any_dtype], str, List[str]] = cls.dtypes
+        dtypes: Union[Literal[_any_dtype], str, list[str]] = cls.dtypes
         if isinstance(dtypes, (str, re.Pattern)):
             dtypes = (dtypes,)
         elif dtypes is not _any_dtype:

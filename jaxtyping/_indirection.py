@@ -1,7 +1,7 @@
-# Note that `from typing_extensions import Annotated; Bool = Annotated`
+# Note that `from typing import Annotated; Bool = Annotated`
 # does not work with static type checkers. `Annotated` is a typeform rather
 # than a type, meaning it cannot be assigned.
-from typing_extensions import (
+from typing import (
     Annotated as BFloat16,  # noqa: F401
     Annotated as Bool,  # noqa: F401
     Annotated as Complex,  # noqa: F401
