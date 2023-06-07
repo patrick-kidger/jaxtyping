@@ -40,3 +40,17 @@ def accepts_pytree_of_arrays(x: PyTree[Float[Array, "batch c1 c2"]]):
 ## Next steps
 
 Have a read of the [Array annotations](./api/array.md) documentation on the left-hand bar!
+
+## See also: other libraries in the JAX ecosystem
+
+[Equinox](https://github.com/patrick-kidger/equinox): neural networks.
+
+[Optax](https://github.com/deepmind/optax): first-order gradient (SGD, Adam, ...) optimisers.
+
+[Diffrax](https://github.com/patrick-kidger/diffrax): numerical differential equation solvers.
+
+[Lineax](https://github.com/google/lineax): linear solvers and linear least squares.
+
+[Eqxvision](https://github.com/paganpasta/eqxvision): computer vision models.
+
+[sympy2jax](https://github.com/google/sympy2jax): SymPy<->JAX conversion; train symbolic expressions via gradient descent.
