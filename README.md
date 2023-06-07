@@ -41,15 +41,19 @@ Available at [https://docs.kidger.site/jaxtyping](https://docs.kidger.site/jaxty
 
 ## Finally
 
-### See also: other tools in the JAX ecosystem
+### See also: other libraries in the JAX ecosystem
 
-Neural networks: [Equinox](https://github.com/patrick-kidger/equinox).
+[Equinox](https://github.com/patrick-kidger/equinox): neural networks.
 
-Numerical differential equation solvers: [Diffrax](https://github.com/patrick-kidger/diffrax).
+[Optax](https://github.com/deepmind/optax): first-order gradient (SGD, Adam, ...) optimisers.
 
-Computer vision models: [Eqxvision](https://github.com/paganpasta/eqxvision).
+[Diffrax](https://github.com/patrick-kidger/diffrax): numerical differential equation solvers.
 
-SymPy<->JAX conversion; train symbolic expressions via gradient descent: [sympy2jax](https://github.com/google/sympy2jax).
+[Lineax](https://github.com/google/lineax): linear solvers and linear least squares.
+
+[Eqxvision](https://github.com/paganpasta/eqxvision): computer vision models.
+
+[sympy2jax](https://github.com/google/sympy2jax): SymPy<->JAX conversion; train symbolic expressions via gradient descent.
 
 ### Disclaimer
 
