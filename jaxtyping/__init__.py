@@ -160,6 +160,8 @@ elif has_jax:
             from `jax.tree_util.tree_structure(...)`.
             """
 
+        PyTreeDef.__module__ = "builtins"
+
     else:
         from jax.tree_util import PyTreeDef as PyTreeDef
 
