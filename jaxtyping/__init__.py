@@ -154,13 +154,27 @@ if typing.TYPE_CHECKING:
     # annotation, which static type checkers aren't smart enough to resolve.
 elif has_jax:
     if hasattr(typing, "GENERATING_DOCUMENTATION"):
+        # Most parts of the Equinox ecosystem have
+        # `typing.GENERATING_DOCUMENTATION = True` when generating documentation, to
+        # add whatever shims are necessary to get pretty docs. E.g. to have type
+        # annotations appear as just `PyTree`, not `jaxtyping.PyTree`.
+        #
+        # As jaxtyping actually wants things to appear as e.g. `jaxtyping.PyTree`,
+        # rather than just `PyTree`, then it sets
+        # `typing.GENERATING_DOCUMENTATION = False`, to disable these shims.
+        #
+        # Here we do only a `hasattr` check, as we want to get this version of
+        # `PyTreeDef` in both the jaxtyping and the Equinox(/etc.) docs.
 
         class PyTreeDef:
             """Alias for `jax.tree_util.PyTreeDef`, which is the type of the return
             from `jax.tree_util.tree_structure(...)`.
             """
 
-        PyTreeDef.__module__ = "builtins"
+        if typing.GENERATING_DOCUMENTATION:
+            # Equinox etc. docs get just `PyTreeDef`.
+            # jaxtyping docs get `jaxtyping.PyTreeDef`.
+            PyTreeDef.__module__ = "builtins"
 
     else:
         from jax.tree_util import PyTreeDef as PyTreeDef
