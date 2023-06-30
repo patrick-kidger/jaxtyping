@@ -188,7 +188,17 @@ if typing.TYPE_CHECKING:
 
     from ._indirection import Scalar as Scalar, ScalarLike as ScalarLike
 elif has_jax:
-    from ._array_types import PRNGKeyArray, Scalar, ScalarLike  # noqa: F401
+    from ._array_types import Scalar, ScalarLike  # noqa: F401
+
+    if getattr(typing, "GENERATING_DOCUMENTATION", False):
+        # That is, we're generating some downstream documentation, not the jaxtyping
+        # documentation itself.
+        class PRNGKeyArray:
+            pass
+
+        PRNGKeyArray.__module__ = "builtins"
+    else:
+        from ._array_types import PRNGKeyArray
 
 del has_jax
 
