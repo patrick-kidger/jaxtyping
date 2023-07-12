@@ -54,3 +54,5 @@ Have a read of the [Array annotations](./api/array.md) documentation on the left
 [Eqxvision](https://github.com/paganpasta/eqxvision): computer vision models.
 
 [sympy2jax](https://github.com/google/sympy2jax): SymPy<->JAX conversion; train symbolic expressions via gradient descent.
+
+[Levanter](https://github.com/stanford-crfm/levanter): scalable+reliable training of foundation models (e.g. LLMs).
