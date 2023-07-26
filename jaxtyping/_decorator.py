@@ -25,6 +25,14 @@ import types
 import weakref
 
 
+try:
+    import jax._src.traceback_util as traceback_util
+except ImportError:
+    pass
+else:
+    traceback_util.register_exclusion(__file__)
+
+
 storage = threading.local()
 
 
