@@ -51,6 +51,7 @@
 
 import ast
 import functools as ft
+import hashlib
 import sys
 from collections.abc import Sequence
 from importlib.abc import MetaPathFinder
@@ -165,7 +166,9 @@ class _JaxtypingLoader(SourceFileLoader):
     def __init__(self, *args, typechecker, **kwargs):
         super().__init__(*args, **kwargs)
         self._typechecker = typechecker
-        self._typechecker_hash = str(abs(hash(self._typechecker)))
+        self._typechecker_hash = hashlib.md5(
+            self._typechecker.encode("utf-8")
+        ).hexdigest()
 
     def source_to_code(self, data, path, *, _optimize=-1):
         source = decode_source(data)
