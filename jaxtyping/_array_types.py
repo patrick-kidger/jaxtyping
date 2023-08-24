@@ -32,7 +32,12 @@ from ._decorator import storage
 
 try:
     import jax
-except ImportError:
+except (ImportError, RuntimeError, AttributeError):
+    # Note: We catch "RuntimeError" and "AttributeError" here instead of
+    # just ImportError as `jax` will throw a RuntimeError if it's present
+    # but unable to run on the current machine, which then leads the module
+    # to be left partially initialized, causing subsequent imports to fail with
+    # 'AttributeError: partially initialized module'
     has_jax = False
 else:
     has_jax = True
