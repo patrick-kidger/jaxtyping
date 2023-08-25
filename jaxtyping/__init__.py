@@ -27,7 +27,7 @@ from ._array_types import (
     AbstractDtype as AbstractDtype,
     get_array_name_format as get_array_name_format,
     set_array_name_format as set_array_name_format,
-    has_jax
+    has_jax,
 )
 from ._decorator import jaxtyped as jaxtyped
 from ._import_hook import install_import_hook as install_import_hook
