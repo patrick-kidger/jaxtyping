@@ -522,7 +522,10 @@ class _MetaAbstractDtype(type):
         if not isinstance(item, tuple) or len(item) != 2:
             raise ValueError(
                 "As of jaxtyping v0.2.0, type annotations must now include an explicit "
-                "array type. For example `jaxtyping.Float32[jax.Array, 'foo bar']`."
+                "array type as well as an explicit shape. For example"
+                "`jaxtyping.Float32[jax.Array, 'foo bar']`."
+                "\nEllipsis can be used in case one doesn't want to provide"
+                "an explicit shape: `jaxtyping.Float32[jax.Array, '...']`"
             )
         array_type, dim_str = item
         del item
