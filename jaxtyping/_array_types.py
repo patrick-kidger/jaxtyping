@@ -657,12 +657,10 @@ Num = _make_dtype(uints + ints + floats + complexes, "Num")
 Shaped = _make_dtype(_any_dtype, "Shaped")
 
 if has_jax:
-    if jax.config.jax_enable_custom_prng:
-        _key_regex = re.compile(r"^key<\w+>$")
-        Key = _make_dtype(_key_regex, "Key")
-        PRNGKeyArray = Key[jax.Array, ""]
-    else:
-        Key = UInt32
-        PRNGKeyArray = Key[jax.Array, "2"]
+    _key_regex = re.compile(r"^key<\w+>$")
+    Key = _make_dtype(_key_regex, "Key")
+    # New-style `jax.random.key` have scalar shape and dtype `key<foo>`.
+    # Old-style `jax.random.PRNGKey` have shape `(2,)` and dtype `uint32`.
+    PRNGKeyArray = Union[Key[jax.Array, ""], UInt32[jax.Array, "2"]]
     Scalar = Shaped[jax.Array, ""]
     ScalarLike = Shaped[jax.typing.ArrayLike, ""]
