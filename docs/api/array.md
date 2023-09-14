@@ -95,16 +95,15 @@ BatchImage = Float[Array, "batch channels height width"]
 
 Note that `jaxtyping.{Array, ArrayLike}` are only available if JAX has been installed.
 
-## Scalars, PRNGKeys
+## Scalars, PRNG keys
 
 For convenience, jaxtyping also includes `jaxtyping.Scalar`, `jaxtyping.ScalarLike`, and `jaxtyping.PRNGKeyArray`, defined as:
 ```python
 Scalar = Shaped[Array, ""]
 ScalarLike = Shaped[ArrayLike, ""]
 
-# Depending on the value of `JAX_ENABLE_CUSTOM_PRNG`:
-PRNGKeyArray = Key[Array, ""]
-PRNGKeyArray = UInt32[Array, "2"]
+# Left: new-style typed keys; right: old-style keys. See JEP 9263.
+PRNGKeyArray = Union[Key[Array, ""], UInt32[Array, "2"]]
 ```
 
 Recalling that shape-and-dtype specified jaxtyping arrays can be nested, this means that e.g. you can annotate the output of `jax.random.split` with `Shaped[PRNGKeyArray, "2"]`, or e.g. an integer scalar with `Int[Scalar, ""]`.
