@@ -521,8 +521,9 @@ class _MetaAbstractDtype(type):
     def __getitem__(cls, item: tuple[Any, str]):
         if not isinstance(item, tuple) or len(item) != 2:
             raise ValueError(
-                "As of jaxtyping v0.2.0, type annotations must now include an explicit "
-                "array type. For example `jaxtyping.Float32[jax.Array, 'foo bar']`."
+                "As of jaxtyping v0.2.0, type annotations must now include both an "
+                "array type and a shape. For example `Float[Array, 'foo bar']`.\n"
+                "Ellipsis can be used to accept any shape: `Float[Array, '...']`."
             )
         array_type, dim_str = item
         del item
