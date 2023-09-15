@@ -32,7 +32,11 @@ from ._decorator import storage
 
 try:
     import jax
-except ImportError:
+except (ImportError, RuntimeError, AttributeError):
+    # We catch `RuntimeError` as JAX will throw this if it's present, but unable to run
+    # on the current machine. This fails with this error.
+    # We catch `AttributeError` as the above then leaves the module in a partially
+    # initialised state, which causes subsequent imports to fail with this error.
     has_jax = False
 else:
     has_jax = True

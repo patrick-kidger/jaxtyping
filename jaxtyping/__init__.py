@@ -20,20 +20,12 @@
 import importlib.metadata
 import typing
 
-
-try:
-    import jax
-except ImportError:
-    has_jax = False
-else:
-    has_jax = True
-    del jax
-
 # First import some things as normal
 from ._array_types import (
     AbstractArray as AbstractArray,
     AbstractDtype as AbstractDtype,
     get_array_name_format as get_array_name_format,
+    has_jax,
     set_array_name_format as set_array_name_format,
 )
 from ._decorator import jaxtyped as jaxtyped
