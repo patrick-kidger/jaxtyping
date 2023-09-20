@@ -4,3 +4,4 @@ equinox
 jaxlib
 pytest
 typeguard<3
+IPython

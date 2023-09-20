@@ -30,6 +30,7 @@ from ._array_types import (
 )
 from ._decorator import jaxtyped as jaxtyped
 from ._import_hook import install_import_hook as install_import_hook
+from ._ipython_extension import load_ipython_extension as load_ipython_extension
 
 
 # Now import Array and ArrayLike
