@@ -20,3 +20,15 @@ It can be a lot of effort to add `@jaxtyped` decorators all over your codebase.
 The easier option is usually to use the import hook.
 
 ::: jaxtyping.install_import_hook
+
+---
+
+#### IPython extension
+
+If you are running in an IPython environment (for example a Jupyter or Colab notebook), then the jaxtyping hook can be automatically ran via a custom magic:
+```python
+import jaxtyping
+%load_ext jaxtyping
+%jaxtyping.typechecker beartype.beartype  # or any other runtime type checker
+```
+Place this at the start of your notebook -- everything that is directly defined in the notebook, after this magic is run, will be hook'd.
