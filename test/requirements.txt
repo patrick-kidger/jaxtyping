@@ -1,7 +1,8 @@
 beartype
 cloudpickle
 equinox
+IPython
 jaxlib
 pytest
+tensorflow
 typeguard<3
-IPython

@@ -144,10 +144,19 @@ def _check_dims(
 def _is_jax_extended_dtype(dtype: Any) -> bool:
     if not has_jax:
         return False
-    if hasattr(jax.dtypes, "extended"):  # jax>=0.4.14
-        return jax.numpy.issubdtype(dtype, jax.dtypes.extended)
-    else:  # jax<=0.4.13
-        return jax.core.is_opaque_dtype(dtype)
+    try:
+        is_dtype = issubclass(dtype, jax.numpy.generic)
+    except TypeError:
+        # `dtype` not a class
+        return False
+    else:
+        if is_dtype:
+            if hasattr(jax.dtypes, "extended"):  # jax>=0.4.14
+                return jax.numpy.issubdtype(dtype, jax.dtypes.extended)
+            else:  # jax<=0.4.13
+                return jax.core.is_opaque_dtype(dtype)
+        else:
+            return False
 
 
 class _MetaAbstractArray(type):
