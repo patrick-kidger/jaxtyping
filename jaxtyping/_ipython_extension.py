@@ -21,7 +21,9 @@ try:
                 _JaxtypingTransformer(typechecker=typechecker)
             )
 
-except ImportError:
+except Exception:
+    # Very broad exception-handling, as e.g. IPython will sometimes be
+    # present but fail to import for mysterious reasons.
     pass
 
 
