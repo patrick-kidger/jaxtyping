@@ -17,76 +17,114 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import importlib
+import importlib.metadata
+import pathlib
+import shutil
+import sys
+import tempfile
+
 import pytest
 
-from jaxtyping import install_import_hook
+import jaxtyping
 
 
-def test_import_hook_typeguard_old():
-    hook = install_import_hook(
-        "test.import_hook_tester_typeguard_old", ("typeguard", "typechecked")
+_here = pathlib.Path(__file__).resolve().parent
+
+
+try:
+    typeguard_version = importlib.metadata.version("typeguard")
+except Exception as e:
+    raise ImportError("Could not find typeguard version") from e
+else:
+    try:
+        major, _, _ = typeguard_version.split(".")
+        major = int(major)
+    except Exception as e:
+        raise ImportError(
+            f"Unexpected typeguard version {typeguard_version}; not formatted as "
+            "`major.minor.patch`"
+        ) from e
+if major != 2:
+    raise ImportError(
+        "jaxtyping's tests required typeguard version 2. (Versions 3 and 4 are both "
+        "known to have bugs.)"
     )
-    with hook:
-        from . import import_hook_tester_typeguard_old  # noqa: F401
 
 
-def test_import_hook_typeguard():
-    hook = install_import_hook(
-        "test.import_hook_tester_typeguard", "typeguard.typechecked"
-    )
-    with hook:
-        from . import import_hook_tester_typeguard  # noqa: F401
+assert not hasattr(jaxtyping, "_test_import_hook_counter")
+jaxtyping._test_import_hook_counter = 0
 
 
-def test_import_hook_beartype_old():
+@pytest.fixture(scope="module")
+def importhook_tempdir():
+    with tempfile.TemporaryDirectory() as dir:
+        sys.path.append(dir)
+        dir = pathlib.Path(dir)
+        shutil.copyfile(_here / "helpers.py", dir / "helpers.py")
+        yield dir
+
+
+def _test_import_hook(importhook_tempdir, typechecker):
+    counter = jaxtyping._test_import_hook_counter
+    stem = f"import_hook_tester{counter}"
+    shutil.copyfile(_here / "import_hook_tester.py", importhook_tempdir / f"{stem}.py")
+    with jaxtyping.install_import_hook(stem, typechecker):
+        importlib.import_module(stem)
+    assert counter + 1 == jaxtyping._test_import_hook_counter
+
+
+def test_import_hook_typeguard_old(importhook_tempdir):
+    _test_import_hook(importhook_tempdir, ("typeguard", "typechecked"))
+
+
+def test_import_hook_typeguard(importhook_tempdir):
+    _test_import_hook(importhook_tempdir, "typeguard.typechecked")
+
+
+def test_import_hook_beartype_old(importhook_tempdir):
     try:
         import beartype  # noqa: F401
     except ImportError:
         pytest.skip("Beartype not installed")
     else:
-        hook = install_import_hook(
-            "test.import_hook_tester_beartype_old", ("beartype", "beartype")
-        )
-        with hook:
-            from . import import_hook_tester_beartype_old  # noqa: F401
+        _test_import_hook(importhook_tempdir, ("beartype", "beartype"))
 
 
-def test_import_hook_beartype():
+def test_import_hook_beartype(importhook_tempdir):
     try:
         import beartype  # noqa: F401
     except ImportError:
         pytest.skip("Beartype not installed")
     else:
-        hook = install_import_hook(
-            "test.import_hook_tester_beartype", "beartype.beartype"
-        )
-        with hook:
-            from . import import_hook_tester_beartype  # noqa: F401
+        _test_import_hook(importhook_tempdir, "beartype.beartype")
 
 
-def test_import_hook_beartype_full():
+def test_import_hook_beartype_full(importhook_tempdir):
     try:
         import beartype  # noqa: F401
     except ImportError:
         pytest.skip("Beartype not installed")
     else:
         bearchecker = "beartype.beartype(conf=beartype.BeartypeConf(strategy=beartype.BeartypeStrategy.On))"  # noqa: E501
-        hook = install_import_hook("test.import_hook_tester_beartype_full", bearchecker)
-        with hook:
-            from . import import_hook_tester_beartype_full  # noqa: F401
+        _test_import_hook(importhook_tempdir, bearchecker)
 
 
-def test_import_hook_transitive():
-    hook = install_import_hook(
-        "test.import_hook_tester_transitive", "typeguard.typechecked"
-    )
-    with hook:
-        from . import import_hook_tester_transitive  # noqa: F401
+def test_import_hook_broken_checker(importhook_tempdir):
+    with pytest.raises(AttributeError):
+        _test_import_hook(importhook_tempdir, "jaxtyping.does_not_exist")
 
 
-def test_import_hook_broken_checker():
-    hook = install_import_hook(
-        "test.import_hook_tester_broken_checker", "jaxtyping.does_not_exist"
-    )
-    with hook, pytest.raises(AttributeError):
-        from . import import_hook_tester_broken_checker  # noqa: F401
+def test_import_hook_transitive(importhook_tempdir):
+    typechecker = "typeguard.typechecked"
+    counter = jaxtyping._test_import_hook_counter
+    transitive_name = "jaxtyping_transitive_test"
+    transitive_dir = importhook_tempdir / transitive_name
+    transitive_dir.mkdir()
+    shutil.copyfile(_here / "import_hook_tester.py", transitive_dir / "tester.py")
+    with open(transitive_dir / "__init__.py", "w") as f:
+        f.write("from . import tester")
+        f.flush()
+    with jaxtyping.install_import_hook(transitive_name, typechecker):
+        importlib.import_module(transitive_name)
+    assert counter + 1 == jaxtyping._test_import_hook_counter
