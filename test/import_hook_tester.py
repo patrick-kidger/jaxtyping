@@ -25,10 +25,12 @@ import pytest
 from helpers import ParamError, ReturnError
 
 import jaxtyping
-from jaxtyping import Float32
+from jaxtyping import Float32, Int
 
 
+#
 # Test that functions get checked
+#
 
 
 def g(x: Float32[jnp.ndarray, " b"]):
@@ -39,21 +41,101 @@ g(jnp.array([1.0]))
 with pytest.raises(ParamError):
     g(jnp.array(1))
 
+
+#
 # Test that Equinox modules get checked
+#
 
 
-class M(eqx.Module):
+# Dataclass `__init__`, no converter
+class Mod1(eqx.Module):
     foo: int
     bar: Float32[jnp.ndarray, " a"]
 
 
-M(1, jnp.array([1.0]))
+Mod1(1, jnp.array([1.0]))
 with pytest.raises(ParamError):
-    M(1.0, jnp.array([1.0]))
+    Mod1(1.0, jnp.array([1.0]))
 with pytest.raises(ParamError):
-    M(1, jnp.array(1.0))
+    Mod1(1, jnp.array(1.0))
 
+
+# Dataclass `__init__`, converter
+class Mod2(eqx.Module):
+    a: jnp.ndarray = eqx.field(converter=jnp.asarray)
+
+
+Mod2(1)  # This will fail unless we run typechecking after conversion
+
+
+class BadMod2(eqx.Module):
+    a: jnp.ndarray = eqx.field(converter=lambda x: x)
+
+
+with pytest.raises(ParamError):
+    BadMod2(1)
+with pytest.raises(ParamError):
+    BadMod2("asdf")
+
+
+# Custom `__init__`, no converter
+class Mod3(eqx.Module):
+    foo: int
+    bar: Float32[jnp.ndarray, " a"]
+
+    def __init__(self, foo: str, bar: Float32[jnp.ndarray, " a"]):
+        self.foo = int(foo)
+        self.bar = bar
+
+
+Mod3("1", jnp.array([1.0]))
+with pytest.raises(ParamError):
+    Mod3(1, jnp.array([1.0]))
+with pytest.raises(ParamError):
+    Mod3("1", jnp.array(1.0))
+
+
+# Custom `__init__`, converter
+class Mod4(eqx.Module):
+    a: Int[jnp.ndarray, ""] = eqx.field(converter=jnp.asarray)
+
+    def __init__(self, a: str):
+        self.a = int(a)
+
+
+Mod4("1")  # This will fail unless we run typechecking after conversion
+
+
+# Custom `__post_init__`, no converter
+class Mod5(eqx.Module):
+    foo: int
+    bar: Float32[jnp.ndarray, " a"]
+
+    def __post_init__(self):
+        pass
+
+
+Mod5(1, jnp.array([1.0]))
+with pytest.raises(ParamError):
+    Mod5(1.0, jnp.array([1.0]))
+with pytest.raises(ParamError):
+    Mod5(1, jnp.array(1.0))
+
+
+# Dataclass `__init__`, converter
+class Mod6(eqx.Module):
+    a: jnp.ndarray = eqx.field(converter=jnp.asarray)
+
+    def __post_init__(self):
+        pass
+
+
+Mod6(1)  # This will fail unless we run typechecking after conversion
+
+
+#
 # Test that dataclasses get checked
+#
 
 
 @dataclasses.dataclass
@@ -68,7 +150,10 @@ with pytest.raises(ParamError):
 with pytest.raises(ParamError):
     D(1, jnp.array(1.0))
 
+
+#
 # Test that methods get checked
+#
 
 
 class N(eqx.Module):
@@ -93,17 +178,56 @@ bad_n = eqx.tree_at(lambda x: x.a, n, "not_an_array")
 with pytest.raises(ReturnError):
     bad_n.bar()
 
-# Test that converters work
+
+#
+# Test that we don't get called in `super()`.
+#
 
 
-class BadConverter(eqx.Module):
-    a: jnp.ndarray = eqx.field(converter=lambda x: x)
+called = False
 
+
+class Base(eqx.Module):
+    x: int
+
+    def __init__(self):
+        self.x = "not an int"
+        global called
+        assert not called
+        called = True
+
+
+class Derived(Base):
+    def __init__(self):
+        assert not called
+        super().__init__()
+        assert called
+        self.x = 2
+
+
+Derived()
+
+
+#
+# Test that stringified type annotations work
+
+
+class Foo:
+    pass
+
+
+class Bar(eqx.Module):
+    x: type[Foo]
+    y: "type[Foo]"
+    # Note that this is the *only* kind of partially-stringified type annotation that
+    # is supported. This is for compatibility with older Equinox versions.
+    z: type["Foo"]
+
+
+Bar(Foo, Foo, Foo)
 
 with pytest.raises(ParamError):
-    BadConverter(1)
-with pytest.raises(ParamError):
-    BadConverter("asdf")
+    Bar(1, Foo, Foo)
 
 # Record that we've finished our checks successfully
 

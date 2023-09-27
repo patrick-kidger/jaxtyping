@@ -23,6 +23,7 @@ import inspect
 import threading
 import types
 import weakref
+from typing import get_args, get_origin
 
 
 try:
@@ -72,7 +73,7 @@ def jaxtyped(fn):
     then the old one is returned to.
 
     For example, this means you could leave off the `@jaxtyped` decorator to enforce
-    that this function use the same axes sizes as the function it was called from.
+    that this function use the same axis sizes as the function it was called from.
 
     Likewise, this means you can use `isinstance` checks inside a function body
     and have them contribute to the same collection of consistency checks performed
@@ -134,7 +135,59 @@ def jaxtyped(fn):
         return wrapped_fn
 
 
+@jaxtyped
+def _check_dataclass_annotations(self, typechecker):
+    for field in dataclasses.fields(self):
+        for kls in self.__class__.__mro__:
+            try:
+                annotation = kls.__annotations__[field.name]
+            except KeyError:
+                pass
+            else:
+                break
+        else:
+            raise TypeError
+        if isinstance(annotation, str):
+            # Don't support stringified annotations. These are basically impossible to
+            # resolve correctly, so just skip them.
+            # This does mean that annotations like `type["Foo"]` will just fail. There
+            # doesn't seem to be any way to even detect a partially-stringified
+            # annotation.
+            continue
+        if get_origin(annotation) is type:
+            args = get_args(annotation)
+            if len(args) == 1 and isinstance(args[0], str):
+                # We also special-case this one kind of partially-stringified type
+                # annotation, so as to support Equinox <v0.11.1.
+                # This was fixed in Equinox in
+                # https://github.com/patrick-kidger/equinox/pull/543
+                continue
+        try:
+            value = getattr(self, field.name)
+        except AttributeError:
+            continue  # allow uninitialised fields, which are allowed on dataclasses
+
+        @typechecker
+        def typecheck(x: annotation):
+            pass
+
+        typecheck(value)
+
+
 def _jaxtyped_typechecker(typechecker):
+    """A decorator added by the import hook to all classes. Only affects dataclasses.
+
+    Will be called as
+    ```
+    @_jaxtyped_typechecker(beartype.beartype)
+    @dataclasses.dataclass
+    class SomeDataclass:
+        ...
+    ```
+
+    After initialisation, this will check that all fields of the dataclass match their
+    specified type annotation.
+    """
     # typechecker is expected to probably be either `typeguard.typechecked`, or
     # `beartype.beartype`, or `None`.
 
@@ -144,8 +197,32 @@ def _jaxtyped_typechecker(typechecker):
     def _wrapper(kls):
         assert inspect.isclass(kls)
         if dataclasses.is_dataclass(kls):
-            init = jaxtyped(typechecker(kls.__init__))
-            kls.__init__ = init
+            # This does not check that the arguments passed to `__init__` match the
+            # type annotations. There may be a custom user `__init__`, or a
+            # dataclass-generated `__init__` used alongside
+            # `equinox.field(converter=...)`
+
+            init = kls.__init__
+
+            @ft.wraps(init)
+            def __init__(self, *args, **kwargs):
+                init(self, *args, **kwargs)
+                # `kls.__init__` is late-binding to the `__init__` function that we're
+                # in now. (Or to someone else's monkey-patch.) Either way, this checks
+                # that we're in the "top-level" `__init__`, and not one that is being
+                # called via `super()`. We don't want to trigger too early, before all
+                # fields have been assigned.
+                #
+                # We're not checking `if self.__class__ is kls` because Equinox replaces
+                # the with a defrozen version of itself during `__init__`, so the check
+                # wouldn't trigger.
+                #
+                # We're not doing this check by adding it to the end of the metaclass
+                # `__call__`, because Python doesn't allow you monkey-patch metaclasses.
+                if self.__class__.__init__ is kls.__init__:
+                    _check_dataclass_annotations(self, typechecker)
+
+            kls.__init__ = __init__
         return kls
 
     return _wrapper
