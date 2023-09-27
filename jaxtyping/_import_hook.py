@@ -326,8 +326,8 @@ def install_import_hook(modules: Union[str, Sequence[str]], typechecker: Optiona
         install_import_hook(["foo", "bar.baz"], ...)
         ```
 
-    The import hook will automatically decorate all functions, and the `__init__` method
-    of dataclasses.
+    The import hook will automatically decorate all functions, and check the attributes
+    assigned to dataclasses.
 
     If the function already has any decorators on it, then both the `@jaxtyped` and the
     typechecker decorators will get added at the bottom of the decorator list, e.g.
@@ -401,6 +401,28 @@ def install_import_hook(modules: Union[str, Sequence[str]], typechecker: Optiona
 
         (This is the author's preferred approach to performing runtime type-checking
         with jaxtyping!)
+
+    !!! warning
+
+        Stringified dataclass annotations, e.g.
+        ```python
+        @dataclass()
+        class Foo:
+            x: "int"
+        ```
+        will be silently skipped without checking them. This is because these are
+        essentially impossible to resolve at runtime. Such stringified annotations
+        typically occur either when using them for forward references, or when using
+        `from __future__ import annotations`. (You should never use the latter, it is
+        largely incompatible with runtime type checking.)
+
+        Partially stringified dataclass annotations, e.g.
+        ```python
+        @dataclass()
+        class Foo:
+            x: tuple["int"]
+        ```
+        will likely raise an error, and must not be used at all.
     """  # noqa: E501
 
     if isinstance(modules, str):
