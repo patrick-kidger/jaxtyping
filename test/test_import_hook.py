@@ -125,6 +125,8 @@ def test_import_hook_transitive(importhook_tempdir):
     with open(transitive_dir / "__init__.py", "w") as f:
         f.write("from . import tester")
         f.flush()
+
+    importlib.invalidate_caches()
     with jaxtyping.install_import_hook(transitive_name, typechecker):
         importlib.import_module(transitive_name)
     assert counter + 1 == jaxtyping._test_import_hook_counter
