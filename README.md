@@ -49,13 +49,19 @@ Available at [https://docs.kidger.site/jaxtyping](https://docs.kidger.site/jaxty
 
 [Diffrax](https://github.com/patrick-kidger/diffrax): numerical differential equation solvers.
 
-[Lineax](https://github.com/google/lineax): linear solvers and linear least squares.
+[Optimistix](https://github.com/patrick-kidger/optimistix): root finding, minimisation, fixed points, and least squares.
 
-[Eqxvision](https://github.com/paganpasta/eqxvision): computer vision models.
+[Lineax](https://github.com/google/lineax): linear solvers.
+
+[BlackJAX](https://github.com/blackjax-devs/blackjax): probabilistic+Bayesian sampling.
 
 [sympy2jax](https://github.com/google/sympy2jax): SymPy<->JAX conversion; train symbolic expressions via gradient descent.
 
+[Eqxvision](https://github.com/paganpasta/eqxvision): computer vision models.
+
 [Levanter](https://github.com/stanford-crfm/levanter): scalable+reliable training of foundation models (e.g. LLMs).
+
+[PySR](https://github.com/milesCranmer/PySR): symbolic regression. (Non-JAX honourable mention!)
 
 ### Disclaimer
 
