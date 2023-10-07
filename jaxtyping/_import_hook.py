@@ -76,8 +76,10 @@ def _optimized_cache_from_source(typechecker_hash, /, path, debug_override=None)
     # Version 5: Added support for string-based `typechecker` argument.
     # Version 6: optimization tag now depends on `typechecker` argument, so that
     #    changing the typechecker will hit a different cache.
+    # Version 7: Using the same md5 hash of the `typechecker` argument
+    #    for importlib and decorator lookup.
     return cache_from_source(
-        path, debug_override, optimization=f"jaxtyping6{typechecker_hash}"
+        path, debug_override, optimization=f"jaxtyping7{typechecker_hash}"
     )
 
 
@@ -88,20 +90,63 @@ def _dot_lookup(*elements):
     return out
 
 
-def _str_lookup(string):
-    module = ast.parse(string)
-    (expr,) = module.body
-    return expr.value
+class Typechecker:
+    lookup = {}
+
+    def __init__(self, typechecker):
+        self.ast = None
+
+        if isinstance(typechecker, str):
+            # If the typechecker is a string, then we parse it
+            string_to_eval = (
+                "def f(x, *args, **kwargs):\n"
+                + f"  import {typechecker.split('.', 1)[0]}\n"
+                + f"  return {typechecker}(x, *args, **kwargs)"
+            )
+
+            # md5 hashing instead of __hash__
+            # because __hash__ is different for each Python session
+            self.hash = hashlib.md5(typechecker.encode("utf-8")).hexdigest()
+
+            vars = {}
+            exec(string_to_eval, {}, vars)
+            Typechecker.lookup[self.hash] = vars["f"]
+
+        elif typechecker is None:
+            # If it is None, ignore it silently (use dummy decorator)
+            self.hash = 0
+            Typechecker.lookup[self.hash] = lambda x, *_, **__: x
+        else:
+            # Passed typechecker is invalid
+            raise TypeError(
+                "Jaxtyping typechecker has to be either a string or a None."
+            )
+
+    def get_hash(self):
+        return self.hash
+
+    def get_ast(self):
+        # we compile AST only if we missed importlib cache
+        if self.ast is None:
+            self.ast = (
+                ast.parse(
+                    f"@jaxtyping._import_hook.Typechecker.lookup['{self.hash}']\n"
+                    "def _():\n    ..."
+                )
+                .body[0]
+                .decorator_list[0]
+            )
+
+        return self.ast
 
 
-class _JaxtypingTransformer(ast.NodeVisitor):
-    def __init__(self, *, typechecker) -> None:
+class JaxtypingTransformer(ast.NodeVisitor):
+    def __init__(self, *, typechecker: Typechecker) -> None:
         self._parents: list[ast.AST] = []
         self._typechecker = typechecker
 
     def visit_Module(self, node: ast.Module):
-        # Insert "import typeguard; import jaxtping" after any "from __future__ ..."
-        # imports
+        # Insert "import jaxtyping" after any "from __future__ ..." imports
         for i, child in enumerate(node.body):
             if isinstance(child, ast.ImportFrom) and child.module == "__future__":
                 continue
@@ -109,11 +154,6 @@ class _JaxtypingTransformer(ast.NodeVisitor):
                 continue  # module docstring
             else:
                 node.body.insert(i, ast.Import(names=[ast.alias("jaxtyping", None)]))
-                if self._typechecker is not None:
-                    typechecker_module, _ = self._typechecker.split(".", 1)
-                    node.body.insert(
-                        i, ast.Import(names=[ast.alias(typechecker_module, None)])
-                    )
                 break
 
         self._parents.append(node)
@@ -123,11 +163,9 @@ class _JaxtypingTransformer(ast.NodeVisitor):
 
     def visit_ClassDef(self, node: ast.ClassDef):
         func = _dot_lookup("jaxtyping", "_decorator", "_jaxtyped_typechecker")
-        if self._typechecker is None:
-            args = [ast.Constant(None)]
-        else:
-            args = [_str_lookup(self._typechecker)]
-        node.decorator_list.insert(0, ast.Call(func, args, keywords=[]))
+        node.decorator_list.insert(
+            0, ast.Call(func, [self._typechecker.get_ast()], keywords=[])
+        )
         self._parents.append(node)
         self.generic_visit(node)
         self._parents.pop()
@@ -151,11 +189,11 @@ class _JaxtypingTransformer(ast.NodeVisitor):
             # FWIW, typeguard also wants to be at the end of the decorator list, as it
             # works by recompiling the wrapped function.
             node.decorator_list.append(_dot_lookup("jaxtyping", "jaxtyped"))
-            if self._typechecker is not None:
-                # Place at the end of the decorator list, as decorators
-                # frequently remove annotations from functions and we'd like to
-                # use those annotations.
-                node.decorator_list.append(_str_lookup(self._typechecker))
+            # Place typechecker at the end of the decorator list, as decorators
+            # frequently remove annotations from functions and we'd like to
+            # use those annotations.
+            node.decorator_list.append(self._typechecker.get_ast())
+
         self._parents.append(node)
         self.generic_visit(node)
         self._parents.pop()
@@ -163,12 +201,9 @@ class _JaxtypingTransformer(ast.NodeVisitor):
 
 
 class _JaxtypingLoader(SourceFileLoader):
-    def __init__(self, *args, typechecker, **kwargs):
+    def __init__(self, *args, typechecker: Typechecker, **kwargs):
         super().__init__(*args, **kwargs)
         self._typechecker = typechecker
-        self._typechecker_hash = hashlib.md5(
-            self._typechecker.encode("utf-8")
-        ).hexdigest()
 
     def source_to_code(self, data, path, *, _optimize=-1):
         source = decode_source(data)
@@ -181,7 +216,7 @@ class _JaxtypingLoader(SourceFileLoader):
             dont_inherit=True,
             optimize=_optimize,
         )
-        tree = _JaxtypingTransformer(typechecker=self._typechecker).visit(tree)
+        tree = JaxtypingTransformer(typechecker=self._typechecker).visit(tree)
         ast.fix_missing_locations(tree)
         return _call_with_frames_removed(
             compile, tree, path, "exec", dont_inherit=True, optimize=_optimize
@@ -192,7 +227,7 @@ class _JaxtypingLoader(SourceFileLoader):
         # patch safe
         with patch(
             "importlib._bootstrap_external.cache_from_source",
-            ft.partial(_optimized_cache_from_source, self._typechecker_hash),
+            ft.partial(_optimized_cache_from_source, self._typechecker.get_hash()),
         ):
             return super().exec_module(module)
 
@@ -204,7 +239,7 @@ class _JaxtypingFinder(MetaPathFinder):
     Should not be used directly, but rather via `install_import_hook`.
     """
 
-    def __init__(self, modules, original_pathfinder, typechecker):
+    def __init__(self, modules, original_pathfinder, typechecker: Typechecker):
         self.modules = modules
         self._original_pathfinder = original_pathfinder
         self._typechecker = typechecker
@@ -385,6 +420,7 @@ def install_import_hook(modules: Union[str, Sequence[str]], typechecker: Optiona
     else:
         raise RuntimeError("Cannot find a PathFinder in sys.meta_path")
 
-    hook = _JaxtypingFinder(modules, finder, typechecker)
+    wrapped_typechecker = Typechecker(typechecker)
+    hook = _JaxtypingFinder(modules, finder, wrapped_typechecker)
     sys.meta_path.insert(0, hook)
     return ImportHookManager(hook)

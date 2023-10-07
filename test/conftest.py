@@ -48,3 +48,13 @@ def getkey():
         return jr.PRNGKey(random.randint(0, 2**31 - 1))
 
     return _getkey
+
+
+@pytest.fixture(scope="module")
+def beartype_or_skip():
+    yield pytest.importorskip("beartype")
+
+
+@pytest.fixture(scope="module")
+def typeguard_or_skip():
+    yield pytest.importorskip("typeguard")

@@ -17,7 +17,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from ._import_hook import _JaxtypingTransformer
+from ._import_hook import JaxtypingTransformer, Typechecker
 
 
 try:
@@ -27,17 +27,17 @@ try:
     class ChooseTypecheckerMagics(Magics):
         @line_magic("jaxtyping.typechecker")
         def typechecker(self, typechecker):
-            # remove old _JaxtypingTransformer, if present
+            # remove old JaxtypingTransformer, if present
             self.shell.ast_transformers = list(
                 filter(
-                    lambda x: not isinstance(x, _JaxtypingTransformer),
+                    lambda x: not isinstance(x, JaxtypingTransformer),
                     self.shell.ast_transformers,
                 )
             )
 
             # add new one
             self.shell.ast_transformers.append(
-                _JaxtypingTransformer(typechecker=typechecker)
+                JaxtypingTransformer(typechecker=Typechecker(typechecker))
             )
 
 except Exception:
