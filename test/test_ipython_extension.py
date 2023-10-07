@@ -14,7 +14,7 @@ def ip(session_ip):
     session_ip.run_cell(raw_cell="import jaxtyping")
     session_ip.run_line_magic(magic_name="load_ext", line="jaxtyping")
     session_ip.run_line_magic(
-        magic_name="jaxtyping.typechecker", line="beartype.beartype"
+        magic_name="jaxtyping.typechecker", line="typeguard.typechecked"
     )
     yield session_ip
 
