@@ -39,6 +39,7 @@ from typing import (
     Annotated as Integer,  # noqa: F401
     Annotated as Key,  # noqa: F401
     Annotated as Num,  # noqa: F401
+    Annotated as Real,  # noqa: F401
     Annotated as Shaped,  # noqa: F401
     Annotated as UInt,  # noqa: F401
     Annotated as UInt8,  # noqa: F401

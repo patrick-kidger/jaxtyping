@@ -45,19 +45,20 @@ As a special case:
 The dtype should be any one of (all imported from `jaxtyping`):
 
 - Any dtype at all: `Shaped`
-  - Boolean: `Bool`
-  - PRNG key: `Key`
-  - Any integer, unsigned integer, floating, or complex: `Num`
-    - Any floating or complex: `Inexact`
-      - Any floating point: `Float`
-        - Of particular precision: `BFloat16`, `Float16`, `Float32`, `Float64`
-      - Any complex: `Complex`
-        - Of particular precision: `Complex64`, `Complex128`
-    - Any integer or unsigned intger: `Integer`
-      - Any unsigned integer: `UInt`
-        - Of particular precision: `UInt8`, `UInt16`, `UInt32`, `UInt64`
-      - Any signed integer: `Int`
-        - Of particular precision: `Int8`, `Int16`, `Int32`, `Int64`
+    - Boolean: `Bool`
+    - PRNG key: `Key`
+    - Any integer, unsigned integer, floating, or complex: `Num`
+        - Any floating or complex: `Inexact`
+            - Any floating point: `Float`
+                - Of particular precision: `BFloat16`, `Float16`, `Float32`, `Float64`
+            - Any complex: `Complex`
+                - Of particular precision: `Complex64`, `Complex128`
+        - Any integer or unsigned intger: `Integer`
+            - Any unsigned integer: `UInt`
+                - Of particular precision: `UInt8`, `UInt16`, `UInt32`, `UInt64`
+            - Any signed integer: `Int`
+                - Of particular precision: `Int8`, `Int16`, `Int32`, `Int64`
+        - Any floating, integer, or unsigned integer: `Real`.
 
 Unless you really want to force a particular precision, then for most applications you should probably allow any floating-point, any integer, etc. That is, use
 ```python
