@@ -65,6 +65,8 @@ elif has_jax:
 if typing.TYPE_CHECKING:
     # Introduce an indirection so that we can `import X as X` to make it clear that
     # these are public.
+    from jax.typing import DTypeLike as DTypeLike
+
     from ._indirection import (
         BFloat16 as BFloat16,
         Bool as Bool,
@@ -121,7 +123,12 @@ else:
     )
 
     if has_jax:
+        import jax.typing
+
         from ._array_types import Key as Key
+
+        if hasattr(jax.typing, "DTypeLike"):
+            from jax.typing import DTypeLike as DTypeLike
 
 
 # Now import PyTreeDef and PyTree
