@@ -666,6 +666,7 @@ Integer = _make_dtype(uints + ints, "Integer")
 Float = _make_dtype(floats, "Float")
 Complex = _make_dtype(complexes, "Complex")
 Inexact = _make_dtype(floats + complexes, "Inexact")
+Real = _make_dtype(floats + uints + ints, "Real")
 Num = _make_dtype(uints + ints + floats + complexes, "Num")
 
 Shaped = _make_dtype(_any_dtype, "Shaped")
