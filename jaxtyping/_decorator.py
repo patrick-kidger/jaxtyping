@@ -20,6 +20,7 @@
 import dataclasses
 import functools as ft
 import inspect
+import textwrap
 import threading
 import types
 import weakref
@@ -163,15 +164,22 @@ def _check_dataclass_annotations(self, typechecker):
                 # https://github.com/patrick-kidger/equinox/pull/543
                 continue
         try:
-            value = getattr(self, field.name)
+            value = getattr(self, field.name)  # noqa: F841
         except AttributeError:
             continue  # allow uninitialised fields, which are allowed on dataclasses
 
+        # Dynamic `exec` to get a custom parameter name.
+        exec(
+            textwrap.dedent(
+                f"""
         @typechecker
-        def typecheck(x: annotation):
+        def typecheck({field.name}: annotation):
             pass
 
         typecheck(value)
+        """
+            )
+        )
 
 
 def _jaxtyped_typechecker(typechecker):
