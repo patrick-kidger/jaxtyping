@@ -126,7 +126,7 @@ def jaxtyped(fn):
                 memo_stack = storage.memo_stack
             except AttributeError:
                 memo_stack = storage.memo_stack = []
-            memo_stack.append(({}, {}, {}))
+            memo_stack.append(({}, {}))
             try:
                 return fn(*args, **kwargs)
             finally:

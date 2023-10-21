@@ -30,6 +30,7 @@ from jaxtyping import (
     AbstractDtype,
     Array,
     ArrayLike,
+    Bool,
     Float,
     Float32,
     jaxtyped,
@@ -370,6 +371,55 @@ def test_broadcast_variadic_named(typecheck, getkey):
         g(o, c)
     with pytest.raises(ParamError):
         g(o, a)
+
+
+def test_variadic_mixed_broadcast1(typecheck, getkey):
+    @jaxtyped
+    @typecheck
+    def f(x: Float[Array, " *foo"], y: Float[Array, " #*foo"]):
+        pass
+
+    a = jr.normal(getkey(), (3, 4))
+    b = jr.normal(getkey(), (5,))
+    with pytest.raises(ParamError):
+        f(a, b)
+
+    c = jr.normal(getkey(), (7, 3, 2))
+    d = jr.normal(getkey(), (1, 2))
+    f(c, d)
+
+
+def test_variadic_mixed_broadcast2(typecheck, getkey):
+    @jaxtyped
+    @typecheck
+    def f(x: Float[Array, " *#foo"], y: Float[Array, " *foo"]):
+        pass
+
+    a = jr.normal(getkey(), (3, 4))
+    b = jr.normal(getkey(), (5,))
+    with pytest.raises(ParamError):
+        f(a, b)
+
+    c = jr.normal(getkey(), (1, 2))
+    d = jr.normal(getkey(), (7, 3, 2))
+    f(c, d)
+
+
+def test_variadic_mixed_broadcast3(typecheck, getkey):
+    @jaxtyped
+    @typecheck
+    def f(
+        x: Float[Array, "*B L D"],
+        *,
+        y: Float[Array, "*#B J d"],
+        z: Bool[Array, "*B L J"],
+    ) -> Float[Array, "*B L D"]:
+        return x
+
+    x = jr.normal(getkey(), (2, 7, 3, 2, 2))
+    y = jr.bernoulli(getkey(), shape=(2, 7, 3, 2, 2))
+    z = jr.normal(getkey(), (2, 7, 1, 2, 2))
+    f(x, y=z, z=y)
 
 
 def test_no_commas():
