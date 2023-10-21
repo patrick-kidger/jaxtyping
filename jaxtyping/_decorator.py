@@ -35,7 +35,33 @@ else:
     traceback_util.register_exclusion(__file__)
 
 
-storage = threading.local()
+_storage = threading.local()
+
+
+def _no_temp_memo():
+    return hasattr(_storage, "memo_stack") and len(_storage.memo_stack) != 0
+
+
+def storage_get():
+    if _no_temp_memo():
+        single_memo, variadic_memo, pytree_memo = _storage.memo_stack[-1]
+        # Make a copy so we don't mutate the original memo during the shape check.
+        single_memo = single_memo.copy()
+        variadic_memo = variadic_memo.copy()
+        pytree_memo = pytree_memo.copy()
+    else:
+        # `isinstance` happening outside any @jaxtyped decorators, e.g. at the
+        # global scope. In this case just create a temporary memo, since we're not
+        # going to be comparing against any stored values anyway.
+        single_memo = {}
+        variadic_memo = {}
+        pytree_memo = {}
+    return single_memo, variadic_memo, pytree_memo
+
+
+def storage_set(single_memo, variadic_memo, pytree_memo):
+    if _no_temp_memo():
+        _storage.memo_stack[-1] = single_memo, variadic_memo, pytree_memo
 
 
 _jaxtyped_fns = weakref.WeakSet()
@@ -125,10 +151,10 @@ def jaxtyped(fn):
         @ft.wraps(fn)
         def wrapped_fn(*args, **kwargs):
             try:
-                memo_stack = storage.memo_stack
+                memo_stack = _storage.memo_stack
             except AttributeError:
-                memo_stack = storage.memo_stack = []
-            memo_stack.append(({}, {}))
+                memo_stack = _storage.memo_stack = []
+            memo_stack.append(({}, {}, {}))
             try:
                 return fn(*args, **kwargs)
             finally:
@@ -141,13 +167,13 @@ def jaxtyped(fn):
 class _JaxtypingContext:
     def __enter__(self):
         try:
-            memo_stack = storage.memo_stack
+            memo_stack = _storage.memo_stack
         except AttributeError:
-            memo_stack = storage.memo_stack = []
-        memo_stack.append(({}, {}))
+            memo_stack = _storage.memo_stack = []
+        memo_stack.append(({}, {}, {}))
 
     def __exit__(self, exc_type, exc_value, exc_tb):
-        storage.memo_stack.pop()
+        _storage.memo_stack.pop()
 
 
 @jaxtyped

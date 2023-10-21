@@ -193,3 +193,80 @@ def test_subclass_pytree():
     assert issubclass(x, PyTree)
     assert issubclass(y, PyTree)
     assert not issubclass(int, PyTree)
+
+
+def test_structure_match(typecheck):
+    @jaxtyped
+    @typecheck
+    def f(x: PyTree[int, " T"], y: PyTree[str, " T"]):
+        pass
+
+    f(1, "hi")
+    f((3, 4, {"a": 5}), ("a", "b", {"a": "c"}))
+
+    with pytest.raises(ParamError):
+        f(1, ("hi",))
+
+
+def test_structure_prefix(typecheck):
+    @jaxtyped
+    @typecheck
+    def f(x: PyTree[int, " T"], y: PyTree[str, "T ..."]):
+        pass
+
+    f(1, "hi")
+    f((3, 4, {"a": 5}), ("a", "b", {"a": "c"}))
+    f(1, ("hi",))
+    f((1, 2), ({"a": "hi"}, {"a": "bye"}))
+    f((1, 2), ({"a": "hi"}, {"not-a": "bye"}))
+
+    with pytest.raises(ParamError):
+        f((1, 2), ({"a": "hi"}, {"a": "bye"}, {"a": "oh-no"}))
+
+    with pytest.raises(ParamError):
+        f((3, 4, 5), {"a": ("hi", "bye")})
+
+
+def test_structure_suffix(typecheck):
+    @jaxtyped
+    @typecheck
+    def f(x: PyTree[int, " T"], y: PyTree[str, "... T"]):
+        pass
+
+    f(1, "hi")
+    f((3, 4, {"a": 5}), ("a", "b", {"a": "c"}))
+    f(1, ("hi",))
+
+    with pytest.raises(ParamError):
+        f((3, 4), {"a": (1, 2)})
+
+    with pytest.raises(ParamError):
+        f((3, 4, 5), {"a": ("hi", "bye")})
+
+
+def test_structure_compose(typecheck):
+    @jaxtyped
+    @typecheck
+    def f(x: PyTree[int, " T"], y: PyTree[int, " S"], z: PyTree[str, "S T"]):
+        pass
+
+    f(1, 2, "hi")
+    f((1, 2), 2, ("a", "b"))
+
+    with pytest.raises(ParamError):
+        f((1, 2), 2, (1, 2))
+
+    f((1, 2), {"a": 3}, {"a": ("hi", "bye")})
+
+    with pytest.raises(ParamError):
+        f((1, 2), {"a": 3}, ({"a": "hi"}, {"a": "bye"}))
+
+    @jaxtyped
+    @typecheck
+    def g(x: PyTree[int, " T"], y: PyTree[int, " S"], z: PyTree[str, "T S"]):
+        pass
+
+    with pytest.raises(ParamError):
+        g((1, 2), {"a": 3}, {"a": ("hi", "bye")})
+
+    g((1, 2), {"a": 3}, ({"a": "hi"}, {"a": "bye"}))

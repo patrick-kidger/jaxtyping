@@ -27,7 +27,7 @@ from typing import Any, Literal, NoReturn, Optional, Union
 
 import numpy as np
 
-from ._decorator import storage
+from ._decorator import storage_get, storage_set
 
 
 try:
@@ -198,24 +198,10 @@ class _MetaAbstractArray(type):
             if not in_dtypes:
                 return False
 
-        no_temp_memo = hasattr(storage, "memo_stack") and len(storage.memo_stack) != 0
-
-        if no_temp_memo:
-            single_memo, variadic_memo = storage.memo_stack[-1]
-            # Make a copy so we don't mutate the original memo during the shape check.
-            single_memo = single_memo.copy()
-            variadic_memo = variadic_memo.copy()
-        else:
-            # `isinstance` happening outside any @jaxtyped decorators, e.g. at the
-            # global scope. In this case just create a temporary memo, since we're not
-            # going to be comparing against any stored values anyway.
-            single_memo = {}
-            variadic_memo = {}
-
+        single_memo, variadic_memo, pytree_memo = storage_get()
         if cls._check_shape(obj, single_memo, variadic_memo):
             # We update the memo every time we successfully pass a shape check
-            if no_temp_memo:
-                storage.memo_stack[-1] = single_memo, variadic_memo
+            storage_set(single_memo, variadic_memo, pytree_memo)
             return True
         else:
             return False
