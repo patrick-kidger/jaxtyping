@@ -105,7 +105,7 @@ _AbstractDim = Union[Literal[_anonymous_dim], _NamedDim, _FixedDim, _SymbolicDim
 
 def _check_dims(
     cls_dims: list[_AbstractDim],
-    obj_shape: tuple[int],
+    obj_shape: tuple[int, ...],
     single_memo: dict[str, int],
 ) -> bool:
     assert len(cls_dims) == len(obj_shape)
@@ -201,27 +201,21 @@ class _MetaAbstractArray(type):
         no_temp_memo = hasattr(storage, "memo_stack") and len(storage.memo_stack) != 0
 
         if no_temp_memo:
-            single_memo, variadic_memo, variadic_broadcast_memo = storage.memo_stack[-1]
+            single_memo, variadic_memo = storage.memo_stack[-1]
             # Make a copy so we don't mutate the original memo during the shape check.
             single_memo = single_memo.copy()
             variadic_memo = variadic_memo.copy()
-            variadic_broadcast_memo = variadic_broadcast_memo.copy()
         else:
             # `isinstance` happening outside any @jaxtyped decorators, e.g. at the
             # global scope. In this case just create a temporary memo, since we're not
             # going to be comparing against any stored values anyway.
             single_memo = {}
             variadic_memo = {}
-            variadic_broadcast_memo = {}
 
-        if cls._check_shape(obj, single_memo, variadic_memo, variadic_broadcast_memo):
+        if cls._check_shape(obj, single_memo, variadic_memo):
             # We update the memo every time we successfully pass a shape check
             if no_temp_memo:
-                storage.memo_stack[-1] = (
-                    single_memo,
-                    variadic_memo,
-                    variadic_broadcast_memo,
-                )
+                storage.memo_stack[-1] = single_memo, variadic_memo
             return True
         else:
             return False
@@ -230,8 +224,7 @@ class _MetaAbstractArray(type):
         cls,
         obj,
         single_memo: dict[str, int],
-        variadic_memo: dict[str, tuple[int, ...]],
-        variadic_broadcast_memo: dict[str, list[tuple[int, ...]]],
+        variadic_memo: dict[str, tuple[bool, tuple[int, ...]]],
     ):
         if cls.index_variadic is None:
             if obj.ndim != len(cls.dims):
@@ -255,30 +248,37 @@ class _MetaAbstractArray(type):
                 return True
             else:
                 assert type(variadic_dim) is _NamedVariadicDim
-                variadic_name = variadic_dim.name
+                name = variadic_dim.name
+                broadcastable = variadic_dim.broadcastable
                 try:
-                    if variadic_dim.broadcastable:
-                        variadic_shapes = variadic_broadcast_memo[variadic_name]
-                    else:
-                        variadic_shape = variadic_memo[variadic_name]
+                    prev_broadcastable, prev_shape = variadic_memo[name]
                 except KeyError:
-                    if variadic_dim.broadcastable:
-                        variadic_broadcast_memo[variadic_name] = [obj.shape[i:j]]
-                    else:
-                        variadic_memo[variadic_name] = obj.shape[i:j]
+                    variadic_memo[name] = (broadcastable, obj.shape[i:j])
                     return True
                 else:
-                    if variadic_dim.broadcastable:
-                        new_shape = obj.shape[i:j]
-                        for existing_shape in variadic_shapes:
-                            try:
-                                np.broadcast_shapes(new_shape, existing_shape)
-                            except ValueError:
-                                return False
-                        variadic_shapes.append(new_shape)
-                        return True
+                    new_shape = obj.shape[i:j]
+                    if prev_broadcastable:
+                        try:
+                            broadcast_shape = np.broadcast_shapes(new_shape, prev_shape)
+                        except ValueError:  # not broadcastable e.g. (3, 4) and (5,)
+                            return False
+                        if not broadcastable and broadcast_shape != new_shape:
+                            return False
+                        variadic_memo[name] = (broadcastable, broadcast_shape)
                     else:
-                        return variadic_shape == obj.shape[i:j]
+                        if broadcastable:
+                            try:
+                                broadcast_shape = np.broadcast_shapes(
+                                    new_shape, prev_shape
+                                )
+                            except ValueError:  # not broadcastable e.g. (3, 4) and (5,)
+                                return False
+                            if broadcast_shape != prev_shape:
+                                return False
+                        else:
+                            if new_shape != prev_shape:
+                                return False
+                    return True
             assert False
 
 
