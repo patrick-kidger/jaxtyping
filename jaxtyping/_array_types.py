@@ -291,8 +291,11 @@ def _make_metaclass(base_metaclass):
 
 
 def _check_scalar(dtype, dtypes, dims):
-    if len(dims) != 0:
-        return dims == (_anonymous_variadic_dim,)
+    for dim in dims:
+        if dim is not _anonymous_variadic_dim and not isinstance(
+            dim, _NamedVariadicDim
+        ):
+            return False
     return (_any_dtype is dtypes) or any(d.startswith(dtype) for d in dtypes)
 
 

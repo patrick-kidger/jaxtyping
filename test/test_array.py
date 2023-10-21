@@ -575,3 +575,17 @@ def test_extension(typecheck, getkey):
     g(jr.split(jr.PRNGKey(0)))
     with pytest.raises(ParamError):
         g(jr.split(jr.PRNGKey(0), 3))
+
+
+def test_scalar_variadic_dim():
+    assert Float[float, "..."] is float
+    assert Float[float, "#*shape"] is float
+
+    # This one is a bit weird -- it should really also assert that shape==(), but we
+    # don't implement that.
+    assert Float[float, "*shape"] is float
+
+
+def test_scalar_dtype_mismatch():
+    with pytest.raises(ValueError):
+        Float[bool, "..."]
