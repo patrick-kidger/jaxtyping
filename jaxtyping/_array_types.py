@@ -27,7 +27,7 @@ from typing import Any, Literal, NoReturn, Optional, Union
 
 import numpy as np
 
-from ._decorator import storage_get, storage_set
+from ._storage import get_shape_memo, get_treepath_memo, set_shape_memo
 
 
 try:
@@ -68,15 +68,17 @@ class _DimType(enum.Enum):
 
 
 class _NamedDim:
-    def __init__(self, name, broadcastable):
+    def __init__(self, name, broadcastable, treepath):
         self.name = name
         self.broadcastable = broadcastable
+        self.treepath = treepath
 
 
 class _NamedVariadicDim:
-    def __init__(self, name, broadcastable):
+    def __init__(self, name, broadcastable, treepath):
         self.name = name
         self.broadcastable = broadcastable
+        self.treepath = treepath
 
 
 class _FixedDim:
@@ -133,10 +135,14 @@ def _check_dims(
                 return False
         else:
             assert type(cls_dim) is _NamedDim
+            if cls_dim.treepath:
+                name = get_treepath_memo() + cls_dim.name
+            else:
+                name = cls_dim.name
             try:
-                cls_size = single_memo[cls_dim.name]
+                cls_size = single_memo[name]
             except KeyError:
-                single_memo[cls_dim.name] = obj_size
+                single_memo[name] = obj_size
             else:
                 if cls_size != obj_size:
                     return False
@@ -198,12 +204,19 @@ class _MetaAbstractArray(type):
             if not in_dtypes:
                 return False
 
-        single_memo, variadic_memo, pytree_memo = storage_get()
-        if cls._check_shape(obj, single_memo, variadic_memo):
-            # We update the memo every time we successfully pass a shape check
-            storage_set(single_memo, variadic_memo, pytree_memo)
+        single_memo, variadic_memo, pytree_memo = get_shape_memo()
+        single_memo_bak = single_memo.copy()
+        variadic_memo_bak = variadic_memo.copy()
+        pytree_memo_bak = pytree_memo.copy()
+        try:
+            check = cls._check_shape(obj, single_memo, variadic_memo)
+        except Exception:
+            set_shape_memo(single_memo_bak, variadic_memo_bak, pytree_memo_bak)
+            raise
+        if check:
             return True
         else:
+            set_shape_memo(single_memo_bak, variadic_memo_bak, pytree_memo_bak)
             return False
 
     def _check_shape(
@@ -234,7 +247,10 @@ class _MetaAbstractArray(type):
                 return True
             else:
                 assert type(variadic_dim) is _NamedVariadicDim
-                name = variadic_dim.name
+                if variadic_dim.treepath:
+                    name = get_treepath_memo() + variadic_dim.name
+                else:
+                    name = variadic_dim.name
                 broadcastable = variadic_dim.broadcastable
                 try:
                     prev_broadcastable, prev_shape = variadic_memo[name]
@@ -338,11 +354,13 @@ def _make_array(array_type, dim_str, dtypes, name):
             broadcastable = False
             variadic = True
             anonymous = True
+            treepath = False
             dim_type = _DimType.named
         else:
             broadcastable = False
             variadic = False
             anonymous = False
+            treepath = False
             while True:
                 if len(elem) == 0:
                     # This branch needed as just `_` is valid
@@ -372,6 +390,14 @@ def _make_array(array_type, dim_str, dtypes, name):
                         )
                     anonymous = True
                     elem = elem[1:]
+                elif first_char == "?":
+                    if treepath:
+                        raise ValueError(
+                            "Do not use ? twice to denote dependence on location "
+                            "within a PyTree, e.g. `??foo` is not allowed"
+                        )
+                    treepath = True
+                    elem = elem[1:]
                 # Allow e.g. `foo=4` as an alternate syntax for just `4`, so that one
                 # can write e.g. `Float[Array, "rows=3 cols=4"]`
                 elif elem.count("=") == 1:
@@ -392,7 +418,7 @@ def _make_array(array_type, dim_str, dtypes, name):
             if index_variadic is not None:
                 raise ValueError(
                     "Cannot use multiple-dimension specifiers (`*name` or `...`) "
-                    "more than once"
+                    "more than once."
                 )
             index_variadic = index
 
@@ -400,11 +426,16 @@ def _make_array(array_type, dim_str, dtypes, name):
             if variadic:
                 raise ValueError(
                     "Cannot have a fixed axis bind to multiple dimensions, e.g. "
-                    "`*4` is not allowed"
+                    "`*4` is not allowed."
                 )
             if anonymous:
                 raise ValueError(
-                    "Cannot have a fixed axis be anonymous, e.g. `_4` is not " "allowed"
+                    "Cannot have a fixed axis be anonymous, e.g. `_4` is not allowed."
+                )
+            if treepath:
+                raise ValueError(
+                    "Cannot have a fixed axis have tree-path dependence, e.g. `?4` is "
+                    "not allowed."
                 )
             elem = _FixedDim(elem, broadcastable)
         elif dim_type is _DimType.named:
@@ -412,7 +443,7 @@ def _make_array(array_type, dim_str, dtypes, name):
                 if broadcastable:
                     raise ValueError(
                         "Cannot have a dimension be both anonymous and "
-                        "broadcastable, e.g. `#_` is not allowed"
+                        "broadcastable, e.g. `#_` is not allowed."
                     )
                 if variadic:
                     elem = _anonymous_variadic_dim
@@ -420,9 +451,9 @@ def _make_array(array_type, dim_str, dtypes, name):
                     elem = _anonymous_dim
             else:
                 if variadic:
-                    elem = _NamedVariadicDim(elem, broadcastable)
+                    elem = _NamedVariadicDim(elem, broadcastable, treepath)
                 else:
-                    elem = _NamedDim(elem, broadcastable)
+                    elem = _NamedDim(elem, broadcastable, treepath)
         else:
             assert dim_type is _DimType.symbolic
             if anonymous:
@@ -434,6 +465,11 @@ def _make_array(array_type, dim_str, dtypes, name):
                 raise ValueError(
                     "Cannot have symbolic multiple-dimensions, e.g. "
                     "`*foo+bar` is not allowed"
+                )
+            if treepath:
+                raise ValueError(
+                    "Cannot have a symbolic dimensions with tree-path dependence, e.g. "
+                    "`?foo+bar` is not allowed"
                 )
             elem_string = elem
             elem = compile(elem, "<string>", "eval")
