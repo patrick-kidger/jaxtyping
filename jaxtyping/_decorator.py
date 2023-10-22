@@ -20,7 +20,7 @@
 import dataclasses
 import functools as ft
 import inspect
-import textwrap
+import sys
 import types
 import weakref
 from typing import get_args, get_origin
@@ -34,7 +34,7 @@ else:
     traceback_util.register_exclusion(__file__)
 
 
-from ._storage import pop_shape_memo, push_shape_memo
+from ._storage import get_shape_memo, pop_shape_memo, push_shape_memo
 
 
 _jaxtyped_fns = weakref.WeakSet()
@@ -88,6 +88,8 @@ def jaxtyped(fn):
         return fn
     elif inspect.isclass(fn):  # allow decorators on class definitions
         if dataclasses.is_dataclass(fn):
+            # TODO(kidger): unify this branch with `_jaxtyped_typechecker` below,
+            # perhaps if we ever do typechecking on an argument-by-argument basis.
             init = jaxtyped(fn.__init__)
             fn.__init__ = init
             return fn
@@ -123,9 +125,20 @@ def jaxtyped(fn):
 
         @ft.wraps(fn)
         def wrapped_fn(*args, **kwargs):
-            push_shape_memo()
+            memos = push_shape_memo()
             try:
                 return fn(*args, **kwargs)
+            except Exception as e:
+                if sys.version_info >= (3, 11) and _no_jaxtyping_note(e):
+                    shape_info = _exc_shape_info(memos)
+                    if shape_info != "":
+                        msg = (
+                            "The preceding error occurred within the scope of a "
+                            "`jaxtyping.jaxtyped` function, and may be due to a "
+                            "typecheck error. "
+                        )
+                        e.add_note(_jaxtyping_note_str(_spacer + msg + shape_info))
+                raise
             finally:
                 pop_shape_memo()
 
@@ -173,18 +186,24 @@ def _check_dataclass_annotations(self, typechecker):
         except AttributeError:
             continue  # allow uninitialised fields, which are allowed on dataclasses
 
-        # Dynamic `exec` to get a custom parameter name.
-        exec(
-            textwrap.dedent(
-                f"""
         @typechecker
-        def typecheck({field.name}: annotation):
+        def typecheck(x: annotation):
             pass
 
-        typecheck(value)
-        """
-            )
-        )
+        try:
+            typecheck(value)
+        except Exception as e:
+            if sys.version_info >= (3, 11) and _no_jaxtyping_note(e):
+                shape_info = _exc_shape_info(get_shape_memo())
+                if shape_info != "":
+                    msg = (
+                        "The above typechecking error occurred due to a mismatch "
+                        f"between the value and annotation for field '{field.name}' in "
+                        "dataclass "
+                        f"'{self.__class__.__module__}.{self.__class__.__qualname__}'. "
+                    )
+                    e.add_note(_jaxtyping_note_str(_spacer + msg + shape_info))
+            raise
 
 
 def _jaxtyped_typechecker(typechecker):
@@ -239,3 +258,45 @@ def _jaxtyped_typechecker(typechecker):
         return kls
 
     return _wrapper
+
+
+def _no_jaxtyping_note(e):
+    try:
+        notes = e.__notes__
+    except AttributeError:
+        return True
+    else:
+        for note in notes:
+            if isinstance(note, _jaxtyping_note_str):
+                return False
+        return True
+
+
+class _jaxtyping_note_str(str):
+    pass
+
+
+_spacer = "--------------------\n"
+
+
+def _exc_shape_info(memos) -> str:
+    single_memo, variadic_memo, pytree_memo = memos
+    pieces = []
+    if len(single_memo) > 0 or len(variadic_memo) > 0:
+        pieces.append(
+            "The current values for each jaxtyping axis annotation are as follows."
+        )
+        for name, size in single_memo.items():
+            if not name.startswith("~~delete~~"):
+                pieces.append(f"{name}={size}")
+        for name, (_, shape) in variadic_memo.items():
+            if not name.startswith("~~delete~~"):
+                pieces.append(f"{name}={shape}")
+    if len(pytree_memo) > 0:
+        pieces.append(
+            "The current values for each jaxtyping pytree structure annotation are as "
+            "follows."
+        )
+        for name, structure in pytree_memo.items():
+            pieces.append(f"{name}={structure}")
+    return "\n".join(pieces)
