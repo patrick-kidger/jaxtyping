@@ -18,6 +18,7 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import threading
+from typing import Optional
 
 
 _shape_storage = threading.local()
@@ -45,13 +46,15 @@ def set_shape_memo(single_memo, variadic_memo, pytree_memo) -> None:
         _shape_storage.memo_stack[-1] = single_memo, variadic_memo, pytree_memo
 
 
-def push_shape_memo() -> None:
+def push_shape_memo():
     try:
         memo_stack = _shape_storage.memo_stack
     except AttributeError:
         # Can't be done when `_stack_storage` is created for reasons I forget.
         memo_stack = _shape_storage.memo_stack = []
-    memo_stack.append(({}, {}, {}))
+    memos = ({}, {}, {})
+    memo_stack.append(memos)
+    return memos
 
 
 def pop_shape_memo() -> None:
@@ -65,14 +68,18 @@ def clear_treepath_memo() -> None:
     _treepath_storage.value = None
 
 
-def set_treepath_memo(index: int, structure: str) -> None:
+def set_treepath_memo(index: Optional[int], structure: str) -> None:
     if hasattr(_treepath_storage, "value") and _treepath_storage.value is not None:
         raise ValueError(
             "Cannot typecheck annotations of the form "
             "`PyTree[PyTree[Shaped[Array, '?foo'], 'T'], 'S']` as it is ambiguous "
             "which PyTree the `?` annotation refers to."
         )
-    _treepath_storage.value = str(index) + structure
+    if index is None:
+        _treepath_storage.value = f"~~delete~~({structure}) "
+    else:
+        # Appears in error messages, so human-readable
+        _treepath_storage.value = f"(Leaf {index} in structure {structure}) "
 
 
 def get_treepath_memo() -> str:
