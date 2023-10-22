@@ -25,7 +25,8 @@ import jax.numpy as jnp
 import jax.random as jr
 import pytest
 
-from jaxtyping import Float, jaxtyped, PyTree
+import jaxtyping
+from jaxtyping import Array, Float, jaxtyped, PyTree
 
 from .helpers import make_mlp, ParamError
 
@@ -270,3 +271,84 @@ def test_structure_compose(typecheck):
         g((1, 2), {"a": 3}, {"a": ("hi", "bye")})
 
     g((1, 2), {"a": 3}, ({"a": "hi"}, {"a": "bye"}))
+
+
+@pytest.mark.parametrize("variadic", (False, True))
+def test_treepath_dependence_function(variadic, typecheck, getkey):
+    if variadic:
+        jtshape = "*?foo"
+        shape = (2, 3)
+    else:
+        jtshape = "?foo"
+        shape = (4,)
+
+    @jaxtyped
+    @typecheck
+    def f(
+        x: PyTree[Float[Array, jtshape], " T"], y: PyTree[Float[Array, jtshape], " T"]
+    ):
+        pass
+
+    x1 = jr.normal(getkey(), shape)
+    y1 = jr.normal(getkey(), shape)
+    x2 = jr.normal(getkey(), (5,))
+    y2 = jr.normal(getkey(), (5,))
+    f(x1, y1)
+    f((x1, x2), (y1, y2))
+
+    with pytest.raises(ParamError):
+        f(x1, y2)
+
+    with pytest.raises(ParamError):
+        f((x1, x2), (y2, y1))
+
+
+@pytest.mark.parametrize("variadic", (False, True))
+def test_treepath_dependence_dataclass(variadic, typecheck, getkey):
+    if variadic:
+        jtshape = "*?foo"
+        shape = (2, 3)
+    else:
+        jtshape = "?foo"
+        shape = (4,)
+
+    @jaxtyping._decorator._jaxtyped_typechecker(typecheck)
+    class A(eqx.Module):
+        x: PyTree[Float[Array, jtshape], " T"]
+        y: PyTree[Float[Array, jtshape], " T"]
+
+    x1 = jr.normal(getkey(), shape)
+    y1 = jr.normal(getkey(), shape)
+    x2 = jr.normal(getkey(), (5,))
+    y2 = jr.normal(getkey(), (5,))
+    A(x1, y1)
+    A((x1, x2), (y1, y2))
+
+    with pytest.raises(ParamError):
+        A(x1, y2)
+
+    with pytest.raises(ParamError):
+        A((x1, x2), (y2, y1))
+
+
+def test_treepath_dependence_missing_structure_annotation(typecheck, getkey):
+    @jaxtyped
+    @typecheck
+    def f(x: PyTree[Float[Array, "?foo"], " T"], y: PyTree[Float[Array, "?foo"]]):
+        pass
+
+    x1 = jr.normal(getkey(), (2,))
+    y1 = jr.normal(getkey(), (2,))
+    with pytest.raises(ValueError, match="except when contained with structured"):
+        f(x1, y1)
+
+
+def test_treepath_dependence_multiple_structure_annotation(typecheck, getkey):
+    @jaxtyped
+    @typecheck
+    def f(x: PyTree[PyTree[Float[Array, "?foo"], " S"], " T"]):
+        pass
+
+    x1 = jr.normal(getkey(), (2,))
+    with pytest.raises(ValueError, match="ambiguous which PyTree"):
+        f(x1)

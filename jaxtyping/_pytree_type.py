@@ -24,7 +24,12 @@ from typing import Generic, TypeVar
 import jax.tree_util as jtu
 import typeguard
 
-from ._decorator import storage_get, storage_set
+from ._storage import (
+    clear_treepath_memo,
+    get_shape_memo,
+    set_shape_memo,
+    set_treepath_memo,
+)
 
 
 _T = TypeVar("_T")
@@ -47,6 +52,22 @@ class _MetaPyTree(type):
         if not hasattr(cls, "leaftype"):
             return True  # Just `isinstance(x, PyTree)`
 
+        single_memo, variadic_memo, pytree_memo = get_shape_memo()
+        single_memo_bak = single_memo.copy()
+        variadic_memo_bak = variadic_memo.copy()
+        pytree_memo_bak = pytree_memo.copy()
+        try:
+            out = cls._check(obj, pytree_memo)
+        except Exception:
+            set_shape_memo(single_memo_bak, variadic_memo_bak, pytree_memo_bak)
+            raise
+        if out:
+            return True
+        else:
+            set_shape_memo(single_memo_bak, variadic_memo_bak, pytree_memo_bak)
+            return False
+
+    def _check(cls, obj, pytree_memo):
         # We could use `isinstance` here but that would fail for more complicated
         # types, e.g. PyTree[tuple[int]]. So at least internally we make a particular
         # choice of typechecker.
@@ -57,16 +78,20 @@ class _MetaPyTree(type):
         def accepts_leaftype(x: cls.leaftype):
             pass
 
-        def is_leaftype(x):
+        def is_leaftype(x, new_scope=True):
+            if new_scope and cls.structure is not None:
+                set_treepath_memo(-1, "")
             try:
                 accepts_leaftype(x)
             except _TypeCheckError:
                 return False
             else:
                 return True
+            finally:
+                if new_scope and cls.structure is not None:
+                    clear_treepath_memo()
 
         leaves, structure = jtu.tree_flatten(obj, is_leaf=is_leaftype)
-        single_memo, variadic_memo, pytree_memo = storage_get()
         if cls.structure is not None:
             if cls.structure.isidentifier():
                 try:
@@ -122,10 +147,16 @@ class _MetaPyTree(type):
                 else:
                     if structure != named_structure:
                         return False
-        for leaf_index, leaf in enumerate(leaves):
-            if not is_leaftype(leaf):
-                return False
-        storage_set(single_memo, variadic_memo, pytree_memo)
+
+        try:
+            for leaf_index, leaf in enumerate(leaves):
+                if cls.structure is not None:
+                    set_treepath_memo(leaf_index, cls.structure)
+                if not is_leaftype(leaf, new_scope=False):
+                    return False
+                clear_treepath_memo()
+        finally:
+            clear_treepath_memo()
         return True
 
     # Can't return a generic (e.g. _FakePyTree[item]) because generic aliases don't do

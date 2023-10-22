@@ -21,7 +21,6 @@ import dataclasses
 import functools as ft
 import inspect
 import textwrap
-import threading
 import types
 import weakref
 from typing import get_args, get_origin
@@ -35,33 +34,7 @@ else:
     traceback_util.register_exclusion(__file__)
 
 
-_storage = threading.local()
-
-
-def _no_temp_memo():
-    return hasattr(_storage, "memo_stack") and len(_storage.memo_stack) != 0
-
-
-def storage_get():
-    if _no_temp_memo():
-        single_memo, variadic_memo, pytree_memo = _storage.memo_stack[-1]
-        # Make a copy so we don't mutate the original memo during the shape check.
-        single_memo = single_memo.copy()
-        variadic_memo = variadic_memo.copy()
-        pytree_memo = pytree_memo.copy()
-    else:
-        # `isinstance` happening outside any @jaxtyped decorators, e.g. at the
-        # global scope. In this case just create a temporary memo, since we're not
-        # going to be comparing against any stored values anyway.
-        single_memo = {}
-        variadic_memo = {}
-        pytree_memo = {}
-    return single_memo, variadic_memo, pytree_memo
-
-
-def storage_set(single_memo, variadic_memo, pytree_memo):
-    if _no_temp_memo():
-        _storage.memo_stack[-1] = single_memo, variadic_memo, pytree_memo
+from ._storage import pop_shape_memo, push_shape_memo
 
 
 _jaxtyped_fns = weakref.WeakSet()
@@ -150,15 +123,11 @@ def jaxtyped(fn):
 
         @ft.wraps(fn)
         def wrapped_fn(*args, **kwargs):
-            try:
-                memo_stack = _storage.memo_stack
-            except AttributeError:
-                memo_stack = _storage.memo_stack = []
-            memo_stack.append(({}, {}, {}))
+            push_shape_memo()
             try:
                 return fn(*args, **kwargs)
             finally:
-                memo_stack.pop()
+                pop_shape_memo()
 
         _jaxtyped_fns.add(wrapped_fn)
         return wrapped_fn
@@ -166,14 +135,10 @@ def jaxtyped(fn):
 
 class _JaxtypingContext:
     def __enter__(self):
-        try:
-            memo_stack = _storage.memo_stack
-        except AttributeError:
-            memo_stack = _storage.memo_stack = []
-        memo_stack.append(({}, {}, {}))
+        push_shape_memo()
 
     def __exit__(self, exc_type, exc_value, exc_tb):
-        _storage.memo_stack.pop()
+        pop_shape_memo()
 
 
 @jaxtyped
