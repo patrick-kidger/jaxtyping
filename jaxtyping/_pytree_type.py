@@ -80,7 +80,7 @@ class _MetaPyTree(type):
 
         def is_leaftype(x, new_scope=True):
             if new_scope and cls.structure is not None:
-                set_treepath_memo(-1, "")
+                set_treepath_memo(None, cls.structure)
             try:
                 accepts_leaftype(x)
             except _TypeCheckError:
