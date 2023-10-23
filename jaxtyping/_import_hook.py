@@ -78,16 +78,11 @@ def _optimized_cache_from_source(typechecker_hash, /, path, debug_override=None)
     #    changing the typechecker will hit a different cache.
     # Version 7: Using the same md5 hash of the `typechecker` argument
     #    for importlib and decorator lookup.
+    # Version 8: Now using new-style `jaxtyped(typechecker=...)` rather than old-style
+    #    double-decorators.
     return cache_from_source(
-        path, debug_override, optimization=f"jaxtyping7{typechecker_hash}"
+        path, debug_override, optimization=f"jaxtyping8{typechecker_hash}"
     )
-
-
-def _dot_lookup(*elements):
-    out = ast.Name(id=elements[0], ctx=ast.Load())
-    for element in elements[1:]:
-        out = ast.Attribute(out, element, ctx=ast.Load())
-    return out
 
 
 class Typechecker:
@@ -130,7 +125,7 @@ class Typechecker:
         if self.ast is None:
             self.ast = (
                 ast.parse(
-                    f"@jaxtyping._import_hook.Typechecker.lookup['{self.hash}']\n"
+                    f"@jaxtyping.jaxtyped(typechecker=jaxtyping._import_hook.Typechecker.lookup['{self.hash}'])\n"
                     "def _():\n    ..."
                 )
                 .body[0]
@@ -162,10 +157,9 @@ class JaxtypingTransformer(ast.NodeVisitor):
         return node
 
     def visit_ClassDef(self, node: ast.ClassDef):
-        func = _dot_lookup("jaxtyping", "_decorator", "_jaxtyped_typechecker")
-        node.decorator_list.insert(
-            0, ast.Call(func, [self._typechecker.get_ast()], keywords=[])
-        )
+        # Place at the start of the decorator list, so that `@dataclass` decorators get
+        # called first.
+        node.decorator_list.insert(0, self._typechecker.get_ast())
         self._parents.append(node)
         self.generic_visit(node)
         self._parents.pop()
@@ -175,8 +169,13 @@ class JaxtypingTransformer(ast.NodeVisitor):
         has_annotated_args = any(arg for arg in node.args.args if arg.annotation)
         has_annotated_return = bool(node.returns)
         if has_annotated_args or has_annotated_return:
-            # Place at the end of the decorator list, as otherwise we wrap e.g.
-            # `jax.custom_{jvp,vjp}` and lose the ability to `defjvp` etc.
+            # Place at the end of the decorator list, because:
+            # - as otherwise we wrap e.g. `jax.custom_{jvp,vjp}` and lose the ability
+            #     to `defjvp` etc.
+            # - decorators frequently remove annotations from functions, and we'd like
+            #     to use those annotations.
+            # - typeguard in particular wants to be at the end of the decorator list, as
+            #     it works by recompling the wrapped function.
             #
             # Note that the counter-argument here is that we'd like to place this
             # at the start of the decorator list, in case a typechecking annotation
@@ -184,14 +183,6 @@ class JaxtypingTransformer(ast.NodeVisitor):
             # case we're just going to have to need to ask the user to remove their
             # typechecking annotation (and let this decorator do it instead).
             # It's more important we be compatible with normal JAX code.
-            #
-            #
-            # FWIW, typeguard also wants to be at the end of the decorator list, as it
-            # works by recompiling the wrapped function.
-            node.decorator_list.append(_dot_lookup("jaxtyping", "jaxtyped"))
-            # Place typechecker at the end of the decorator list, as decorators
-            # frequently remove annotations from functions and we'd like to
-            # use those annotations.
             node.decorator_list.append(self._typechecker.get_ast())
 
         self._parents.append(node)
@@ -290,7 +281,8 @@ class ImportHookManager:
 # Deliberately no default for `typechecker` so that folks must opt-in to not having
 # a typechecker.
 def install_import_hook(modules: Union[str, Sequence[str]], typechecker: Optional[str]):
-    """Automatically apply `@jaxtyped`, and optionally a type checker, as decorators.
+    """Automatically apply the `@jaxtyped(typechecker=typechecker)` decorator to every
+    function and dataclass over a whole codebase.
 
     !!! Tip "Usage"
 
@@ -298,18 +290,19 @@ def install_import_hook(modules: Union[str, Sequence[str]], typechecker: Optiona
         from jaxtyping import install_import_hook
         # Plus any one of the following:
 
-        # decorate @jaxtyped and @typeguard.typechecked
+        # decorate `@jaxtyped(typechecker=typeguard.typechecked)`
         with install_import_hook("foo", "typeguard.typechecked"):
             import foo          # Any module imported inside this `with` block, whose
             import foo.bar      # name begins with the specified string, will
             import foo.bar.qux  # automatically have both `@jaxtyped` and the specified
-                                # typechecker applied to all of their functions.
+                                # typechecker applied to all of their functions and
+                                # dataclasses.
 
-        # decorate @jaxtyped and @beartype.beartype
+        # decorate `@jaxtyped(typechecker=beartype.beartype)`
         with install_import_hook("foo", "beartype.beartype"):
             ...
 
-        # decorate only @jaxtyped (if you want that for some reason)
+        # decorate only `@jaxtyped` (if you want that for some reason)
         with install_import_hook("foo", None):
             ...
         ```
@@ -326,22 +319,9 @@ def install_import_hook(modules: Union[str, Sequence[str]], typechecker: Optiona
         install_import_hook(["foo", "bar.baz"], ...)
         ```
 
-    The import hook will automatically decorate all functions, and check the attributes
-    assigned to dataclasses.
-
-    If the function already has any decorators on it, then both the `@jaxtyped` and the
-    typechecker decorators will get added at the bottom of the decorator list, e.g.
-    ```python
-    @some_other_decorator
-    @jaxtyped
-    @beartype.beartype
-    def foo(...): ...
-    ```
-
     **Arguments:**:
 
-    - `modules`: the names of the modules in which to automatically apply `@jaxtyped`
-        and `@typechecked`.
+    - `modules`: the names of the modules in which to automatically apply `@jaxtyped`.
     - `typechecker`: the module and function of the typechecker you want to use, as a
         string. For example `typechecker="typeguard.typechecked"`, or
         `typechecker="beartype.beartype"`. You may pass `typechecker=None` if you do not
@@ -351,7 +331,7 @@ def install_import_hook(modules: Union[str, Sequence[str]], typechecker: Optiona
 
     A context manager that uninstalls the hook on exit, or when you call `.uninstall()`.
 
-    ??? Example "Example: end-user script"
+    !!! Example "Example: end-user script"
 
         ```python
         ### entry_point.py
@@ -366,7 +346,7 @@ def install_import_hook(modules: Union[str, Sequence[str]], typechecker: Optiona
             ...
         ```
 
-    ??? Example "Example: writing a library"
+    !!! Example "Example: writing a library"
 
         ```python
         ### __init__.py
@@ -377,30 +357,6 @@ def install_import_hook(modules: Union[str, Sequence[str]], typechecker: Optiona
             from .another_subpackage import bar  # full name is my_library_name.another_subpackage
                                                  # so will be hook'd.
         ```
-
-    ??? info "Pytest hook"
-
-        The import hook can be installed at test-time only, as a pytest hook. From the
-        command line the syntax is:
-        ```
-        pytest --jaxtyping-packages=foo,bar.baz,beartype.beartype
-        ```
-        or in `pyproject.toml`:
-        ```toml
-        [tool.pytest.ini_options]
-        addopts = "--jaxtyping-packages=foo,bar.baz,beartype.beartype"
-        ```
-        or in `pytest.ini`:
-        ```ini
-        [pytest]
-        addopts = --jaxtyping-packages=foo,bar.baz,beartype.beartype
-        ```
-        This example will apply the import hook to all modules whose names start with
-        either `foo` or `bar.baz`. The typechecker used in this example is
-        `beartype.beartype`.
-
-        (This is the author's preferred approach to performing runtime type-checking
-        with jaxtyping!)
 
     !!! warning
 
@@ -423,6 +379,29 @@ def install_import_hook(modules: Union[str, Sequence[str]], typechecker: Optiona
             x: tuple["int"]
         ```
         will likely raise an error, and must not be used at all.
+
+    !!! warning
+
+        If a function already has any decorators on it, then `@jaxtyped` will get added
+        at the bottom of the decorator list, e.g.
+        ```python
+        @some_other_decorator
+        @jaxtyped(typechecker=beartype.beartype)
+        def foo(...): ...
+        ```
+        This is to support the common case in which
+        `some_other_decorator = jax.custom_jvp` etc.
+
+        If a class already has any decorators in it, then `@jaxtyped` will get added to
+        the top of the decorator list, e.g.
+        ```python
+        @jaxtyped(typechecker=beartype.beartype)
+        @some_other_decorator
+        class A:
+            ...
+        ```
+        This is to support the common case in which
+        `some_other_decorator = dataclasses.dataclass`.
     """  # noqa: E501
 
     if isinstance(modules, str):

@@ -24,7 +24,7 @@ In addition some modifiers can be applied:
     `def add(x: Float[Array, "#foo"], y: Float[Array, "#foo"]) -> Float[Array, "#foo"]`.
 - Prepend `_` to a dimension to disable any runtime checking of that dimension (so that it can be used just as documentation). This can also be used as just `_` on its own: e.g. `"b c _ _"`.
 - Documentation-only names (i.e. they're ignored by jaxtyping) can be handled by prepending a name followed by `=` e.g. `Float[Array, "rows=4 cols=3"]`.
-- Prepend `?` to a dimension to indicate that its size can vary within a PyTree structure. (See [PyTree annotations](../pytree.md).)
+- Prepend `?` to a dimension to indicate that its size can vary within a PyTree structure. (See [PyTree annotations](../pytree/).)
 
 When using multiple modifiers, their order does not matter.
 

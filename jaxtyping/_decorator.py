@@ -20,10 +20,11 @@
 import dataclasses
 import functools as ft
 import inspect
+import itertools as it
 import sys
 import types
 import weakref
-from typing import get_args, get_origin
+from typing import Any, get_args, get_origin, get_type_hints, overload
 
 
 try:
@@ -34,113 +35,340 @@ else:
     traceback_util.register_exclusion(__file__)
 
 
-from ._storage import get_shape_memo, pop_shape_memo, push_shape_memo
+from ._storage import pop_shape_memo, push_shape_memo
 
 
 _jaxtyped_fns = weakref.WeakSet()
 
 
-def jaxtyped(fn):
-    """Used in conjunction with a runtime type checker. Decorate a function with this to
-    have shapes checked for consistency across multiple arguments.
+class TypeCheckError(TypeError):
+    pass
 
-    Note that `@jaxtyped` is applied above the type checker.
+
+TypeCheckError.__module__ = "jaxtyping"  # appears in error messages
+
+
+@overload
+def jaxtyped(*, typechecker=None):
+    ...
+
+
+@overload
+def jaxtyped(fn, *, typechecker=None):
+    ...
+
+
+def jaxtyped(fn=None, *, typechecker=None):
+    """Decorate a function with this to perform runtime type-checking of its arguments
+    and return value. Decorate a dataclass to perform type-checking of its attributes.
 
     !!! Example
 
         ```python
         # Import both the annotation and the `jaxtyped` decorator from `jaxtyping`
-        from jaxtyping import Array, Float32, jaxtyped
+        from jaxtyping import Array, Float, jaxtyped
 
         # Use your favourite typechecker: usually one of the two lines below.
         from typeguard import typechecked as typechecker
         from beartype import beartype as typechecker
 
-        # Write your function. @jaxtyped must be applied above @typechecker!
-        @jaxtyped
-        @typechecker
-        def batch_outer_product(x: Float32[Array, "b c1"],
-                                y: Float32[Array, "b c2"]
-                              ) -> Float32[Array, "b c1 c2"]:
+        # Type-check a function
+        @jaxtyped(typechecker=typechecker)
+        def batch_outer_product(x: Float[Array, "b c1"],
+                                y: Float[Array, "b c2"]
+                              ) -> Float[Array, "b c1 c2"]:
             return x[:, :, None] * y[:, None, :]
+
+        # Type-check a dataclass
+        @jaxtyped(typechecker=typechecker)
+        @dataclass
+        class MyDataclass:
+            x: int
+            y: Float[Array "b c"]
         ```
+
+    **Arguments:**
+
+    - `fn`: The function or dataclass to decorate.
+    - `typechecker`: The runtime type-checker to use. This should be a function
+        decorator that will raise an exception if there is a type error, e.g.
+        ```python
+        @typechecker
+        def f(x: int):
+            pass
+
+        f("a string is not an integer")  # this line should raise an exception
+        ```
+        Common choices are `typechecker=beartype.beartype` or
+        `typechecker=typeguard.typechecked`. Can also be set as `typechecker=None` to
+        skip automatic runtime type-checking, but still support manual `isinstance`
+        checks inside the function body:
+        ```python
+        @jaxtyped
+        def f(x):
+            assert isinstance(x, Float[Array, "batch channel"])
+        ```
+
+    **Returns:**
+
+    If `fn` is a function (including a `staticmethod`, `classmethod`, or `property`),
+    then a wrapped function is returned.
+
+    If `fn` is a dataclass, then `fn` is returned directly, and additionally its
+    `__init__` method is wrapped and modified in-place.
 
     **Notes for advanced users**
 
-    Put precisely, all `isinstance` shape checks are scoped to the thread-local dynamic
-    context of a `jaxtyped` call. A new dynamic context will allow different dimensions
-    sizes to be bound to the same name. After this new dynamic context is finished
-    then the old one is returned to.
+    Put precisely, the axis names in e.g. `Float[Array, "batch channels"]` and the
+    structure names in e.g. `PyTree[int, "T"]` are all scoped to the thread-local
+    dynamic context of a `jaxtyped`-wrapped function. A new dynamic context will allow
+    different values to be bound to the same name. After this new dynamic context is
+    finished then the old one is returned to.
 
-    For example, this means you could leave off the `@jaxtyped` decorator to enforce
-    that this function use the same axis sizes as the function it was called from.
+    Binding of a value against a name is done with an `isinstance` check, for example
+    `isinstance(jnp.zeros((3, 4)), Float[Array, "dim1 dim2"])` will bind `dim1=3` and
+    `dim2=4`.
 
-    Likewise, this means you can use `isinstance` checks inside a function body
-    and have them contribute to the same collection of consistency checks performed
-    by a typechecker against its arguments. (Or even forgo a typechecker that analyses
-    arguments, and instead just do your own manual `isinstance` checks.)
+    This means you can use `isinstance` checks inside a function body and have them
+    contribute to the same collection of consistency checks performed by a typechecker
+    against its arguments. (Or even forgo a typechecker that analyses arguments, and
+    instead just do your own manual `isinstance` checks.)
 
-    Only `isinstance` checks that pass will contribute to the store of axis name-size
-    pairs; those that fail will not. As such it is safe to write e.g.
+    Only `isinstance` checks that pass will contribute to the store of values; those
+    that fail will not. As such it is safe to write e.g.
     `assert not isinstance(x, Float32[Array, "foo"])`.
+
+    !!! Info "Old syntax"
+
+        jaxtyping previously (before v0.2.24) recommended using this double-decorator
+        syntax:
+        ```python
+        @jaxtyped
+        @typechecker
+        def f(...): ...
+        ```
+        This is still supported, but the `jaxtyped(typechecker=typechecker)` syntax
+        discussed above will produce easier-to-debug error messages. Under the hood, the
+        new syntax more carefully manipulates the typechecker so as to determine where
+        a type-check error arises.
     """
-    if type(fn) is types.FunctionType and fn in _jaxtyped_fns:
+
+    if fn is None:
+        return ft.partial(jaxtyped, typechecker=typechecker)
+    elif type(fn) is types.FunctionType and fn in _jaxtyped_fns:
         return fn
-    elif inspect.isclass(fn):  # allow decorators on class definitions
-        if dataclasses.is_dataclass(fn):
-            # TODO(kidger): unify this branch with `_jaxtyped_typechecker` below,
-            # perhaps if we ever do typechecking on an argument-by-argument basis.
-            init = jaxtyped(fn.__init__)
-            fn.__init__ = init
-            return fn
-        else:
-            raise ValueError(
-                "jaxtyped may only be added as a class decorator to dataclasses"
-            )
+    elif inspect.isclass(fn):
+        if dataclasses.is_dataclass(fn) and typechecker is not None:
+            # This does not check that the arguments passed to `__init__` match the
+            # type annotations. There may be a custom user `__init__`, or a
+            # dataclass-generated `__init__` used alongside
+            # `equinox.field(converter=...)`
+
+            init = fn.__init__
+
+            @ft.wraps(init)
+            def __init__(self, *args, **kwargs):
+                init(self, *args, **kwargs)
+                # `fn.__init__` is late-binding to the `__init__` function that
+                # we're in now. (Or to someone else's monkey-patch.) Either way,
+                # this checks that we're in the "top-level" `__init__`, and not one
+                # that is being called via `super()`. We don't want to trigger too
+                # early, before all fields have been assigned.
+                #
+                # We're not checking `if self.__class__ is fn` because Equinox
+                # replaces the with a defrozen version of itself during `__init__`,
+                # so the check wouldn't trigger.
+                #
+                # We're not doing this check by adding it to the end of the
+                # metaclass `__call__`, because Python doesn't allow you
+                # monkey-patch metaclasses.
+                if self.__class__.__init__ is fn.__init__:
+                    _check_dataclass_annotations(self, typechecker)
+
+            fn.__init__ = __init__
+        return fn
     # It'd be lovely if we could handle arbitrary descriptors, and not just the builtin
     # ones. Unfortunately that means returning a class instance with a __get__ method,
     # and that turns out to break loads of other things. See beartype issue #211 and
     # jaxtyping issue #71.
     elif isinstance(fn, classmethod):
-        return classmethod(jaxtyped(fn.__func__))
+        return classmethod(jaxtyped(fn.__func__, typechecker=typechecker))
     elif isinstance(fn, staticmethod):
-        return staticmethod(jaxtyped(fn.__func__))
+        return staticmethod(jaxtyped(fn.__func__, typechecker=typechecker))
     elif isinstance(fn, property):
         if fn.fget is None:
             fget = None
         else:
-            fget = jaxtyped(fn.fget)
+            fget = jaxtyped(fn.fget, typechecker=typechecker)
         if fn.fset is None:
             fset = None
         else:
-            fset = jaxtyped(fn.fset)
+            fset = jaxtyped(fn.fset, typechecker=typechecker)
         if fn.fdel is None:
             fdel = None
         else:
-            fdel = jaxtyped(fn.fdel)
+            fdel = jaxtyped(fn.fdel, typechecker=typechecker)
         return property(fget=fget, fset=fset, fdel=fdel)
     elif fn == "context":
         return _JaxtypingContext()
     else:
+        if typechecker is None:
+            # Probably being used in the old style as
+            # ```
+            # @jaxtyped
+            # @typechecker
+            # def foo(x: int): ...
+            # ```
+            # in which case make a best-effort attempt to add shape information for any
+            # type errors.
+            @ft.wraps(fn)
+            def wrapped_fn(*args, **kwargs):  # pyright: ignore
+                memos = push_shape_memo()
+                try:
+                    return fn(*args, **kwargs)
+                except Exception as e:
+                    if sys.version_info >= (3, 11) and _no_jaxtyping_note(e):
+                        shape_info = _exc_shape_info(memos)
+                        if shape_info != "":
+                            msg = (
+                                "The preceding error occurred within the scope of a "
+                                "`jaxtyping.jaxtyped` function, and may be due to a "
+                                "typecheck error. "
+                            )
+                            e.add_note(_jaxtyping_note_str(_spacer + msg + shape_info))
+                    raise
+                finally:
+                    pop_shape_memo()
 
-        @ft.wraps(fn)
-        def wrapped_fn(*args, **kwargs):
-            memos = push_shape_memo()
+        else:
+            # New-style
+            # ```
+            # @jaxtyped(typechecker=typechecker)
+            # def foo(x: int): ...
+            # ```
+            # in which case we can do a better job reporting errors.
+
+            full_signature = inspect.signature(fn)
             try:
-                return fn(*args, **kwargs)
-            except Exception as e:
-                if sys.version_info >= (3, 11) and _no_jaxtyping_note(e):
-                    shape_info = _exc_shape_info(memos)
-                    if shape_info != "":
-                        msg = (
-                            "The preceding error occurred within the scope of a "
-                            "`jaxtyping.jaxtyped` function, and may be due to a "
-                            "typecheck error. "
-                        )
-                        e.add_note(_jaxtyping_note_str(_spacer + msg + shape_info))
-                raise
-            finally:
-                pop_shape_memo()
+                destring_annotations = get_type_hints(fn, include_extras=True)
+            except NameError:
+                # Best-effort attempt to destringify annotations.
+                pass
+            else:
+                new_params = []
+                for p_name, p_value in full_signature.parameters.items():
+                    p_annotation = destring_annotations.get(p_name, p_value.annotation)
+                    p_value = p_value.replace(annotation=p_annotation)
+                    new_params.append(p_value)
+                return_annotation = destring_annotations.get(
+                    "return", full_signature.return_annotation
+                )
+                full_signature = full_signature.replace(
+                    parameters=new_params, return_annotation=return_annotation
+                )
+
+            param_signature = full_signature.replace(
+                return_annotation=inspect.Signature.empty
+            )
+            module = getattr(fn, "__module__", "generated")
+
+            full_fn, output_name = _make_fn_with_signature(
+                "check_return", full_signature, module, output=True
+            )
+            full_fn = typechecker(full_fn)
+
+            param_fn = _make_fn_with_signature(
+                "check_params", param_signature, module, output=False
+            )
+            param_fn = typechecker(param_fn)
+
+            @ft.wraps(fn)
+            def wrapped_fn(*args, **kwargs):
+                # Raise bind-time errors before we do any shape analysis. (I.e. skip
+                # the pointless jaxtyping information for a non-typechecking failure.)
+                param_signature.bind(*args, **kwargs)
+
+                memos = push_shape_memo()
+                try:
+                    # First type-check just the parameters before the function is
+                    # called.
+                    try:
+                        param_fn(*args, **kwargs)
+                    except Exception as e:
+                        if hasattr(e, "_jaxtyping_malformed"):
+                            raise
+                        else:
+                            argmsg = _get_problem_arg(
+                                param_signature, args, kwargs, module, typechecker
+                            )
+                            try:
+                                name = fn.__name__
+                            except AttributeError:
+                                name = fn.__class__.__name__
+                            paramstr = _remove_typing(param_signature)
+                            msg = (
+                                "Type-check error whilst checking the parameters of "
+                                f"{name}.{argmsg}\n"
+                                f"Called with args: {_pformat(args)}\n"
+                                f"Called with kwargs: {_pformat(kwargs)}\n"
+                                f"Parameter annotations: {paramstr}.\n"
+                                + _exc_shape_info(memos)
+                            )
+                            raise TypeCheckError(msg) from e
+
+                    # Actually call the function.
+                    out = fn(*args, **kwargs)
+
+                    if full_signature.return_annotation is not inspect.Signature.empty:
+                        # Now type-check the return value. We need to include the
+                        # parameters in the type-checking here in case there are any
+                        # type variables shared across the parameters and return.
+                        #
+                        # Incidentally this does mean that if `fn` mutates its arguments
+                        # so that they no longer satisfy their type annotations, this
+                        # will throw an error here. But that's like, super weird, so
+                        # don't do that. An error in that scenario is probably still
+                        # desirable.
+                        #
+                        # There is a small performance concern here when used in
+                        # non-jit'd contexts, like PyTorch, due to the duplicate
+                        # checking of the parameters. Unfortunately there doesn't seem
+                        # to be a way around that, so c'est la vie.
+                        kwargs[output_name] = out
+                        try:
+                            full_fn(*args, **kwargs)
+                        except Exception as e:
+                            if hasattr(e, "_jaxtyping_malformed"):
+                                raise
+                            else:
+                                try:
+                                    name = fn.__name__
+                                except AttributeError:
+                                    name = fn.__class__.__name__
+                                paramstr = _remove_typing(param_signature)
+                                returnstr = _remove_typing(
+                                    full_signature.return_annotation
+                                )
+                                if returnstr.startswith(
+                                    "<class '"
+                                ) and returnstr.endswith("'>"):
+                                    returnstr = returnstr[8:-2]
+                                kwargs.pop(output_name)
+                                msg = (
+                                    "Type-check error whilst checking the return value "
+                                    f"of {name}.\n"
+                                    f"Called with args: {_pformat(args)}\n"
+                                    f"Called with kwargs: {_pformat(kwargs)}\n"
+                                    f"Return value: {_pformat(out)}\n"
+                                    f"Parameter annotations: {paramstr}.\n"
+                                    f"Return annotation: {returnstr}.\n"
+                                    + _exc_shape_info(memos)
+                                )
+                                raise TypeCheckError(msg) from e
+
+                    return out
+                finally:
+                    pop_shape_memo()
 
         _jaxtyped_fns.add(wrapped_fn)
         return wrapped_fn
@@ -154,24 +382,19 @@ class _JaxtypingContext:
         pop_shape_memo()
 
 
-@jaxtyped
 def _check_dataclass_annotations(self, typechecker):
+    """Creates and calls a function that checks the attributes of `self`
+
+    `self` should be a dataclass instancae. `typechecker` should be e.g.
+    `beartype.beartype` or `typeguard.typechecked`.
+    """
+    parameters = []
+    values = {}
     for field in dataclasses.fields(self):
-        for kls in self.__class__.__mro__:
-            try:
-                annotation = kls.__annotations__[field.name]
-            except KeyError:
-                pass
-            else:
-                break
-        else:
-            raise TypeError
+        annotation = field.type
         if isinstance(annotation, str):
-            # Don't support stringified annotations. These are basically impossible to
+            # Don't check stringified annotations. These are basically impossible to
             # resolve correctly, so just skip them.
-            # This does mean that annotations like `type["Foo"]` will just fail. There
-            # doesn't seem to be any way to even detect a partially-stringified
-            # annotation.
             continue
         if get_origin(annotation) is type:
             args = get_args(annotation)
@@ -186,100 +409,236 @@ def _check_dataclass_annotations(self, typechecker):
         except AttributeError:
             continue  # allow uninitialised fields, which are allowed on dataclasses
 
-        @typechecker
-        def typecheck(x: annotation):
-            pass
+        parameters.append(
+            inspect.Parameter(
+                field.name,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                annotation=field.type,
+            )
+        )
+        values[field.name] = value
 
-        try:
-            typecheck(value)
-        except Exception as e:
-            if sys.version_info >= (3, 11) and _no_jaxtyping_note(e):
-                shape_info = _exc_shape_info(get_shape_memo())
-                if shape_info != "":
-                    msg = (
-                        "The above typechecking error occurred due to a mismatch "
-                        f"between the value and annotation for field '{field.name}' in "
-                        "dataclass "
-                        f"'{self.__class__.__module__}.{self.__class__.__qualname__}'. "
-                    )
-                    e.add_note(_jaxtyping_note_str(_spacer + msg + shape_info))
-            raise
+    signature = inspect.Signature(parameters)
+    module = self.__class__.__module__
+    f = _make_fn_with_signature(
+        self.__class__.__name__, signature, module, output=False
+    )
+    f = jaxtyped(f, typechecker=typechecker)
+    f(**values)
 
 
-def _jaxtyped_typechecker(typechecker):
-    """A decorator added by the import hook to all classes. Only affects dataclasses.
+def _make_fn_with_signature(
+    name: str, signature: inspect.Signature, module: str, output: bool
+):
+    """Dynamically creates a function `fn` with name `name` and signature `signature`.
 
-    Will be called as
-    ```
-    @_jaxtyped_typechecker(beartype.beartype)
-    @dataclasses.dataclass
-    class SomeDataclass:
-        ...
-    ```
+    If `output=True` then `fn` will consume an additional keyword-only argument (in
+    addition to the provided signature), and will directly return this argument. In this
+    case the returned value from `_make_fn_with_signature` is a 2-tuple of `(fn, name)`,
+    where `fn` is the generated function, and `name` is the name of this extra argument.
 
-    After initialisation, this will check that all fields of the dataclass match their
-    specified type annotation.
+    If `output=False` then `fn` will just have a single `pass` statement, and the
+    returned value from `_make_fn_with_signature` will just be `fn`.
+
+    ---
+
+    Note that this function operates by dynamically creating and eval'ing a string, not
+    simply by assigning `__signature__` and `__annotations__`. The latter is enough for
+    typeguard (at least v2), but does not work with beartype (at least v16).
     """
-    # typechecker is expected to probably be either `typeguard.typechecked`, or
-    # `beartype.beartype`, or `None`.
+    pos = []
+    pos_or_key = []
+    varpos = []
+    key = []
+    varkey = []
+    for p in signature.parameters.values():
+        if p.kind == inspect.Parameter.POSITIONAL_ONLY:
+            pos.append(p)
+        elif p.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD:
+            pos_or_key.append(p)
+        elif p.kind == inspect.Parameter.VAR_POSITIONAL:
+            varpos.append(p)
+        elif p.kind == inspect.Parameter.KEYWORD_ONLY:
+            key.append(p)
+        elif p.kind == inspect.Parameter.VAR_KEYWORD:
+            varkey.append(p)
+        else:
+            assert False
 
-    if typechecker is None:
-        typechecker = lambda x: x
-
-    def _wrapper(kls):
-        assert inspect.isclass(kls)
-        if dataclasses.is_dataclass(kls):
-            # This does not check that the arguments passed to `__init__` match the
-            # type annotations. There may be a custom user `__init__`, or a
-            # dataclass-generated `__init__` used alongside
-            # `equinox.field(converter=...)`
-
-            init = kls.__init__
-
-            @ft.wraps(init)
-            def __init__(self, *args, **kwargs):
-                init(self, *args, **kwargs)
-                # `kls.__init__` is late-binding to the `__init__` function that we're
-                # in now. (Or to someone else's monkey-patch.) Either way, this checks
-                # that we're in the "top-level" `__init__`, and not one that is being
-                # called via `super()`. We don't want to trigger too early, before all
-                # fields have been assigned.
-                #
-                # We're not checking `if self.__class__ is kls` because Equinox replaces
-                # the with a defrozen version of itself during `__init__`, so the check
-                # wouldn't trigger.
-                #
-                # We're not doing this check by adding it to the end of the metaclass
-                # `__call__`, because Python doesn't allow you monkey-patch metaclasses.
-                if self.__class__.__init__ is kls.__init__:
-                    _check_dataclass_annotations(self, typechecker)
-
-            kls.__init__ = __init__
-        return kls
-
-    return _wrapper
-
-
-def _no_jaxtyping_note(e):
-    try:
-        notes = e.__notes__
-    except AttributeError:
-        return True
+    param_names = frozenset(signature.parameters.keys())
+    if output:
+        output_name = _gensym(param_names, prefix="ret")
+        outstr = "return " + output_name
+        param_names = param_names | frozenset({output_name})
+        key.append(inspect.Parameter(output_name, kind=inspect.Parameter.KEYWORD_ONLY))
     else:
-        for note in notes:
-            if isinstance(note, _jaxtyping_note_str):
-                return False
-        return True
+        outstr = "pass"
+
+    scope = {name: None}
+    name_to_annotation = {}
+    name_to_default = {}
+    param_triples = (
+        (p.name, p.annotation, p.default) for p in signature.parameters.values()
+    )
+    if output:
+        triples = it.chain(
+            param_triples,
+            [
+                ("return", signature.return_annotation, inspect.Signature.empty),
+                (output_name, Any, inspect.Signature.empty),
+            ],
+        )
+    else:
+        triples = it.chain(
+            param_triples,
+            [("return", signature.return_annotation, inspect.Signature.empty)],
+        )
+    for p_name, p_annotation, p_default in triples:
+        annotation_name = _gensym(frozenset(scope.keys()) | param_names, prefix="T")
+        name_to_annotation[p_name] = annotation_name
+        if p_annotation is inspect.Signature.empty or isinstance(p_annotation, str):
+            # If we have a stringified annotation here it's because the get_type_hints
+            # lookup above failed. Typically this occurs when using a local variable as
+            # the annotation. In this case we really have no idea what the annotation
+            # refers to, so just set it to Any.
+            # This does mean that we don't handle partially-stringified local
+            # annotations, e.g. `type["Foo"]` for some local type `Foo`. Those will
+            # probably just error out. Nothing better we can do about that
+            # unfortunately.
+            scope[annotation_name] = Any
+        else:
+            scope[annotation_name] = p_annotation
+        default_name = _gensym(frozenset(scope.keys()) | param_names, prefix="default")
+        name_to_default[p_name] = default_name
+        scope[default_name] = p_default
+
+    argstr_pieces = []
+    if len(pos) > 0:
+        for p in pos:
+            argstr_pieces.append(_make_argpiece(p, name_to_annotation, name_to_default))
+        argstr_pieces.append("/")
+    if len(pos_or_key) > 0:
+        for p in pos_or_key:
+            argstr_pieces.append(_make_argpiece(p, name_to_annotation, name_to_default))
+    if len(varpos) == 1:
+        [p] = varpos
+        argstr_pieces.append(
+            "*" + _make_argpiece(p, name_to_annotation, name_to_default)
+        )
+    else:
+        assert len(varpos) == 0
+        if len(key) > 0:
+            argstr_pieces.append("*")
+    if len(key) > 0:
+        for p in key:
+            argstr_pieces.append(_make_argpiece(p, name_to_annotation, name_to_default))
+    if len(varkey) == 1:
+        [p] = varkey
+        argstr_pieces.append(
+            "**" + _make_argpiece(p, name_to_annotation, name_to_default)
+        )
+    else:
+        assert len(varkey) == 0
+    argstr = ", ".join(argstr_pieces)
+
+    if signature.return_annotation is inspect.Signature.empty:
+        retstr = ""
+    else:
+        retstr = f"-> {name_to_annotation['return']}"
+
+    fnstr = f"def {name}({argstr}){retstr}:\n    {outstr}"
+    exec(fnstr, scope)
+    fn = scope[name]
+    fn.__module__ = module
+    assert fn is not None
+    if output:
+        return fn, output_name
+    else:
+        return fn
 
 
-class _jaxtyping_note_str(str):
-    pass
+def _gensym(names: frozenset[str], prefix: str) -> str:
+    assert prefix.isidentifier()
+    output_index = 0
+    output_name = prefix + str(output_index)
+    while output_name in names:
+        output_index += 1
+        output_name = prefix + str(output_index)
+    assert output_name.isidentifier()
+    return output_name
 
 
-_spacer = "--------------------\n"
+def _make_argpiece(p, name_to_annotation, name_to_default):
+    if p.default is inspect.Signature.empty:
+        return f"{p.name}: {name_to_annotation[p.name]}"
+    else:
+        return f"{p.name}: {name_to_annotation[p.name]} = {name_to_default[p.name]}"
+
+
+def _get_problem_arg(
+    param_signature: inspect.Signature, args, kwargs, module, typechecker
+) -> str:
+    """Determines which argument was likely to be the problematic one responsible for
+    raising a type-check error.
+    """
+    # No performance concerns, as this is only used when we're about to raise an error
+    # anyway.
+    for keep_name in param_signature.parameters.keys():
+        new_parameters = []
+        for p_name, p in param_signature.parameters.items():
+            if p_name == keep_name:
+                new_parameters.append(
+                    inspect.Parameter(p.name, p.kind, annotation=p.annotation)
+                )
+            else:
+                new_parameters.append(inspect.Parameter(p.name, p.kind))
+        new_signature = inspect.Signature(new_parameters)
+        fn = _make_fn_with_signature(
+            "check_single_arg", new_signature, module, output=False
+        )
+        fn = typechecker(fn)  # but no `jaxtyped`; keep the same environment.
+        try:
+            fn(*args, **kwargs)
+        except Exception:
+            return f"\nThe problem arose whilst typechecking argument '{keep_name}'."
+    else:
+        # Could not localise the problem to a single argument -- probably due to
+        # e.g. a mismatched typevar, which each individual argument is okay with.
+        return ""
+
+
+def _remove_typing(x):
+    x = str(x)
+    x = x.replace(" jaxtyping.", " ")
+    x = x.replace("[jaxtyping.", "[")
+    x = x.replace("'jaxtyping.", "'")
+    x = x.replace(" typing.", " ")
+    x = x.replace("[typing.", "[")
+    x = x.replace("'typing.", "'")
+    return x
+
+
+def _pformat(x):
+    # No performance concerns from delayed imports -- this is only used when we're about
+    # to raise an error anyway.
+    try:
+        # TODO(kidger): this is pretty ugly. We have a circular dependency
+        # equinox->jaxtyping->equinox. We could consider moving all the pretty-printing
+        # code from equinox into jaxtyping maybe? Or into some shared dependency?
+        import equinox as eqx
+
+        pformat = eqx.tree_pformat
+    except Exception:
+        import pprint
+
+        pformat = ft.partial(pprint.pformat, indent=2, compact=True)
+    return pformat(x)
 
 
 def _exc_shape_info(memos) -> str:
+    """Gives debug information on the current state of jaxtyping's internal memos.
+    Used in type-checking error messages.
+    """
     single_memo, variadic_memo, pytree_memo = memos
     pieces = []
     if len(single_memo) > 0 or len(variadic_memo) > 0:
@@ -294,9 +653,29 @@ def _exc_shape_info(memos) -> str:
                 pieces.append(f"{name}={shape}")
     if len(pytree_memo) > 0:
         pieces.append(
-            "The current values for each jaxtyping pytree structure annotation are as "
+            "The current values for each jaxtyping PyTree structure annotation are as "
             "follows."
         )
         for name, structure in pytree_memo.items():
             pieces.append(f"{name}={structure}")
     return "\n".join(pieces)
+
+
+class _jaxtyping_note_str(str):
+    """Used with `_no_jaxtyping_note` to flag that a note came from jaxtyping."""
+
+
+def _no_jaxtyping_note(e: Exception) -> bool:
+    """Checks if any of the exception's notes are from jaxtyping."""
+    try:
+        notes = e.__notes__
+    except AttributeError:
+        return True
+    else:
+        for note in notes:
+            if isinstance(note, _jaxtyping_note_str):
+                return False
+        return True
+
+
+_spacer = "--------------------\n"

@@ -41,6 +41,29 @@ def typecheck(request):
     return request.param
 
 
+@pytest.fixture(params=(False, True))
+def jaxtyp(request):
+    import jaxtyping
+
+    if request.param:
+        # New-style
+        # @jaxtyping.jaxtyped(typechecker=typechecker)
+        # def f(...)
+        return lambda typechecker: jaxtyping.jaxtyped(typechecker=typechecker)
+    else:
+        # Old-style
+        # @jaxtyping.jaxtyped
+        # @typechecker
+        # def f(...)
+        def impl(typechecker):
+            def decorator(fn):
+                return jaxtyping.jaxtyped(typechecker(fn))
+
+            return decorator
+
+        return impl
+
+
 @pytest.fixture()
 def getkey():
     def _getkey():
