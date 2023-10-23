@@ -26,7 +26,7 @@ import jax.random as jr
 import pytest
 
 import jaxtyping
-from jaxtyping import Array, Float, jaxtyped, PyTree
+from jaxtyping import Array, Float, PyTree
 
 from .helpers import make_mlp, ParamError
 
@@ -93,9 +93,8 @@ def test_nested_pytrees(getkey, typecheck):
         g([1, 2, make_mlp()])
 
 
-def test_pytree_array(typecheck):
-    @jaxtyped
-    @typecheck
+def test_pytree_array(jaxtyp, typecheck):
+    @jaxtyp(typecheck)
     def g(x: PyTree[Float[jnp.ndarray, "..."]]):
         pass
 
@@ -107,9 +106,8 @@ def test_pytree_array(typecheck):
         g(1.0)
 
 
-def test_pytree_shaped_array(typecheck, getkey):
-    @jaxtyped
-    @typecheck
+def test_pytree_shaped_array(jaxtyp, typecheck, getkey):
+    @jaxtyp(typecheck)
     def g(x: PyTree[Float[jnp.ndarray, "b c"]]):
         pass
 
@@ -196,9 +194,8 @@ def test_subclass_pytree():
     assert not issubclass(int, PyTree)
 
 
-def test_structure_match(typecheck):
-    @jaxtyped
-    @typecheck
+def test_structure_match(jaxtyp, typecheck):
+    @jaxtyp(typecheck)
     def f(x: PyTree[int, " T"], y: PyTree[str, " T"]):
         pass
 
@@ -209,9 +206,8 @@ def test_structure_match(typecheck):
         f(1, ("hi",))
 
 
-def test_structure_prefix(typecheck):
-    @jaxtyped
-    @typecheck
+def test_structure_prefix(jaxtyp, typecheck):
+    @jaxtyp(typecheck)
     def f(x: PyTree[int, " T"], y: PyTree[str, "T ..."]):
         pass
 
@@ -228,9 +224,8 @@ def test_structure_prefix(typecheck):
         f((3, 4, 5), {"a": ("hi", "bye")})
 
 
-def test_structure_suffix(typecheck):
-    @jaxtyped
-    @typecheck
+def test_structure_suffix(jaxtyp, typecheck):
+    @jaxtyp(typecheck)
     def f(x: PyTree[int, " T"], y: PyTree[str, "... T"]):
         pass
 
@@ -245,9 +240,8 @@ def test_structure_suffix(typecheck):
         f((3, 4, 5), {"a": ("hi", "bye")})
 
 
-def test_structure_compose(typecheck):
-    @jaxtyped
-    @typecheck
+def test_structure_compose(jaxtyp, typecheck):
+    @jaxtyp(typecheck)
     def f(x: PyTree[int, " T"], y: PyTree[int, " S"], z: PyTree[str, "S T"]):
         pass
 
@@ -262,8 +256,7 @@ def test_structure_compose(typecheck):
     with pytest.raises(ParamError):
         f((1, 2), {"a": 3}, ({"a": "hi"}, {"a": "bye"}))
 
-    @jaxtyped
-    @typecheck
+    @jaxtyp(typecheck)
     def g(x: PyTree[int, " T"], y: PyTree[int, " S"], z: PyTree[str, "T S"]):
         pass
 
@@ -274,7 +267,7 @@ def test_structure_compose(typecheck):
 
 
 @pytest.mark.parametrize("variadic", (False, True))
-def test_treepath_dependence_function(variadic, typecheck, getkey):
+def test_treepath_dependence_function(variadic, jaxtyp, typecheck, getkey):
     if variadic:
         jtshape = "*?foo"
         shape = (2, 3)
@@ -282,8 +275,7 @@ def test_treepath_dependence_function(variadic, typecheck, getkey):
         jtshape = "?foo"
         shape = (4,)
 
-    @jaxtyped
-    @typecheck
+    @jaxtyp(typecheck)
     def f(
         x: PyTree[Float[Array, jtshape], " T"], y: PyTree[Float[Array, jtshape], " T"]
     ):
@@ -312,7 +304,7 @@ def test_treepath_dependence_dataclass(variadic, typecheck, getkey):
         jtshape = "?foo"
         shape = (4,)
 
-    @jaxtyping._decorator._jaxtyped_typechecker(typecheck)
+    @jaxtyping.jaxtyped(typechecker=typecheck)
     class A(eqx.Module):
         x: PyTree[Float[Array, jtshape], " T"]
         y: PyTree[Float[Array, jtshape], " T"]
@@ -331,9 +323,8 @@ def test_treepath_dependence_dataclass(variadic, typecheck, getkey):
         A((x1, x2), (y2, y1))
 
 
-def test_treepath_dependence_missing_structure_annotation(typecheck, getkey):
-    @jaxtyped
-    @typecheck
+def test_treepath_dependence_missing_structure_annotation(jaxtyp, typecheck, getkey):
+    @jaxtyp(typecheck)
     def f(x: PyTree[Float[Array, "?foo"], " T"], y: PyTree[Float[Array, "?foo"]]):
         pass
 
@@ -343,9 +334,8 @@ def test_treepath_dependence_missing_structure_annotation(typecheck, getkey):
         f(x1, y1)
 
 
-def test_treepath_dependence_multiple_structure_annotation(typecheck, getkey):
-    @jaxtyped
-    @typecheck
+def test_treepath_dependence_multiple_structure_annotation(jaxtyp, typecheck, getkey):
+    @jaxtyp(typecheck)
     def f(x: PyTree[PyTree[Float[Array, "?foo"], " S"], " T"]):
         pass
 
