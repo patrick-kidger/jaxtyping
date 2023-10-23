@@ -187,9 +187,11 @@ elif has_jax:
 
 # Conveniences
 if typing.TYPE_CHECKING:
-    from jax.random import PRNGKeyArray as PRNGKeyArray
-
-    from ._indirection import Scalar as Scalar, ScalarLike as ScalarLike
+    from ._indirection import (
+        PRNGKeyArray as PRNGKeyArray,
+        Scalar as Scalar,
+        ScalarLike as ScalarLike,
+    )
 elif has_jax:
     from ._array_types import Scalar, ScalarLike  # noqa: F401
 

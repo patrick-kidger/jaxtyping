@@ -48,5 +48,8 @@ from typing import (
     Annotated as UInt64,  # noqa: F401
 )
 
-from jax import Array as Scalar  # noqa: F401
+from jax import (
+    Array as PRNGKeyArray,  # noqa: F401
+    Array as Scalar,  # noqa: F401
+)
 from jax.typing import ArrayLike as ScalarLike  # noqa: F401
