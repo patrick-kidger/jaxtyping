@@ -88,6 +88,8 @@ def test_context(getkey):
     with jaxtyped("context"):
         assert isinstance(a, Float[Array, "foo bar"])
         assert not isinstance(b, Float[Array, "foo"])
+    assert isinstance(a, Float[Array, "foo bar"])
+    assert isinstance(b, Float[Array, "foo"])
 
 
 def test_varargs(jaxtyp, typecheck):
