@@ -53,19 +53,24 @@ class _MetaPyTree(type):
         if not hasattr(cls, "leaftype"):
             return True  # Just `isinstance(x, PyTree)`
 
-        single_memo, variadic_memo, pytree_memo = get_shape_memo()
+        single_memo, variadic_memo, pytree_memo, arg_memo = get_shape_memo()
         single_memo_bak = single_memo.copy()
         variadic_memo_bak = variadic_memo.copy()
         pytree_memo_bak = pytree_memo.copy()
+        arg_memo_bak = arg_memo.copy()
         try:
             out = cls._check(obj, pytree_memo)
         except Exception:
-            set_shape_memo(single_memo_bak, variadic_memo_bak, pytree_memo_bak)
+            set_shape_memo(
+                single_memo_bak, variadic_memo_bak, pytree_memo_bak, arg_memo_bak
+            )
             raise
         if out:
             return True
         else:
-            set_shape_memo(single_memo_bak, variadic_memo_bak, pytree_memo_bak)
+            set_shape_memo(
+                single_memo_bak, variadic_memo_bak, pytree_memo_bak, arg_memo_bak
+            )
             return False
 
     def _check(cls, obj, pytree_memo):
