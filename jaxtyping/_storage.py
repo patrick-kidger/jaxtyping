@@ -18,7 +18,7 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import threading
-from typing import Optional
+from typing import Any, Optional
 
 from ._raise import jaxtyping_raise
 
@@ -32,7 +32,9 @@ def _has_shape_memo():
 
 def get_shape_memo():
     if _has_shape_memo():
-        single_memo, variadic_memo, pytree_memo = _shape_storage.memo_stack[-1]
+        single_memo, variadic_memo, pytree_memo, arguments = _shape_storage.memo_stack[
+            -1
+        ]
     else:
         # `isinstance` happening outside any @jaxtyped decorators, e.g. at the
         # global scope. In this case just create a temporary memo, since we're not
@@ -40,21 +42,27 @@ def get_shape_memo():
         single_memo = {}
         variadic_memo = {}
         pytree_memo = {}
-    return single_memo, variadic_memo, pytree_memo
+        arguments = {}
+    return single_memo, variadic_memo, pytree_memo, arguments
 
 
-def set_shape_memo(single_memo, variadic_memo, pytree_memo) -> None:
+def set_shape_memo(single_memo, variadic_memo, pytree_memo, arg_memo) -> None:
     if _has_shape_memo():
-        _shape_storage.memo_stack[-1] = single_memo, variadic_memo, pytree_memo
+        _shape_storage.memo_stack[-1] = (
+            single_memo,
+            variadic_memo,
+            pytree_memo,
+            arg_memo,
+        )
 
 
-def push_shape_memo():
+def push_shape_memo(arguments: dict[str, Any]):
     try:
         memo_stack = _shape_storage.memo_stack
     except AttributeError:
         # Can't be done when `_stack_storage` is created for reasons I forget.
         memo_stack = _shape_storage.memo_stack = []
-    memos = ({}, {}, {})
+    memos = ({}, {}, {}, arguments.copy())
     memo_stack.append(memos)
     return memos
 
