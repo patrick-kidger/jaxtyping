@@ -19,11 +19,12 @@
 
 import functools as ft
 import typing
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 import jax.tree_util as jtu
 import typeguard
 
+from ._raise import jaxtyping_raise_from
 from ._storage import (
     clear_treepath_memo,
     get_shape_memo,
@@ -68,30 +69,41 @@ class _MetaPyTree(type):
             return False
 
     def _check(cls, obj, pytree_memo):
-        # We could use `isinstance` here but that would fail for more complicated
-        # types, e.g. PyTree[tuple[int]]. So at least internally we make a particular
-        # choice of typechecker.
-        #
-        # Deliberately not using @jaxtyped so that we share the same `memo` as whatever
-        # dynamic context we're currently in.
-        @typeguard.typechecked
-        def accepts_leaftype(x: cls.leaftype):
-            pass
+        if cls.leaftype is Any:
 
-        def is_leaftype(x, new_scope=True):
-            if new_scope and cls.structure is not None:
-                set_treepath_memo(None, cls.structure)
-            try:
-                accepts_leaftype(x)
-            except _TypeCheckError:
+            def is_flatten_leaftype(x):
                 return False
-            else:
-                return True
-            finally:
-                if new_scope and cls.structure is not None:
-                    clear_treepath_memo()
 
-        leaves, structure = jtu.tree_flatten(obj, is_leaf=is_leaftype)
+            def is_check_leaftype(x, new_scope):
+                return True
+
+        else:
+            # We could use `isinstance` here but that would fail for more complicated
+            # types, e.g. PyTree[tuple[int]]. So at least internally we make a
+            # particular choice of typechecker.
+            #
+            # Deliberately not using @jaxtyped so that we share the same `memo` as
+            # whatever dynamic context we're currently in.
+            @typeguard.typechecked
+            def accepts_leaftype(x: cls.leaftype):
+                pass
+
+            def is_leaftype(x, new_scope=True):
+                if new_scope and cls.structure is not None:
+                    set_treepath_memo(None, cls.structure)
+                try:
+                    accepts_leaftype(x)
+                except _TypeCheckError:
+                    return False
+                else:
+                    return True
+                finally:
+                    if new_scope and cls.structure is not None:
+                        clear_treepath_memo()
+
+            is_flatten_leaftype = is_check_leaftype = is_leaftype
+
+        leaves, structure = jtu.tree_flatten(obj, is_leaf=is_flatten_leaftype)
         if cls.structure is not None:
             if cls.structure.isidentifier():
                 try:
@@ -119,10 +131,14 @@ class _MetaPyTree(type):
                     try:
                         prev_structure = pytree_memo[identifier]
                     except KeyError as e:
-                        raise NameError(
-                            f"Cannot process composite structure '{cls.structure}' as "
-                            f"the structure name {identifier} has not been seen before."
-                        ) from e
+                        jaxtyping_raise_from(
+                            NameError(
+                                f"Cannot process composite structure '{cls.structure}' "
+                                f"as the structure name {identifier} has not been seen "
+                                "before."
+                            ),
+                            e,
+                        )
                     # Not using `PyTreeDef.compose` due to JAX bug #18218.
                     prev_pytree = jtu.tree_unflatten(
                         prev_structure, [0] * prev_structure.num_leaves
@@ -152,7 +168,7 @@ class _MetaPyTree(type):
             for leaf_index, leaf in enumerate(leaves):
                 if cls.structure is not None:
                     set_treepath_memo(leaf_index, cls.structure)
-                if not is_leaftype(leaf, new_scope=False):
+                if not is_check_leaftype(leaf, new_scope=False):
                     return False
                 clear_treepath_memo()
         finally:

@@ -2,26 +2,39 @@
 
 (See the [FAQ](../faq.md) for details on static type checking.)
 
-Runtime type checking **synergises beautifully with `jax.jit`!** All shape checks will be performed at trace-time only, and will not impact runtime performance.
+Runtime type checking **synergises beautifully with `jax.jit`!** All shape checks will be performed only whilst tracing, and will not impact runtime performance.
 
-Runtime type-checking should be performed using a library like [typeguard](https://github.com/agronholm/typeguard) or [beartype](https://github.com/beartype/beartype).
+There are two approaches: either use [`jaxtyping.jaxtyped`][] to typecheck a single function, or [`jaxtyping.install_import_hook`][] to typecheck a whole codebase.
 
-The types provided by `jaxtyping`, e.g. `Float[Array, "batch channels"]`, are all compatible with `isinstance` checks, e.g. `isinstance(x, Float[Array, "batch channels"])`. This means that jaxtyping should be compatible with all runtime type checkers out-of-the-box.
+In either case, the actual business of checking types is performed with the help of a runtime type-checking library. The two most popular are [beartype](https://github.com/beartype/beartype) and [typeguard](https://github.com/agronholm/typeguard). (If using typeguard, then specifically the version `2.*` series should be used. Later versions -- `3` and `4` -- have some known issues.)
 
-Some additional context is needed to ensure consistency between multiple argments (i.e. that shapes match up between arrays). For this, you can use either `jaxtyping.jaxtyped` to add this capability to a single function, or `jaxtyping.install_import_hook` to add this capability to a whole codebase. If either are too much magic for you, you can safely use neither and have just single-argument type checking.
+---
 
 ::: jaxtyping.jaxtyped
 
 ---
 
-It can be a lot of effort to add `@jaxtyped` decorators all over your codebase.
-(Not to mention that double-decorators everywhere are a bit ugly.)
-
-The easier option is usually to use the import hook.
-
 ::: jaxtyping.install_import_hook
 
 ---
+
+#### Pytest hook
+
+The import hook can be installed at test-time only, as a pytest hook. From the command line the syntax is:
+```
+pytest --jaxtyping-packages=foo,bar.baz,beartype.beartype
+```
+or in `pyproject.toml`:
+```toml
+[tool.pytest.ini_options]
+addopts = "--jaxtyping-packages=foo,bar.baz,beartype.beartype"
+```
+or in `pytest.ini`:
+```ini
+[pytest]
+addopts = --jaxtyping-packages=foo,bar.baz,beartype.beartype
+```
+This example will apply the import hook to all modules whose names start with either `foo` or `bar.baz`. The typechecker used in this example is `beartype.beartype`.
 
 #### IPython extension
 
@@ -32,3 +45,7 @@ import jaxtyping
 %jaxtyping.typechecker beartype.beartype  # or any other runtime type checker
 ```
 Place this at the start of your notebook -- everything that is directly defined in the notebook, after this magic is run, will be hook'd.
+
+#### Other runtime type-checking libraries
+
+Beartype and typeguard happen to be the two most popular runtime type-checking libraries (at least at time of writing), but jaxtyping should be compatible with all runtime type checkers out-of-the-box. The runtime type-checking library just needs to provide a type-checking decorator (analgous to `beartype.beartype` or `typeguard.typechecked`), and perform `isinstance` checks against jaxtyping's types.

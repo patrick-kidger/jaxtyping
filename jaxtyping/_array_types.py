@@ -27,6 +27,7 @@ from typing import Any, Literal, NoReturn, Optional, Union
 
 import numpy as np
 
+from ._raise import jaxtyping_raise, jaxtyping_raise_from
 from ._storage import get_shape_memo, get_treepath_memo, set_shape_memo
 
 
@@ -124,13 +125,16 @@ def _check_dims(
                 # Make a copy to avoid `__builtins__` getting added as a key.
                 eval_size = eval(cls_dim.expr, single_memo.copy())
             except NameError as e:
-                raise NameError(
-                    f"Cannot process symbolic dimension '{cls_dim.elem_string}' as "
-                    "some dimension names have not been processed. In practice you "
-                    "should usually only use symbolic dimensions in annotations for "
-                    "return types, referring only to dimensions annotated for "
-                    "arguments."
-                ) from e
+                jaxtyping_raise_from(
+                    NameError(
+                        f"Cannot process symbolic dimension '{cls_dim.elem_string}' as "
+                        "some dimension names have not been processed. In practice you "
+                        "should usually only use symbolic dimensions in annotations "
+                        "for return types, referring only to dimensions annotated for "
+                        "arguments."
+                    ),
+                    e,
+                )
             if eval_size != obj_size:
                 return False
         else:
@@ -186,8 +190,8 @@ class _MetaAbstractArray(type):
             if len(repr_dtype) == 2 and repr_dtype[0] == "torch":
                 dtype = repr_dtype[1]
             else:
-                raise RuntimeError(
-                    "Unrecognised array/tensor type to extract dtype from"
+                jaxtyping_raise(
+                    RuntimeError("Unrecognised array/tensor type to extract dtype from")
                 )
 
         if cls.dtypes is not _any_dtype:
@@ -553,10 +557,12 @@ def _make_array(array_type, dim_str, dtypes, name):
 
 class _MetaAbstractDtype(type):
     def __instancecheck__(cls, obj: Any) -> NoReturn:
-        raise RuntimeError(
-            f"Do not use `isinstance(x, jaxtyping.{cls.__name__})`. If you want to "
-            "check just the dtype of an array, then use "
-            f'`jaxtyping.{cls.__name__}[jnp.ndarray, "..."]`.'
+        jaxtyping_raise(
+            RuntimeError(
+                f"Do not use `isinstance(x, jaxtyping.{cls.__name__})`. If you want to "
+                "check just the dtype of an array, then use "
+                f'`jaxtyping.{cls.__name__}[jnp.ndarray, "..."]`.'
+            )
         )
 
     def __getitem__(cls, item: tuple[Any, str]):
@@ -567,6 +573,7 @@ class _MetaAbstractDtype(type):
                 "Ellipsis can be used to accept any shape: `Float[Array, '...']`."
             )
         array_type, dim_str = item
+        dim_str = dim_str.strip()
         del item
         if typing.get_origin(array_type) in _union_types:
             out = [
