@@ -29,7 +29,7 @@ import pytest
 import jaxtyping
 
 
-_here = pathlib.Path(__file__).resolve().parent
+_here = pathlib.Path(__file__).parent
 
 
 try:
