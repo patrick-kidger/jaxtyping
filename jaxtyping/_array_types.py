@@ -89,10 +89,9 @@ class _FixedDim:
 
 
 class _SymbolicDim:
-    def __init__(self, expr, broadcastable, elem_string):
-        self.expr = expr
+    def __init__(self, elem, broadcastable):
+        self.elem = elem
         self.broadcastable = broadcastable
-        self.elem_string = elem_string
 
 
 _AbstractDimOrVariadicDim = Union[
@@ -110,6 +109,7 @@ def _check_dims(
     cls_dims: list[_AbstractDim],
     obj_shape: tuple[int, ...],
     single_memo: dict[str, int],
+    arg_memo: dict[str, Any],
 ) -> bool:
     assert len(cls_dims) == len(obj_shape)
     for cls_dim, obj_size in zip(cls_dims, obj_shape):
@@ -122,12 +122,15 @@ def _check_dims(
                 return False
         elif type(cls_dim) is _SymbolicDim:
             try:
+                # Support f-string syntax.
+                # https://stackoverflow.com/a/53671539/22545467
+                elem = eval(f"f'{cls_dim.elem}'", arg_memo.copy())
                 # Make a copy to avoid `__builtins__` getting added as a key.
-                eval_size = eval(cls_dim.expr, single_memo.copy())
+                eval_size = eval(elem, single_memo.copy())
             except NameError as e:
                 jaxtyping_raise_from(
                     NameError(
-                        f"Cannot process symbolic axis '{cls_dim.elem_string}' as "
+                        f"Cannot process symbolic axis '{cls_dim.elem}' as "
                         "some axis names have not been processed. In practice you "
                         "should usually only use symbolic axes in annotations "
                         "for return types, referring only to axes annotated for "
@@ -208,19 +211,24 @@ class _MetaAbstractArray(type):
             if not in_dtypes:
                 return False
 
-        single_memo, variadic_memo, pytree_memo = get_shape_memo()
+        single_memo, variadic_memo, pytree_memo, arg_memo = get_shape_memo()
         single_memo_bak = single_memo.copy()
         variadic_memo_bak = variadic_memo.copy()
         pytree_memo_bak = pytree_memo.copy()
+        arg_memo_bak = arg_memo.copy()
         try:
-            check = cls._check_shape(obj, single_memo, variadic_memo)
+            check = cls._check_shape(obj, single_memo, variadic_memo, arg_memo)
         except Exception:
-            set_shape_memo(single_memo_bak, variadic_memo_bak, pytree_memo_bak)
+            set_shape_memo(
+                single_memo_bak, variadic_memo_bak, pytree_memo_bak, arg_memo_bak
+            )
             raise
         if check:
             return True
         else:
-            set_shape_memo(single_memo_bak, variadic_memo_bak, pytree_memo_bak)
+            set_shape_memo(
+                single_memo_bak, variadic_memo_bak, pytree_memo_bak, arg_memo_bak
+            )
             return False
 
     def _check_shape(
@@ -228,11 +236,12 @@ class _MetaAbstractArray(type):
         obj,
         single_memo: dict[str, int],
         variadic_memo: dict[str, tuple[bool, tuple[int, ...]]],
+        arg_memo: dict[str, Any],
     ):
         if cls.index_variadic is None:
             if obj.ndim != len(cls.dims):
                 return False
-            return _check_dims(cls.dims, obj.shape, single_memo)
+            return _check_dims(cls.dims, obj.shape, single_memo, arg_memo)
         else:
             if obj.ndim < len(cls.dims) - 1:
                 return False
@@ -240,10 +249,10 @@ class _MetaAbstractArray(type):
             j = -(len(cls.dims) - i - 1)
             if j == 0:
                 j = None
-            if not _check_dims(cls.dims[:i], obj.shape[:i], single_memo):
+            if not _check_dims(cls.dims[:i], obj.shape[:i], single_memo, arg_memo):
                 return False
             if j is not None and not _check_dims(
-                cls.dims[j:], obj.shape[j:], single_memo
+                cls.dims[j:], obj.shape[j:], single_memo, arg_memo
             ):
                 return False
             variadic_dim = cls.dims[i]
@@ -475,9 +484,7 @@ def _make_array(array_type, dim_str, dtypes, name):
                     "Cannot have a symbolic axis with tree-path dependence, e.g. "
                     "`?foo+bar` is not allowed"
                 )
-            elem_string = elem
-            elem = compile(elem, "<string>", "eval")
-            elem = _SymbolicDim(elem, broadcastable, elem_string)
+            elem = _SymbolicDim(elem, broadcastable)
         dims.append(elem)
     dims = tuple(dims)
 
