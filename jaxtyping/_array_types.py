@@ -127,10 +127,10 @@ def _check_dims(
             except NameError as e:
                 jaxtyping_raise_from(
                     NameError(
-                        f"Cannot process symbolic dimension '{cls_dim.elem_string}' as "
-                        "some dimension names have not been processed. In practice you "
-                        "should usually only use symbolic dimensions in annotations "
-                        "for return types, referring only to dimensions annotated for "
+                        f"Cannot process symbolic axis '{cls_dim.elem_string}' as "
+                        "some axis names have not been processed. In practice you "
+                        "should usually only use symbolic axes in annotations "
+                        "for return types, referring only to axes annotated for "
                         "arguments."
                     ),
                     e,
@@ -341,18 +341,18 @@ def _make_array(array_type, dim_str, dtypes, name):
         if "," in elem and "(" not in elem:
             # Common mistake.
             # Disable in the case that there's brackets to allow for function calls,
-            # e.g. `min(foo,bar)`, in symbolic dimensions.
-            raise ValueError("Dimensions should be separated with spaces, not commas")
+            # e.g. `min(foo,bar)`, in symbolic axes.
+            raise ValueError("Axes should be separated with spaces, not commas")
         if elem.endswith("#"):
             raise ValueError(
-                "As of jaxtyping v0.1.0, broadcastable dimensions are now denoted "
+                "As of jaxtyping v0.1.0, broadcastable axes are now denoted "
                 "with a # at the start, rather than at the end"
             )
 
         if "..." in elem:
             if elem != "...":
                 raise ValueError(
-                    "Anonymous multiple dimension '...' must be used on its own; "
+                    "Anonymous multiple axes '...' must be used on its own; "
                     f"got {elem}"
                 )
             broadcastable = False
@@ -382,7 +382,7 @@ def _make_array(array_type, dim_str, dtypes, name):
                     if variadic:
                         raise ValueError(
                             "Do not use * twice to denote accepting multiple "
-                            "dimensions, e.g. `**foo` is not allowed"
+                            "axes, e.g. `**foo` is not allowed"
                         )
                     variadic = True
                     elem = elem[1:]
@@ -421,7 +421,7 @@ def _make_array(array_type, dim_str, dtypes, name):
         if variadic:
             if index_variadic is not None:
                 raise ValueError(
-                    "Cannot use multiple-dimension specifiers (`*name` or `...`) "
+                    "Cannot use variadic specifiers (`*name` or `...`) "
                     "more than once."
                 )
             index_variadic = index
@@ -429,7 +429,7 @@ def _make_array(array_type, dim_str, dtypes, name):
         if dim_type is _DimType.fixed:
             if variadic:
                 raise ValueError(
-                    "Cannot have a fixed axis bind to multiple dimensions, e.g. "
+                    "Cannot have a fixed axis bind to multiple axes, e.g. "
                     "`*4` is not allowed."
                 )
             if anonymous:
@@ -446,7 +446,7 @@ def _make_array(array_type, dim_str, dtypes, name):
             if anonymous:
                 if broadcastable:
                     raise ValueError(
-                        "Cannot have a dimension be both anonymous and "
+                        "Cannot have an axis be both anonymous and "
                         "broadcastable, e.g. `#_` is not allowed."
                     )
                 if variadic:
@@ -462,17 +462,17 @@ def _make_array(array_type, dim_str, dtypes, name):
             assert dim_type is _DimType.symbolic
             if anonymous:
                 raise ValueError(
-                    "Cannot have a symbolic dimension be anonymous, e.g. "
+                    "Cannot have a symbolic axis be anonymous, e.g. "
                     "`_foo+bar` is not allowed"
                 )
             if variadic:
                 raise ValueError(
-                    "Cannot have symbolic multiple-dimensions, e.g. "
+                    "Cannot have symbolic multiple-axes, e.g. "
                     "`*foo+bar` is not allowed"
                 )
             if treepath:
                 raise ValueError(
-                    "Cannot have a symbolic dimensions with tree-path dependence, e.g. "
+                    "Cannot have a symbolic axis with tree-path dependence, e.g. "
                     "`?foo+bar` is not allowed"
                 )
             elem_string = elem
@@ -520,7 +520,7 @@ def _make_array(array_type, dim_str, dtypes, name):
                 index_variadic = array_type.index_variadic + len(dims)
             else:
                 raise ValueError(
-                    "Cannot use multiple-dimension specifiers (`*name` or `...`) "
+                    "Cannot use variadic specifiers (`*name` or `...`) "
                     "in both the original array and the extended array"
                 )
         dims = dims + array_type.dims
