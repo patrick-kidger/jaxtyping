@@ -33,7 +33,6 @@ from jaxtyping import (
     Bool,
     Float,
     Float32,
-    jaxtyped,
     PRNGKeyArray,
     Shaped,
 )
@@ -41,9 +40,8 @@ from jaxtyping import (
 from .helpers import ParamError, ReturnError
 
 
-def test_basic(typecheck):
-    @jaxtyped
-    @typecheck
+def test_basic(jaxtyp, typecheck):
+    @jaxtyp(typecheck)
     def g(x: Shaped[Array, "..."]):
         pass
 
@@ -82,16 +80,14 @@ def test_dtypes():
             assert key == val.__name__
 
 
-def test_return(typecheck, getkey):
-    @jaxtyped
-    @typecheck
+def test_return(jaxtyp, typecheck, getkey):
+    @jaxtyp(typecheck)
     def g(x: Float[Array, "b c"]) -> Float[Array, "c b"]:
         return jnp.transpose(x)
 
     g(jr.normal(getkey(), (3, 4)))
 
-    @jaxtyped
-    @typecheck
+    @jaxtyp(typecheck)
     def h(x: Float[Array, "b c"]) -> Float[Array, "b c"]:
         return jnp.transpose(x)
 
@@ -99,9 +95,8 @@ def test_return(typecheck, getkey):
         h(jr.normal(getkey(), (3, 4)))
 
 
-def test_two_args(typecheck, getkey):
-    @jaxtyped
-    @typecheck
+def test_two_args(jaxtyp, typecheck, getkey):
+    @jaxtyp(typecheck)
     def g(x: Shaped[Array, "b c"], y: Shaped[Array, "c d"]):
         return x @ y
 
@@ -109,8 +104,7 @@ def test_two_args(typecheck, getkey):
     with pytest.raises(ParamError):
         g(jr.normal(getkey(), (3, 4)), jr.normal(getkey(), (5, 4)))
 
-    @jaxtyped
-    @typecheck
+    @jaxtyp(typecheck)
     def h(x: Shaped[Array, "b c"], y: Shaped[Array, "c d"]) -> Shaped[Array, "b d"]:
         return x @ y
 
@@ -119,9 +113,8 @@ def test_two_args(typecheck, getkey):
         h(jr.normal(getkey(), (3, 4)), jr.normal(getkey(), (5, 4)))
 
 
-def test_any_dtype(typecheck, getkey):
-    @jaxtyped
-    @typecheck
+def test_any_dtype(jaxtyp, typecheck, getkey):
+    @jaxtyp(typecheck)
     def g(x: Shaped[Array, "a b"]) -> Shaped[Array, "a b"]:
         return x
 
@@ -136,14 +129,12 @@ def test_any_dtype(typecheck, getkey):
         g(jr.normal(getkey(), (1,)))
 
 
-def test_nested_jaxtyped(typecheck, getkey):
-    @jaxtyped
-    @typecheck
+def test_nested_jaxtyped(jaxtyp, typecheck, getkey):
+    @jaxtyp(typecheck)
     def g(x: Float32[Array, "b c"], transpose: bool) -> Float32[Array, "c b"]:
         return h(x, transpose)
 
-    @jaxtyped
-    @typecheck
+    @jaxtyp(typecheck)
     def h(x: Float32[Array, "c b"], transpose: bool) -> Float32[Array, "b c"]:
         if transpose:
             return jnp.transpose(x)
@@ -157,9 +148,8 @@ def test_nested_jaxtyped(typecheck, getkey):
         g(jr.normal(getkey(), (2, 3)), False)
 
 
-def test_nested_nojaxtyped(typecheck, getkey):
-    @jaxtyped
-    @typecheck
+def test_nested_nojaxtyped(jaxtyp, typecheck, getkey):
+    @jaxtyp(typecheck)
     def g(x: Float32[Array, "b c"]):
         return h(x)
 
@@ -171,9 +161,8 @@ def test_nested_nojaxtyped(typecheck, getkey):
         g(jr.normal(getkey(), (2, 3)))
 
 
-def test_isinstance(typecheck, getkey):
-    @jaxtyped
-    @typecheck
+def test_isinstance(jaxtyp, typecheck, getkey):
+    @jaxtyp(typecheck)
     def g(x: Float32[Array, "b c"]) -> Float32[Array, " z"]:
         y = jnp.transpose(x)
         assert isinstance(y, Float32[Array, "c b"])
@@ -187,9 +176,8 @@ def test_isinstance(typecheck, getkey):
     g(jr.normal(getkey(), (2, 3)))
 
 
-def test_fixed(typecheck, getkey):
-    @jaxtyped
-    @typecheck
+def test_fixed(jaxtyp, typecheck, getkey):
+    @jaxtyp(typecheck)
     def g(
         x: Float32[Array, "4 5 foo"], y: Float32[Array, " foo"]
     ) -> Float32[Array, "4 5"]:
@@ -204,9 +192,8 @@ def test_fixed(typecheck, getkey):
         g(c, b)
 
 
-def test_anonymous(typecheck, getkey):
-    @jaxtyped
-    @typecheck
+def test_anonymous(jaxtyp, typecheck, getkey):
+    @jaxtyp(typecheck)
     def g(x: Float32[Array, "foo _"], y: Float32[Array, " _"]):
         pass
 
@@ -215,9 +202,8 @@ def test_anonymous(typecheck, getkey):
     g(a, b)
 
 
-def test_named_variadic(typecheck, getkey):
-    @jaxtyped
-    @typecheck
+def test_named_variadic(jaxtyp, typecheck, getkey):
+    @jaxtyp(typecheck)
     def g(
         x: Float32[Array, "*batch foo"],
         y: Float32[Array, " *batch"],
@@ -240,8 +226,7 @@ def test_named_variadic(typecheck, getkey):
     with pytest.raises(ParamError):
         g(a2, b1, c)
 
-    @jaxtyped
-    @typecheck
+    @jaxtyp(typecheck)
     def h(x: Float32[Array, " foo *batch"], y: Float32[Array, " foo *batch bar"]):
         pass
 
@@ -255,9 +240,8 @@ def test_named_variadic(typecheck, getkey):
         h(b, c)
 
 
-def test_anonymous_variadic(typecheck, getkey):
-    @jaxtyped
-    @typecheck
+def test_anonymous_variadic(jaxtyp, typecheck, getkey):
+    @jaxtyp(typecheck)
     def g(x: Float32[Array, "... foo"], y: Float32[Array, " foo"]):
         pass
 
@@ -277,9 +261,8 @@ def test_anonymous_variadic(typecheck, getkey):
         g(a3, c)
 
 
-def test_broadcast_fixed(typecheck, getkey):
-    @jaxtyped
-    @typecheck
+def test_broadcast_fixed(jaxtyp, typecheck, getkey):
+    @jaxtyp(typecheck)
     def g(x: Float32[Array, "#4"]):
         pass
 
@@ -290,9 +273,8 @@ def test_broadcast_fixed(typecheck, getkey):
         g(jr.normal(getkey(), (3,)))
 
 
-def test_broadcast_named(typecheck, getkey):
-    @jaxtyped
-    @typecheck
+def test_broadcast_named(jaxtyp, typecheck, getkey):
+    @jaxtyp(typecheck)
     def g(x: Float32[Array, " #foo"], y: Float32[Array, " #foo"]):
         pass
 
@@ -314,9 +296,8 @@ def test_broadcast_named(typecheck, getkey):
         g(b, a)
 
 
-def test_broadcast_variadic_named(typecheck, getkey):
-    @jaxtyped
-    @typecheck
+def test_broadcast_variadic_named(jaxtyp, typecheck, getkey):
+    @jaxtyp(typecheck)
     def g(x: Float32[Array, " *#foo"], y: Float32[Array, " *#foo"]):
         pass
 
@@ -373,9 +354,8 @@ def test_broadcast_variadic_named(typecheck, getkey):
         g(o, a)
 
 
-def test_variadic_mixed_broadcast1(typecheck, getkey):
-    @jaxtyped
-    @typecheck
+def test_variadic_mixed_broadcast(jaxtyp, typecheck, getkey):
+    @jaxtyp(typecheck)
     def f(x: Float[Array, " *foo"], y: Float[Array, " #*foo"]):
         pass
 
@@ -389,9 +369,8 @@ def test_variadic_mixed_broadcast1(typecheck, getkey):
     f(c, d)
 
 
-def test_variadic_mixed_broadcast2(typecheck, getkey):
-    @jaxtyped
-    @typecheck
+def test_variadic_mixed_broadcast2(jaxtyp, typecheck, getkey):
+    @jaxtyp(typecheck)
     def f(x: Float[Array, " *#foo"], y: Float[Array, " *foo"]):
         pass
 
@@ -405,9 +384,8 @@ def test_variadic_mixed_broadcast2(typecheck, getkey):
     f(c, d)
 
 
-def test_variadic_mixed_broadcast3(typecheck, getkey):
-    @jaxtyped
-    @typecheck
+def test_variadic_mixed_broadcast3(jaxtyp, typecheck, getkey):
+    @jaxtyp(typecheck)
     def f(
         x: Float[Array, "*B L D"],
         *,
@@ -427,24 +405,20 @@ def test_no_commas():
         Float32[Array, "foo, bar"]
 
 
-def test_symbolic(typecheck, getkey):
-    @jaxtyped
-    @typecheck
+def test_symbolic(jaxtyp, typecheck, getkey):
+    @jaxtyp(typecheck)
     def make_slice(x: Float32[Array, " dim"]) -> Float32[Array, " dim-1"]:
         return x[1:]
 
-    @jaxtyped
-    @typecheck
+    @jaxtyp(typecheck)
     def cat(x: Float32[Array, " dim"]) -> Float32[Array, " 2*dim"]:
         return jnp.concatenate([x, x])
 
-    @jaxtyped
-    @typecheck
+    @jaxtyp(typecheck)
     def bad_make_slice(x: Float32[Array, " dim"]) -> Float32[Array, " dim-1"]:
         return x
 
-    @jaxtyped
-    @typecheck
+    @jaxtyp(typecheck)
     def bad_cat(x: Float32[Array, " dim"]) -> Float32[Array, " 2*dim"]:
         return jnp.concatenate([x, x, x])
 
@@ -464,9 +438,8 @@ def test_symbolic(typecheck, getkey):
         bad_cat(x)
 
 
-def test_incomplete_symbolic(typecheck, getkey):
-    @jaxtyped
-    @typecheck
+def test_incomplete_symbolic(jaxtyp, typecheck, getkey):
+    @jaxtyp(typecheck)
     def foo(x: Float32[Array, " 2*dim"]):
         pass
 
@@ -573,9 +546,8 @@ def test_py310_unions():
     assert isinstance(x, get_args(y))
 
 
-def test_key(typecheck):
-    @jaxtyped
-    @typecheck
+def test_key(jaxtyp, typecheck):
+    @jaxtyp(typecheck)
     def f(x: PRNGKeyArray):
         pass
 
@@ -592,7 +564,7 @@ def test_key(typecheck):
         f(jnp.array(3.0))
 
 
-def test_extension(typecheck, getkey):
+def test_extension(jaxtyp, typecheck, getkey):
     X = Shaped[Array, "a b"]
     Y = Shaped[X, "c d"]
     Z = Shaped[Array, "c d a b"]
@@ -601,8 +573,7 @@ def test_extension(typecheck, getkey):
     X = Float[Array, "a"]
     Y = Float[X, "b"]
 
-    @jaxtyped
-    @typecheck
+    @jaxtyp(typecheck)
     def f(a: X, b: Y):
         ...
 
