@@ -448,6 +448,41 @@ def test_incomplete_symbolic(jaxtyp, typecheck, getkey):
         foo(x)
 
 
+def test_deferred_symbolic_good(jaxtyp, typecheck):
+    @jaxtyp(typecheck)
+    def foo(dim: int, fill: Float[Array, ""]) -> Float[Array, " {dim}"]:
+        return jnp.full((dim,), fill)
+
+    class A:
+        size = 5
+
+        @jaxtyp(typecheck)
+        def bar(self, fill: Float[Array, ""]) -> Float[Array, " {self.size}"]:
+            return jnp.full((self.size,), fill)
+
+    foo(3, jnp.array(0.0))
+    A().bar(jnp.array(0.0))
+
+
+def test_deferred_symbolic_bad(jaxtyp, typecheck):
+    @jaxtyp(typecheck)
+    def foo(dim: int, fill: Float[Array, ""]) -> Float[Array, " {dim-1}"]:
+        return jnp.full((dim,), fill)
+
+    class A:
+        size = 5
+
+        @jaxtyp(typecheck)
+        def bar(self, fill: Float[Array, ""]) -> Float[Array, " {self.size}-1"]:
+            return jnp.full((self.size,), fill)
+
+    with pytest.raises(ReturnError):
+        foo(3, jnp.array(0.0))
+
+    with pytest.raises(ReturnError):
+        A().bar(jnp.array(0.0))
+
+
 def test_arraylike(typecheck, getkey):
     floatlike1 = Float32[ArrayLike, ""]
     floatlike2 = Float[ArrayLike, ""]
