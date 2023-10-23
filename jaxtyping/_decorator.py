@@ -117,27 +117,6 @@ def jaxtyped(fn=None, *, typechecker=None):
     If `fn` is a dataclass, then `fn` is returned directly, and additionally its
     `__init__` method is wrapped and modified in-place.
 
-    **Notes for advanced users**
-
-    Put precisely, the axis names in e.g. `Float[Array, "batch channels"]` and the
-    structure names in e.g. `PyTree[int, "T"]` are all scoped to the thread-local
-    dynamic context of a `jaxtyped`-wrapped function. A new dynamic context will allow
-    different values to be bound to the same name. After this new dynamic context is
-    finished then the old one is returned to.
-
-    Binding of a value against a name is done with an `isinstance` check, for example
-    `isinstance(jnp.zeros((3, 4)), Float[Array, "dim1 dim2"])` will bind `dim1=3` and
-    `dim2=4`.
-
-    This means you can use `isinstance` checks inside a function body and have them
-    contribute to the same collection of consistency checks performed by a typechecker
-    against its arguments. (Or even forgo a typechecker that analyses arguments, and
-    instead just do your own manual `isinstance` checks.)
-
-    Only `isinstance` checks that pass will contribute to the store of values; those
-    that fail will not. As such it is safe to write e.g.
-    `assert not isinstance(x, Float32[Array, "foo"])`.
-
     !!! Info "Old syntax"
 
         jaxtyping previously (before v0.2.24) recommended using this double-decorator
@@ -151,6 +130,53 @@ def jaxtyped(fn=None, *, typechecker=None):
         discussed above will produce easier-to-debug error messages. Under the hood, the
         new syntax more carefully manipulates the typechecker so as to determine where
         a type-check error arises.
+
+    ??? Info "Notes for advanced users"
+
+        **Dynamic contexts:**
+
+        Put precisely, the axis names in e.g. `Float[Array, "batch channels"]` and the
+        structure names in e.g. `PyTree[int, "T"]` are all scoped to the thread-local
+        dynamic context of a `jaxtyped`-wrapped function. If from within that function
+        we then call another `jaxtyped`-wrapped function, then a new context is pushed
+        to the stack. The axis sizes and PyTree structures of this inner function will
+        then not be compared against the axis sizes and PyTree structures of the outer
+        function. After the inner function returns then this inner context is popped
+        from the stack, and the previous context is returned to.
+
+        **isinstance:**
+
+        Binding of a value against a name is done with an `isinstance` check, for
+        example `isinstance(jnp.zeros((3, 4)), Float[Array, "dim1 dim2"])` will bind
+        `dim1=3` and `dim2=4`. In practice these `isinstance` checks are usually done by
+        the run-time typechecker `typechecker` that is supplied as an argument.
+
+        This can also be done manually: add `isinstance` checks inside a function body
+        and they will contribute to the same collection of consistency checks as are
+        performed by the typechecker on the arguments and return values. (Or you can
+        forgo such a typechecker altogether -- i.e. `typechecker=None` -- and only do
+        your own manual `isinstance` checks.)
+
+        Only `isinstance` checks that pass will contribute to the store of values; those
+        that fail will not. As such it is safe to write e.g.
+        `assert not isinstance(x, Float32[Array, "foo"])`.
+
+        **Decoupling contexts from function calls:**
+
+        If you would like a new dynamic context *without* calling a new function, then
+        `jaxtyped` may be passed the string `"context"` and used as a context manager:
+        ```python
+        with jaxtyped("context"):
+            assert isinstance(x, Float[Array, "batch channel"])
+        ```
+        which is equivalent to placing this code inside a new function wrapped in
+        `jaxtyped(typechecker=None)`. Usage like this is very rare; it's mostly only
+        useful when working at the global scope.
+
+        Conversely, if you would like to call a new function *without* creating a new
+        dynamic context (and using the same set of axis and structure values), then
+        simply do not add a `jaxtyped` decorator to your inner function, whilst
+        continuing to perform type-checking in whatever way you prefer.
     """
 
     if fn is None:
@@ -210,6 +236,13 @@ def jaxtyped(fn=None, *, typechecker=None):
             fdel = jaxtyped(fn.fdel, typechecker=typechecker)
         return property(fget=fget, fset=fset, fdel=fdel)
     elif fn == "context":
+        if typechecker is not None:
+            raise ValueError(
+                "Cannot use `jaxtyped` as a context with a typechecker. That is, "
+                "`with jaxtyped('context', typechecker=...):`. is not allowed. In this "
+                "case the type checker does not actually do anything, as there is no "
+                "function to type-check."
+            )
         return _JaxtypingContext()
     else:
         if typechecker is None:
@@ -221,9 +254,13 @@ def jaxtyped(fn=None, *, typechecker=None):
             # ```
             # in which case make a best-effort attempt to add shape information for any
             # type errors.
+
+            signature = inspect.signature(fn)
+
             @ft.wraps(fn)
             def wrapped_fn(*args, **kwargs):  # pyright: ignore
-                memos = push_shape_memo()
+                bound = signature.bind(*args, **kwargs)
+                memos = push_shape_memo(bound.arguments)
                 try:
                     return fn(*args, **kwargs)
                 except Exception as e:
@@ -286,9 +323,9 @@ def jaxtyped(fn=None, *, typechecker=None):
             def wrapped_fn(*args, **kwargs):
                 # Raise bind-time errors before we do any shape analysis. (I.e. skip
                 # the pointless jaxtyping information for a non-typechecking failure.)
-                param_signature.bind(*args, **kwargs)
+                bound = param_signature.bind(*args, **kwargs)
 
-                memos = push_shape_memo()
+                memos = push_shape_memo(bound.arguments)
                 try:
                     # First type-check just the parameters before the function is
                     # called.
@@ -376,7 +413,7 @@ def jaxtyped(fn=None, *, typechecker=None):
 
 class _JaxtypingContext:
     def __enter__(self):
-        push_shape_memo()
+        push_shape_memo({})
 
     def __exit__(self, exc_type, exc_value, exc_tb):
         pop_shape_memo()
@@ -639,7 +676,7 @@ def _exc_shape_info(memos) -> str:
     """Gives debug information on the current state of jaxtyping's internal memos.
     Used in type-checking error messages.
     """
-    single_memo, variadic_memo, pytree_memo = memos
+    single_memo, variadic_memo, pytree_memo, _ = memos
     pieces = []
     if len(single_memo) > 0 or len(variadic_memo) > 0:
         pieces.append(

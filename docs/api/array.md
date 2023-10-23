@@ -10,8 +10,9 @@ The shape should be a string of space-separated symbols, such as `"a b c d"`. Ea
 
 - `int`: fixed-size axis, e.g. `"28 28"`.
 - `str`: variable-size axis, e.g. `"channels"`.
-- A symbolic expression (without spaces!) in terms of other variable-size axes, e.g.  
-    `def remove_last(x: Float[Array, "dim"]) -> Float[Array, "dim-1"]`.
+- A symbolic expression in terms of other variable-size axes, e.g.  
+    `def remove_last(x: Float[Array, "dim"]) -> Float[Array, "dim-1"]`.  
+    Symbolic expressions must not use any spaces, otherwise each piece is treated as as a separate axis.
 
 When calling a function, variable-size axes and symbolic axes will be matched up across all arguments and checked for consistency. (See [Runtime type checking](./runtime-type-checking.md).)
 
@@ -19,7 +20,7 @@ When calling a function, variable-size axes and symbolic axes will be matched up
 
 In addition some modifiers can be applied:
 
-- Prepend `*` to an axis to indicate that it can match multiple axes, e.g. `"*batch c h w"` will match zero or more batch axes.
+- Prepend `*` to an axis to indicate that it can match multiple axes, e.g. `"*batch"` will match zero or more batch axes.
 - Prepend `#` to an axis to indicate that it can be that size *or* equal to one -- i.e. broadcasting is acceptable, e.g.  
     `def add(x: Float[Array, "#foo"], y: Float[Array, "#foo"]) -> Float[Array, "#foo"]`.
 - Prepend `_` to an axis to disable any runtime checking of that axis (so that it can be used just as documentation). This can also be used as just `_` on its own: e.g. `"b c _ _"`.
@@ -37,9 +38,18 @@ As a special case:
 - To denote a scalar shape use `""`, e.g. `Float[Array, ""]`.
 - To denote an arbitrary shape (and only check dtype) use `"..."`, e.g. `Float[Array, "..."]`.
 - You cannot have more than one use of multiple-axes, i.e. you can only use `...` or `*name` at most once in each array.
-- An example of broadcasting multiple axes:  
-    `def add(x: Float[Array, "*#foo"], y: Float[Array, "*#foo"]) -> Float[Array, "*#foo"]`.
 - A symbolic expression cannot be evaluated unless all of the axes sizes it refers to have already been processed. In practice this usually means that they should only be used in annotations for the return type, and only use axes declared in the arguments.
+- Symbolic expressions are evaluated in two stages: they are first evaluated as f-strings using the arguments of the function, and second are evaluated using the processed axis sizes. The f-string evaluation means that they can use local variables by enclosing them with curly braces, e.g. `{variable}`, e.g.
+    ```python
+    def full(size: int, fill: float) -> Float[Array, "{shape}"]:
+        return jax.numpy.full((size,), fill)
+
+    class SomeClass:
+        some_value = 5
+
+        def full(self, fill: float) -> Float[Array, "{self.some_value}+3"]:
+            return jax.numpy.full((self.some_value + 3,), fill)
+    ```
 
 ## Dtype
 
