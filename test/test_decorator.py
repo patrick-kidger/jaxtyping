@@ -1,6 +1,8 @@
 import abc
 
-from jaxtyping import jaxtyped
+import jax.random as jr
+
+from jaxtyping import Array, Float, jaxtyped
 
 
 class M(metaclass=abc.ABCMeta):
@@ -75,3 +77,11 @@ def test_abstractmethod():
 def test_property():
     assert N().j1 == 3
     assert N().j2 == 4
+
+
+def test_context(getkey):
+    a = jr.normal(getkey(), (3, 4))
+    b = jr.normal(getkey(), (5,))
+    with jaxtyped("context"):
+        assert isinstance(a, Float[Array, "foo bar"])
+        assert not isinstance(b, Float[Array, "foo"])

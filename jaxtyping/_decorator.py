@@ -118,6 +118,8 @@ def jaxtyped(fn):
         else:
             fdel = jaxtyped(fn.fdel)
         return property(fget=fget, fset=fset, fdel=fdel)
+    elif fn == "context":
+        return _JaxtypingContext()
     else:
 
         @ft.wraps(fn)
@@ -134,6 +136,18 @@ def jaxtyped(fn):
 
         _jaxtyped_fns.add(wrapped_fn)
         return wrapped_fn
+
+
+class _JaxtypingContext:
+    def __enter__(self):
+        try:
+            memo_stack = storage.memo_stack
+        except AttributeError:
+            memo_stack = storage.memo_stack = []
+        memo_stack.append(({}, {}))
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        storage.memo_stack.pop()
 
 
 @jaxtyped
