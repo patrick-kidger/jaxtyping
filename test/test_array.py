@@ -33,7 +33,9 @@ from jaxtyping import (
     Bool,
     Float,
     Float32,
+    Key,
     PRNGKeyArray,
+    Scalar,
     Shaped,
 )
 
@@ -586,8 +588,8 @@ def test_key(jaxtyp, typecheck):
     def f(x: PRNGKeyArray):
         pass
 
-    x = jr.PRNGKey(0)
-    f(x)
+    f(jr.key(0))
+    f(jr.PRNGKey(0))
 
     with pytest.raises(ParamError):
         f(object())
@@ -597,6 +599,30 @@ def test_key(jaxtyp, typecheck):
         f(jnp.array(3))
     with pytest.raises(ParamError):
         f(jnp.array(3.0))
+
+
+def test_key_dtype(jaxtyp, typecheck):
+    @jaxtyp(typecheck)
+    def f1(x: Key[Array, ""]):
+        pass
+
+    @jaxtyp(typecheck)
+    def f2(x: Key[Scalar, ""]):
+        pass
+
+    for f in (f1, f2):
+        f(jr.key(0))
+
+        with pytest.raises(ParamError):
+            f(jr.PRNGKey(0))
+        with pytest.raises(ParamError):
+            f(object())
+        with pytest.raises(ParamError):
+            f(1)
+        with pytest.raises(ParamError):
+            f(jnp.array(3))
+        with pytest.raises(ParamError):
+            f(jnp.array(3.0))
 
 
 def test_extension(jaxtyp, typecheck, getkey):
