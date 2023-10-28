@@ -156,32 +156,12 @@ def _check_dims(
     return True
 
 
-def _is_jax_extended_dtype(dtype: Any) -> bool:
-    if not has_jax:
-        return False
-    try:
-        is_dtype = issubclass(dtype, jax.numpy.generic)
-    except TypeError:
-        # `dtype` not a class
-        return False
-    else:
-        if is_dtype:
-            if hasattr(jax.dtypes, "extended"):  # jax>=0.4.14
-                return jax.numpy.issubdtype(dtype, jax.dtypes.extended)
-            else:  # jax<=0.4.13
-                return jax.core.is_opaque_dtype(dtype)
-        else:
-            return False
-
-
 class _MetaAbstractArray(type):
     def __instancecheck__(cls, obj):
         if not isinstance(obj, cls.array_type):
             return False
 
-        if _is_jax_extended_dtype(obj.dtype):
-            dtype = str(obj.dtype)
-        elif hasattr(obj.dtype, "type") and hasattr(obj.dtype.type, "__name__"):
+        if hasattr(obj.dtype, "type") and hasattr(obj.dtype.type, "__name__"):
             # JAX, numpy
             dtype = obj.dtype.type.__name__
         elif hasattr(obj.dtype, "as_numpy_dtype"):
@@ -646,6 +626,7 @@ class AbstractDtype(metaclass=_MetaAbstractDtype):
         cls.dtypes = dtypes
 
 
+_prng_key = "prng_key"
 _bool = "bool"
 _bool_ = "bool_"
 _uint8 = "uint8"
@@ -714,8 +695,7 @@ Num = _make_dtype(uints + ints + floats + complexes, "Num")
 Shaped = _make_dtype(_any_dtype, "Shaped")
 
 if has_jax:
-    _key_regex = re.compile(r"^key<\w+>$")
-    Key = _make_dtype(_key_regex, "Key")
+    Key = _make_dtype(_prng_key, "Key")
     # New-style `jax.random.key` have scalar shape and dtype `key<foo>`.
     # Old-style `jax.random.PRNGKey` have shape `(2,)` and dtype `uint32`.
     PRNGKeyArray = Union[Key[jax.Array, ""], UInt32[jax.Array, "2"]]
