@@ -54,6 +54,10 @@ class _MetaPyTree(type):
     def __instancecheck__(cls, obj):
         if not hasattr(cls, "leaftype"):
             return True  # Just `isinstance(x, PyTree)`
+        # Handle beartype doing `isinstance(None, hint)` to check if
+        # is `instance`able.
+        if obj is None:
+            return True
 
         single_memo, variadic_memo, pytree_memo, arg_memo = get_shape_memo()
         single_memo_bak = single_memo.copy()
