@@ -26,9 +26,11 @@ import typeguard
 
 from ._raise import jaxtyping_raise_from
 from ._storage import (
+    clear_treeflatten_memo,
     clear_treepath_memo,
     get_shape_memo,
     set_shape_memo,
+    set_treeflatten_memo,
     set_treepath_memo,
 )
 
@@ -79,7 +81,7 @@ class _MetaPyTree(type):
             def is_flatten_leaftype(x):
                 return False
 
-            def is_check_leaftype(x, new_scope):
+            def is_check_leaftype(x):
                 return True
 
         else:
@@ -93,22 +95,21 @@ class _MetaPyTree(type):
             def accepts_leaftype(x: cls.leaftype):
                 pass
 
-            def is_leaftype(x, new_scope=True):
-                if new_scope and cls.structure is not None:
-                    set_treepath_memo(None, cls.structure)
+            def is_leaftype(x):
                 try:
                     accepts_leaftype(x)
                 except _TypeCheckError:
                     return False
                 else:
                     return True
-                finally:
-                    if new_scope and cls.structure is not None:
-                        clear_treepath_memo()
 
             is_flatten_leaftype = is_check_leaftype = is_leaftype
 
-        leaves, structure = jtu.tree_flatten(obj, is_leaf=is_flatten_leaftype)
+        set_treeflatten_memo()
+        try:
+            leaves, structure = jtu.tree_flatten(obj, is_leaf=is_flatten_leaftype)
+        finally:
+            clear_treeflatten_memo()
         if cls.structure is not None:
             if cls.structure.isidentifier():
                 try:
@@ -173,7 +174,7 @@ class _MetaPyTree(type):
             for leaf_index, leaf in enumerate(leaves):
                 if cls.structure is not None:
                     set_treepath_memo(leaf_index, cls.structure)
-                if not is_check_leaftype(leaf, new_scope=False):
+                if not is_check_leaftype(leaf):
                     return False
                 clear_treepath_memo()
         finally:
