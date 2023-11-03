@@ -687,17 +687,25 @@ def _exc_shape_info(memos) -> str:
     Used in type-checking error messages.
     """
     single_memo, variadic_memo, pytree_memo, _ = memos
+    single_memo = {
+        name: size
+        for name, size in single_memo.items()
+        if not name.startswith("~~delete~~")
+    }
+    variadic_memo = {
+        name: shape
+        for name, (_, shape) in variadic_memo.items()
+        if not name.startswith("~~delete~~")
+    }
     pieces = []
     if len(single_memo) > 0 or len(variadic_memo) > 0:
         pieces.append(
             "The current values for each jaxtyping axis annotation are as follows."
         )
         for name, size in single_memo.items():
-            if not name.startswith("~~delete~~"):
-                pieces.append(f"{name}={size}")
-        for name, (_, shape) in variadic_memo.items():
-            if not name.startswith("~~delete~~"):
-                pieces.append(f"{name}={shape}")
+            pieces.append(f"{name}={size}")
+        for name, shape in variadic_memo.items():
+            pieces.append(f"{name}={shape}")
     if len(pytree_memo) > 0:
         pieces.append(
             "The current values for each jaxtyping PyTree structure annotation are as "

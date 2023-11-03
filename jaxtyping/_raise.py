@@ -6,6 +6,7 @@ def jaxtyping_raise(e) -> NoReturn:
     `TypeCheckError`. All `raise` statements from within `__instancecheck__` should use
     this.
     """
+    __tracebackhide__ = True
     try:
         raise e
     except Exception as f:
