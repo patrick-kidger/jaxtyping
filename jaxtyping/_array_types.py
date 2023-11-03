@@ -498,6 +498,16 @@ def _make_array(array_type, dim_str, dtypes, name):
             return array_type
         else:
             return _not_made
+    elif array_type is np.bool_:
+        if _check_scalar("bool", dtypes, dims):
+            return array_type
+        else:
+            return _not_made
+    elif array_type is np.generic or array_type is np.number:
+        if _check_scalar("", dtypes, dims):
+            return array_type
+        else:
+            return _not_made
     if issubclass(array_type, AbstractArray):
         if dtypes is _any_dtype:
             dtypes = array_type.dtypes
