@@ -17,6 +17,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import dataclasses as dc
 import sys
 from typing import get_args, get_origin, Union
 
@@ -33,6 +34,7 @@ from jaxtyping import (
     Bool,
     Float,
     Float32,
+    jaxtyped,
     Key,
     PRNGKeyArray,
     Scalar,
@@ -483,6 +485,19 @@ def test_deferred_symbolic_bad(jaxtyp, typecheck):
 
     with pytest.raises(ReturnError):
         A().bar(jnp.array(0.0))
+
+
+def test_deferred_symbolic_dataclass(typecheck):
+    @jaxtyped(typechecker=typecheck)
+    @dc.dataclass
+    class A:
+        value: int
+        array: Float[Array, " {self.value}"]
+
+    A(3, jnp.zeros(3))
+
+    with pytest.raises(ParamError):
+        A(3, jnp.zeros(4))
 
 
 def test_arraylike(typecheck, getkey):
