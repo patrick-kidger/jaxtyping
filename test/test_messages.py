@@ -15,8 +15,7 @@ def test_arg_localisation(typecheck):
     matches = [
         "Type-check error whilst checking the parameters of f",
         "The problem arose whilst typechecking argument 'z'.",
-        r"Called with args: \('hi', 'bye', 'not-an-int'\)",
-        "Called with kwargs: {}",
+        "Called with arguments: {'x': 'hi', 'y': 'bye', 'z': 'not-an-int'}",
         r"Parameter annotations: \(x: str, y: str, z: int\).",
     ]
     for match in matches:
@@ -32,8 +31,7 @@ def test_arg_localisation(typecheck):
     matches = [
         "Type-check error whilst checking the parameters of g",
         "The problem arose whilst typechecking argument 'y'.",
-        r"Called with args: \(f32\[2,3\],\)",
-        r"Called with kwargs: {'y': f32\[4,3\]}",
+        r"Called with arguments: {'x': f32\[2,3\], 'y': f32\[4,3\]}",
         (
             r"Parameter annotations: \(x: Float\[Array, 'a b'\], y: "
             r"Float\[Array, 'b c'\]\)."
@@ -56,8 +54,7 @@ def test_return(typecheck):
     y = {"a": 1}
     matches = [
         "Type-check error whilst checking the return value of f",
-        r"Called with args: \(\(1, 2\),\)",
-        r"Called with kwargs: {'y': {'a': 1}}",
+        r"Called with arguments: {'x': \(1, 2\), 'y': {'a': 1}}",
         "Return value: 'foo'",
         r"Return annotation: PyTree\[Any, \"T S\"\].",
         (
@@ -86,13 +83,12 @@ def test_dataclass_attribute(typecheck):
     matches = [
         "Type-check error whilst checking the parameters of M",
         "The problem arose whilst typechecking argument 'z'.",
-        r"Called with args: \(\)",
         (
-            r"Called with kwargs: {'x': f32\[2,3\], 'y': \(1, \(3, 4\)\), "
-            r"'z': 'not-an-int'}"
+            r"Called with arguments: {'self': M\(\.\.\.\), 'x': f32\[2,3\], "
+            r"'y': \(1, \(3, 4\)\), 'z': 'not-an-int'}"
         ),
         (
-            r"Parameter annotations: \(x: Float\[Array, '\*foo'\], "
+            r"Parameter annotations: \(self: Any, x: Float\[Array, '\*foo'\], "
             r"y: PyTree\[Any, \"T\"\], z: int\)."
         ),
         "The current values for each jaxtyping axis annotation are as follows.",
