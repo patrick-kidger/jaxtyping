@@ -110,7 +110,7 @@ def test_varkwargs(jaxtyp, typecheck):
 
 def test_defaults(jaxtyp, typecheck):
     @jaxtyp(typecheck)
-    def f(x, y=1):
+    def f(x: int, y=1):
         pass
 
     f(1)
