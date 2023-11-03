@@ -41,7 +41,7 @@ As a special case:
 - A symbolic expression cannot be evaluated unless all of the axes sizes it refers to have already been processed. In practice this usually means that they should only be used in annotations for the return type, and only use axes declared in the arguments.
 - Symbolic expressions are evaluated in two stages: they are first evaluated as f-strings using the arguments of the function, and second are evaluated using the processed axis sizes. The f-string evaluation means that they can use local variables by enclosing them with curly braces, e.g. `{variable}`, e.g.
     ```python
-    def full(size: int, fill: float) -> Float[Array, "{shape}"]:
+    def full(size: int, fill: float) -> Float[Array, "{size}"]:
         return jax.numpy.full((size,), fill)
 
     class SomeClass:
