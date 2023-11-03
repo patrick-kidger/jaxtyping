@@ -342,13 +342,13 @@ def jaxtyped(fn=None, *, typechecker=None):
                                 name = fn.__name__
                             except AttributeError:
                                 name = fn.__class__.__name__
-                            paramstr = _remove_typing(param_signature)
+                            param_values = _pformat(bound.arguments, short_self=True)
+                            param_hints = _remove_typing(param_signature)
                             msg = (
                                 "Type-check error whilst checking the parameters of "
                                 f"{name}.{argmsg}\n"
-                                f"Called with args: {_pformat(args)}\n"
-                                f"Called with kwargs: {_pformat(kwargs)}\n"
-                                f"Parameter annotations: {paramstr}.\n"
+                                f"Called with arguments: {param_values}\n"
+                                f"Parameter annotations: {param_hints}.\n"
                                 + _exc_shape_info(memos)
                             )
                             raise TypeCheckError(msg) from e
@@ -382,23 +382,25 @@ def jaxtyped(fn=None, *, typechecker=None):
                                     name = fn.__name__
                                 except AttributeError:
                                     name = fn.__class__.__name__
-                                paramstr = _remove_typing(param_signature)
-                                returnstr = _remove_typing(
+                                param_values = _pformat(
+                                    bound.arguments, short_self=True
+                                )
+                                return_value = _pformat(out, short_self=False)
+                                param_hints = _remove_typing(param_signature)
+                                return_hint = _remove_typing(
                                     full_signature.return_annotation
                                 )
-                                if returnstr.startswith(
+                                if return_hint.startswith(
                                     "<class '"
-                                ) and returnstr.endswith("'>"):
-                                    returnstr = returnstr[8:-2]
-                                kwargs.pop(output_name)
+                                ) and return_hint.endswith("'>"):
+                                    return_hint = return_hint[8:-2]
                                 msg = (
                                     "Type-check error whilst checking the return value "
                                     f"of {name}.\n"
-                                    f"Called with args: {_pformat(args)}\n"
-                                    f"Called with kwargs: {_pformat(kwargs)}\n"
-                                    f"Return value: {_pformat(out)}\n"
-                                    f"Parameter annotations: {paramstr}.\n"
-                                    f"Return annotation: {returnstr}.\n"
+                                    f"Called with arguments: {param_values}\n"
+                                    f"Return value: {return_value}\n"
+                                    f"Parameter annotations: {param_hints}.\n"
+                                    f"Return annotation: {return_hint}.\n"
                                     + _exc_shape_info(memos)
                                 )
                                 raise TypeCheckError(msg) from e
@@ -425,7 +427,7 @@ def _check_dataclass_annotations(self, typechecker):
     `self` should be a dataclass instancae. `typechecker` should be e.g.
     `beartype.beartype` or `typeguard.typechecked`.
     """
-    parameters = []
+    parameters = [inspect.Parameter("self", inspect.Parameter.POSITIONAL_OR_KEYWORD)]
     values = {}
     for field in dataclasses.fields(self):
         annotation = field.type
@@ -461,7 +463,7 @@ def _check_dataclass_annotations(self, typechecker):
         self.__class__.__name__, signature, module, output=False
     )
     f = jaxtyped(f, typechecker=typechecker)
-    f(**values)
+    f(self, **values)
 
 
 def _make_fn_with_signature(
@@ -655,7 +657,7 @@ def _remove_typing(x):
     return x
 
 
-def _pformat(x):
+def _pformat(x, short_self: bool):
     # No performance concerns from delayed imports -- this is only used when we're about
     # to raise an error anyway.
     try:
@@ -665,6 +667,14 @@ def _pformat(x):
         import equinox as eqx
 
         pformat = eqx.tree_pformat
+        if short_self:
+            try:
+                self = x["self"]
+            except KeyError:
+                pass
+            else:
+                is_self = lambda y: y is self
+                pformat = ft.partial(pformat, truncate_leaf=is_self)
     except Exception:
         import pprint
 
