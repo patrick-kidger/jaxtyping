@@ -496,22 +496,18 @@ def test_arraylike(typecheck, getkey):
     assert set(get_args(floatlike1)) == {
         Float32[Array, ""],
         Float32[np.ndarray, ""],
-        Float32[np.bool_, ""],
         Float32[np.number, ""],
         float,
     }
     assert set(get_args(floatlike2)) == {
         Float[Array, ""],
         Float[np.ndarray, ""],
-        Float[np.bool_, ""],
         Float[np.number, ""],
         float,
     }
     assert set(get_args(floatlike3)) == {
         Float32[Array, "4"],
         Float32[np.ndarray, "4"],
-        Float32[np.bool_, "4"],
-        Float32[np.number, "4"],
     }
 
     shaped1 = Shaped[ArrayLike, ""]
@@ -531,8 +527,6 @@ def test_arraylike(typecheck, getkey):
     assert set(get_args(shaped2)) == {
         Shaped[Array, "4"],
         Shaped[np.ndarray, "4"],
-        Shaped[np.bool_, "4"],
-        Shaped[np.number, "4"],
     }
 
 
