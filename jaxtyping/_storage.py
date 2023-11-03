@@ -104,3 +104,21 @@ def get_treepath_memo() -> str:
             )
         )
     return _treepath_storage.value
+
+
+_treeflatten_storage = threading.local()
+
+
+def clear_treeflatten_memo() -> None:
+    _treeflatten_storage.value = False
+
+
+def set_treeflatten_memo():
+    _treeflatten_storage.value = True
+
+
+def get_treeflatten_memo():
+    try:
+        return _treeflatten_storage.value
+    except AttributeError:
+        return False

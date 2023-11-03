@@ -28,7 +28,12 @@ from typing import Any, Literal, NoReturn, Optional, Union
 import numpy as np
 
 from ._raise import jaxtyping_raise, jaxtyping_raise_from
-from ._storage import get_shape_memo, get_treepath_memo, set_shape_memo
+from ._storage import (
+    get_shape_memo,
+    get_treeflatten_memo,
+    get_treepath_memo,
+    set_shape_memo,
+)
 
 
 try:
@@ -160,6 +165,8 @@ class _MetaAbstractArray(type):
     def __instancecheck__(cls, obj):
         if not isinstance(obj, cls.array_type):
             return False
+        if get_treeflatten_memo():
+            return True
 
         if hasattr(obj.dtype, "type") and hasattr(obj.dtype.type, "__name__"):
             # JAX, numpy
