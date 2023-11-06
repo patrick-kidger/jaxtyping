@@ -109,7 +109,7 @@ class Typechecker:
 
         elif typechecker is None:
             # If it is None, ignore it silently (use dummy decorator)
-            self.hash = 0
+            self.hash = "0"
             Typechecker.lookup[self.hash] = lambda x, *_, **__: x
         else:
             # Passed typechecker is invalid
