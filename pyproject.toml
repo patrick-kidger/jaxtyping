@@ -1,6 +1,6 @@
 [project]
 name = "jaxtyping"
-version = "0.2.23"
+version = "0.2.24"
 description = "Type annotations and runtime checking for shape and dtype of JAX arrays, and PyTrees."
 readme = "README.md"
 requires-python ="~=3.9"
