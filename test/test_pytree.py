@@ -26,7 +26,7 @@ import jax.random as jr
 import pytest
 
 import jaxtyping
-from jaxtyping import Array, Float, PyTree
+from jaxtyping import AnnotationError, Array, Float, PyTree
 
 from .helpers import make_mlp, ParamError
 
@@ -330,7 +330,7 @@ def test_treepath_dependence_missing_structure_annotation(jaxtyp, typecheck, get
 
     x1 = jr.normal(getkey(), (2,))
     y1 = jr.normal(getkey(), (2,))
-    with pytest.raises(ValueError, match="except when contained with structured"):
+    with pytest.raises(AnnotationError, match="except when contained with structured"):
         f(x1, y1)
 
 
@@ -340,5 +340,5 @@ def test_treepath_dependence_multiple_structure_annotation(jaxtyp, typecheck, ge
         pass
 
     x1 = jr.normal(getkey(), (2,))
-    with pytest.raises(ValueError, match="ambiguous which PyTree"):
+    with pytest.raises(AnnotationError, match="ambiguous which PyTree"):
         f(x1)

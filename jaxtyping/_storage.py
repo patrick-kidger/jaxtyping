@@ -20,7 +20,7 @@
 import threading
 from typing import Any, Optional
 
-from ._raise import jaxtyping_raise
+from ._errors import AnnotationError
 
 
 _shape_storage = threading.local()
@@ -80,12 +80,10 @@ def clear_treepath_memo() -> None:
 
 def set_treepath_memo(index: Optional[int], structure: str) -> None:
     if hasattr(_treepath_storage, "value") and _treepath_storage.value is not None:
-        jaxtyping_raise(
-            ValueError(
-                "Cannot typecheck annotations of the form "
-                "`PyTree[PyTree[Shaped[Array, '?foo'], 'T'], 'S']` as it is ambiguous "
-                "which PyTree the `?` annotation refers to."
-            )
+        raise AnnotationError(
+            "Cannot typecheck annotations of the form "
+            "`PyTree[PyTree[Shaped[Array, '?foo'], 'T'], 'S']` as it is ambiguous "
+            "which PyTree the `?` annotation refers to."
         )
     if index is None:
         _treepath_storage.value = f"~~delete~~({structure}) "
@@ -96,12 +94,10 @@ def set_treepath_memo(index: Optional[int], structure: str) -> None:
 
 def get_treepath_memo() -> str:
     if not hasattr(_treepath_storage, "value") or _treepath_storage.value is None:
-        jaxtyping_raise(
-            ValueError(
-                "Cannot use `?` annotations, e.g. `Shaped[Array, '?foo']`, except "
-                "when contained with structured `PyTree` annotations, e.g. "
-                "`PyTree[Shaped[Array, '?foo'], 'T']`."
-            )
+        raise AnnotationError(
+            "Cannot use `?` annotations, e.g. `Shaped[Array, '?foo']`, except "
+            "when contained with structured `PyTree` annotations, e.g. "
+            "`PyTree[Shaped[Array, '?foo'], 'T']`."
         )
     return _treepath_storage.value
 

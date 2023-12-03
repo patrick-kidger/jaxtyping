@@ -29,6 +29,7 @@ import torch
 
 from jaxtyping import (
     AbstractDtype,
+    AnnotationError,
     Array,
     ArrayLike,
     Bool,
@@ -448,7 +449,7 @@ def test_incomplete_symbolic(jaxtyp, typecheck, getkey):
         pass
 
     x = jr.normal(getkey(), (4,))
-    with pytest.raises(NameError):
+    with pytest.raises(AnnotationError):
         foo(x)
 
 

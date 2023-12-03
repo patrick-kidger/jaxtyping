@@ -30,7 +30,11 @@ from ._array_types import (
     set_array_name_format as set_array_name_format,
 )
 from ._config import config as config
-from ._decorator import jaxtyped as jaxtyped, TypeCheckError as TypeCheckError
+from ._decorator import jaxtyped as jaxtyped
+from ._errors import (
+    AnnotationError as AnnotationError,
+    TypeCheckError as TypeCheckError,
+)
 from ._import_hook import install_import_hook as install_import_hook
 from ._ipython_extension import load_ipython_extension as load_ipython_extension
 
