@@ -22,9 +22,7 @@ import functools as ft
 import inspect
 import itertools as it
 import sys
-import types
 import warnings
-import weakref
 from typing import Any, get_args, get_origin, get_type_hints, overload
 
 
@@ -38,9 +36,6 @@ else:
 
 from ._config import config
 from ._storage import pop_shape_memo, push_shape_memo
-
-
-_jaxtyped_fns = weakref.WeakSet()
 
 
 class TypeCheckError(TypeError):
@@ -244,8 +239,6 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
 
     if fn is _sentinel:
         return ft.partial(jaxtyped, typechecker=typechecker)
-    elif type(fn) is types.FunctionType and fn in _jaxtyped_fns:
-        return fn
     elif inspect.isclass(fn):
         if dataclasses.is_dataclass(fn) and typechecker is not None:
             # This does not check that the arguments passed to `__init__` match the
@@ -472,7 +465,6 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                 finally:
                     pop_shape_memo()
 
-        _jaxtyped_fns.add(wrapped_fn)
         return wrapped_fn
 
 
