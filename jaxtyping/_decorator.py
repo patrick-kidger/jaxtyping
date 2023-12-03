@@ -23,6 +23,7 @@ import inspect
 import itertools as it
 import sys
 import types
+import warnings
 import weakref
 from typing import Any, get_args, get_origin, get_type_hints, overload
 
@@ -35,6 +36,7 @@ else:
     traceback_util.register_exclusion(__file__)
 
 
+from ._config import config
 from ._storage import pop_shape_memo, push_shape_memo
 
 
@@ -48,17 +50,25 @@ class TypeCheckError(TypeError):
 TypeCheckError.__module__ = "jaxtyping"  # appears in error messages
 
 
+class _Sentinel:
+    def __repr__(self):
+        return "sentinel"
+
+
+_sentinel = _Sentinel()
+
+
 @overload
-def jaxtyped(*, typechecker=None):
+def jaxtyped(*, typechecker=_sentinel):
     ...
 
 
 @overload
-def jaxtyped(fn, *, typechecker=None):
+def jaxtyped(fn, *, typechecker=_sentinel):
     ...
 
 
-def jaxtyped(fn=None, *, typechecker=None):
+def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
     """Decorate a function with this to perform runtime type-checking of its arguments
     and return value. Decorate a dataclass to perform type-checking of its attributes.
 
@@ -90,8 +100,9 @@ def jaxtyped(fn=None, *, typechecker=None):
     **Arguments:**
 
     - `fn`: The function or dataclass to decorate.
-    - `typechecker`: The runtime type-checker to use. This should be a function
-        decorator that will raise an exception if there is a type error, e.g.
+    - `typechecker`: Keyword-only argument: the runtime type-checker to use. This should
+        be a function decorator that will raise an exception if there is a type error,
+        e.g.
         ```python
         @typechecker
         def f(x: int):
@@ -104,7 +115,7 @@ def jaxtyped(fn=None, *, typechecker=None):
         skip automatic runtime type-checking, but still support manual `isinstance`
         checks inside the function body:
         ```python
-        @jaxtyped
+        @jaxtyped(typechecker=None)
         def f(x):
             assert isinstance(x, Float[Array, "batch channel"])
         ```
@@ -126,10 +137,10 @@ def jaxtyped(fn=None, *, typechecker=None):
         @typechecker
         def f(...): ...
         ```
-        This is still supported, but the `jaxtyped(typechecker=typechecker)` syntax
-        discussed above will produce easier-to-debug error messages. Under the hood, the
-        new syntax more carefully manipulates the typechecker so as to determine where
-        a type-check error arises.
+        This is still supported, but will now raise a warning recommending the
+        `jaxtyped(typechecker=typechecker)` syntax discussed above. (Which will produce
+        easier-to-debug error messages: under the hood, the new syntax more carefully
+        manipulates the typechecker so as to determine where a type-check error arises.)
 
     ??? Info "Notes for advanced users"
 
@@ -163,23 +174,75 @@ def jaxtyped(fn=None, *, typechecker=None):
 
         **Decoupling contexts from function calls:**
 
-        If you would like a new dynamic context *without* calling a new function, then
-        `jaxtyped` may be passed the string `"context"` and used as a context manager:
+        If you would like to call a new function *without* creating a new
+        dynamic context (and using the same set of axis and structure values), then
+        simply do not add a `jaxtyped` decorator to your inner function, whilst
+        continuing to perform type-checking in whatever way you prefer.
+
+        Conversely, if you would like a new dynamic context *without* calling a new
+        function, then in addition to the usage discussed above, `jaxtyped` also
+        supports being used as a context manager, by passing it the string `"context"`:
         ```python
         with jaxtyped("context"):
             assert isinstance(x, Float[Array, "batch channel"])
         ```
-        which is equivalent to placing this code inside a new function wrapped in
+        This is equivalent to placing this code inside a new function wrapped in
         `jaxtyped(typechecker=None)`. Usage like this is very rare; it's mostly only
         useful when working at the global scope.
-
-        Conversely, if you would like to call a new function *without* creating a new
-        dynamic context (and using the same set of axis and structure values), then
-        simply do not add a `jaxtyped` decorator to your inner function, whilst
-        continuing to perform type-checking in whatever way you prefer.
     """
 
-    if fn is None:
+    # First handle the `jaxtyped("context")` usage, which is a special case.
+    if fn == "context":
+        if typechecker is not _sentinel:
+            raise ValueError(
+                "Cannot use `jaxtyped` as a context with a typechecker. That is, "
+                "`with jaxtyped('context', typechecker=...):`. is not allowed. In this "
+                "case the type checker does not actually do anything, as there is no "
+                "function to type-check."
+            )
+        return _JaxtypingContext()
+
+    # Now check that a typechecker has been explicitly declared. (Or explicitly declared
+    # as not being used, via `typechecker=None`.)
+    # This is needed just for backward compatibility: an undeclared typechecker
+    # corresponds to the old double-decorator syntax.
+    if typechecker is _sentinel:
+        # This branch will also catch the easy-to-make mistake of
+        # ```python
+        # @jaxtyped(typechecker)
+        # def foo(...):
+        # ```
+        # which is a bug as `typechecker` is interpreted as the function to decorate!
+        warnings.warn(
+            "As of jaxtyping version 0.2.24, jaxtyping now prefers the syntax\n"
+            "```\n"
+            "from jaxtyping import jaxtyped\n"
+            "# Use your favourite typechecker: usually one of the two lines below.\n"
+            "from typeguard import typechecked as typechecker\n"
+            "from beartype import beartype as typechecker\n"
+            "\n"
+            "@jaxtyped(typechecker=typechecker)\n"
+            "def foo(...):\n"
+            "```\n"
+            "and the old double-decorator syntax\n"
+            "```\n"
+            "@jaxtyped\n"
+            "@typechecker\n"
+            "def foo(...):\n"
+            "```\n"
+            "should no longer be used. (It will continue to work as it did before, but "
+            "the new approach will produce more readable error messages.)\n"
+            "In particular note that `typechecker` must be passed via keyword "
+            "argument; the following is not valid:\n"
+            "```\n"
+            "@jaxtyped(typechecker)\n"
+            "def foo(...):\n"
+            "```\n",
+            stacklevel=2,
+        )
+        typechecker = None
+
+    if fn is _sentinel:
         return ft.partial(jaxtyped, typechecker=typechecker)
     elif type(fn) is types.FunctionType and fn in _jaxtyped_fns:
         return fn
@@ -235,15 +298,6 @@ def jaxtyped(fn=None, *, typechecker=None):
         else:
             fdel = jaxtyped(fn.fdel, typechecker=typechecker)
         return property(fget=fget, fset=fset, fdel=fdel)
-    elif fn == "context":
-        if typechecker is not None:
-            raise ValueError(
-                "Cannot use `jaxtyped` as a context with a typechecker. That is, "
-                "`with jaxtyped('context', typechecker=...):`. is not allowed. In this "
-                "case the type checker does not actually do anything, as there is no "
-                "function to type-check."
-            )
-        return _JaxtypingContext()
     else:
         if typechecker is None:
             # Probably being used in the old style as
@@ -321,6 +375,9 @@ def jaxtyped(fn=None, *, typechecker=None):
 
             @ft.wraps(fn)
             def wrapped_fn(*args, **kwargs):
+                if config.jaxtyping_disable:
+                    return fn(*args, **kwargs)
+
                 # Raise bind-time errors before we do any shape analysis. (I.e. skip
                 # the pointless jaxtyping information for a non-typechecking failure.)
                 bound = param_signature.bind(*args, **kwargs)
@@ -351,7 +408,10 @@ def jaxtyped(fn=None, *, typechecker=None):
                                 f"Parameter annotations: {param_hints}.\n"
                                 + _exc_shape_info(memos)
                             )
-                            raise TypeCheckError(msg) from e
+                            if config.jaxtyping_remove_typechecker_stack:
+                                raise TypeCheckError(msg) from None
+                            else:
+                                raise TypeCheckError(msg) from e
 
                     # Actually call the function.
                     out = fn(*args, **kwargs)
@@ -403,7 +463,10 @@ def jaxtyped(fn=None, *, typechecker=None):
                                     f"Return annotation: {return_hint}.\n"
                                     + _exc_shape_info(memos)
                                 )
-                                raise TypeCheckError(msg) from e
+                                if config.jaxtyping_remove_typechecker_stack:
+                                    raise TypeCheckError(msg) from None
+                                else:
+                                    raise TypeCheckError(msg) from e
 
                     return out
                 finally:
