@@ -39,8 +39,7 @@ class _ErrorableThread(threading.Thread):
 
 
 def test_threading_jaxtyped():
-    @jaxtyped
-    @typechecked
+    @jaxtyped(typechecker=typechecked)
     def add(x: Float[Array, "a b"], y: Float[Array, "a b"]) -> Float[Array, "a b"]:
         return x + y
 

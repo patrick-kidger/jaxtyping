@@ -57,7 +57,8 @@ def jaxtyp(request):
         # def f(...)
         def impl(typechecker):
             def decorator(fn):
-                return jaxtyping.jaxtyped(typechecker(fn))
+                with pytest.warns(match="As of jaxtyping version 0.2.24"):
+                    return jaxtyping.jaxtyped(typechecker(fn))
 
             return decorator
 

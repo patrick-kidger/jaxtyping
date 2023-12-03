@@ -9,49 +9,49 @@ from .helpers import ParamError, ReturnError
 
 
 class M(metaclass=abc.ABCMeta):
-    @jaxtyped
+    @jaxtyped(typechecker=None)
     def f(self):
         ...
 
-    @jaxtyped
+    @jaxtyped(typechecker=None)
     @classmethod
     def g1(cls):
         return 3
 
     @classmethod
-    @jaxtyped
+    @jaxtyped(typechecker=None)
     def g2(cls):
         return 4
 
-    @jaxtyped
+    @jaxtyped(typechecker=None)
     @staticmethod
     def h1():
         return 3
 
     @staticmethod
-    @jaxtyped
+    @jaxtyped(typechecker=None)
     def h2():
         return 4
 
-    @jaxtyped
+    @jaxtyped(typechecker=None)
     @abc.abstractmethod
     def i1(self):
         ...
 
     @abc.abstractmethod
-    @jaxtyped
+    @jaxtyped(typechecker=None)
     def i2(self):
         ...
 
 
 class N:
-    @jaxtyped
+    @jaxtyped(typechecker=None)
     @property
     def j1(self):
         return 3
 
     @property
-    @jaxtyped
+    @jaxtyped(typechecker=None)
     def j2(self):
         return 4
 
@@ -154,10 +154,12 @@ def test_local_stringified_annotation(typecheck):
 
     f(LocalFoo())
 
-    @jaxtyped
-    @typecheck
-    def g(x: "LocalFoo") -> "LocalFoo":
-        return x
+    with pytest.warns(match="As of jaxtyping version 0.2.24"):
+
+        @jaxtyped
+        @typecheck
+        def g(x: "LocalFoo") -> "LocalFoo":
+            return x
 
     g(LocalFoo())
 
