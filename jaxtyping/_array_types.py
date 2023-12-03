@@ -27,7 +27,7 @@ from typing import Any, Literal, NoReturn, Optional, Union
 
 import numpy as np
 
-from ._raise import jaxtyping_raise, jaxtyping_raise_from
+from ._errors import AnnotationError
 from ._storage import (
     get_shape_memo,
     get_treeflatten_memo,
@@ -133,16 +133,13 @@ def _check_dims(
                 # Make a copy to avoid `__builtins__` getting added as a key.
                 eval_size = eval(elem, single_memo.copy())
             except NameError as e:
-                jaxtyping_raise_from(
-                    NameError(
-                        f"Cannot process symbolic axis '{cls_dim.elem}' as "
-                        "some axis names have not been processed. In practice you "
-                        "should usually only use symbolic axes in annotations "
-                        "for return types, referring only to axes annotated for "
-                        "arguments."
-                    ),
-                    e,
-                )
+                raise AnnotationError(
+                    f"Cannot process symbolic axis '{cls_dim.elem}' as "
+                    "some axis names have not been processed. In practice you "
+                    "should usually only use symbolic axes in annotations "
+                    "for return types, referring only to axes annotated for "
+                    "arguments."
+                ) from e
             if eval_size != obj_size:
                 return False
         else:
@@ -180,8 +177,8 @@ class _MetaAbstractArray(type):
             if len(repr_dtype) == 2 and repr_dtype[0] == "torch":
                 dtype = repr_dtype[1]
             else:
-                jaxtyping_raise(
-                    RuntimeError("Unrecognised array/tensor type to extract dtype from")
+                raise AnnotationError(
+                    "Unrecognised array/tensor type to extract dtype from"
                 )
 
         if cls.dtypes is not _any_dtype:
@@ -561,12 +558,10 @@ def _make_array(array_type, dim_str, dtypes, name):
 
 class _MetaAbstractDtype(type):
     def __instancecheck__(cls, obj: Any) -> NoReturn:
-        jaxtyping_raise(
-            RuntimeError(
-                f"Do not use `isinstance(x, jaxtyping.{cls.__name__})`. If you want to "
-                "check just the dtype of an array, then use "
-                f'`jaxtyping.{cls.__name__}[jnp.ndarray, "..."]`.'
-            )
+        raise AnnotationError(
+            f"Do not use `isinstance(x, jaxtyping.{cls.__name__})`. If you want to "
+            "check just the dtype of an array, then use "
+            f'`jaxtyping.{cls.__name__}[jnp.ndarray, "..."]`.'
         )
 
     def __getitem__(cls, item: tuple[Any, str]):

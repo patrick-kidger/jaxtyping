@@ -35,14 +35,8 @@ else:
 
 
 from ._config import config
+from ._errors import AnnotationError, TypeCheckError
 from ._storage import pop_shape_memo, push_shape_memo
-
-
-class TypeCheckError(TypeError):
-    pass
-
-
-TypeCheckError.__module__ = "jaxtyping"  # appears in error messages
 
 
 class _Sentinel:
@@ -381,30 +375,29 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                     # called.
                     try:
                         param_fn(*args, **kwargs)
+                    except AnnotationError:
+                        raise
                     except Exception as e:
-                        if hasattr(e, "_jaxtyping_malformed"):
-                            raise
+                        argmsg = _get_problem_arg(
+                            param_signature, args, kwargs, module, typechecker
+                        )
+                        try:
+                            name = fn.__name__
+                        except AttributeError:
+                            name = fn.__class__.__name__
+                        param_values = _pformat(bound.arguments, short_self=True)
+                        param_hints = _remove_typing(param_signature)
+                        msg = (
+                            "Type-check error whilst checking the parameters of "
+                            f"{name}.{argmsg}\n"
+                            f"Called with arguments: {param_values}\n"
+                            f"Parameter annotations: {param_hints}.\n"
+                            + _exc_shape_info(memos)
+                        )
+                        if config.jaxtyping_remove_typechecker_stack:
+                            raise TypeCheckError(msg) from None
                         else:
-                            argmsg = _get_problem_arg(
-                                param_signature, args, kwargs, module, typechecker
-                            )
-                            try:
-                                name = fn.__name__
-                            except AttributeError:
-                                name = fn.__class__.__name__
-                            param_values = _pformat(bound.arguments, short_self=True)
-                            param_hints = _remove_typing(param_signature)
-                            msg = (
-                                "Type-check error whilst checking the parameters of "
-                                f"{name}.{argmsg}\n"
-                                f"Called with arguments: {param_values}\n"
-                                f"Parameter annotations: {param_hints}.\n"
-                                + _exc_shape_info(memos)
-                            )
-                            if config.jaxtyping_remove_typechecker_stack:
-                                raise TypeCheckError(msg) from None
-                            else:
-                                raise TypeCheckError(msg) from e
+                            raise TypeCheckError(msg) from e
 
                     # Actually call the function.
                     out = fn(*args, **kwargs)
@@ -427,39 +420,36 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                         kwargs[output_name] = out
                         try:
                             full_fn(*args, **kwargs)
+                        except AnnotationError:
+                            raise
                         except Exception as e:
-                            if hasattr(e, "_jaxtyping_malformed"):
-                                raise
+                            try:
+                                name = fn.__name__
+                            except AttributeError:
+                                name = fn.__class__.__name__
+                            param_values = _pformat(bound.arguments, short_self=True)
+                            return_value = _pformat(out, short_self=False)
+                            param_hints = _remove_typing(param_signature)
+                            return_hint = _remove_typing(
+                                full_signature.return_annotation
+                            )
+                            if return_hint.startswith(
+                                "<class '"
+                            ) and return_hint.endswith("'>"):
+                                return_hint = return_hint[8:-2]
+                            msg = (
+                                "Type-check error whilst checking the return value "
+                                f"of {name}.\n"
+                                f"Called with arguments: {param_values}\n"
+                                f"Return value: {return_value}\n"
+                                f"Parameter annotations: {param_hints}.\n"
+                                f"Return annotation: {return_hint}.\n"
+                                + _exc_shape_info(memos)
+                            )
+                            if config.jaxtyping_remove_typechecker_stack:
+                                raise TypeCheckError(msg) from None
                             else:
-                                try:
-                                    name = fn.__name__
-                                except AttributeError:
-                                    name = fn.__class__.__name__
-                                param_values = _pformat(
-                                    bound.arguments, short_self=True
-                                )
-                                return_value = _pformat(out, short_self=False)
-                                param_hints = _remove_typing(param_signature)
-                                return_hint = _remove_typing(
-                                    full_signature.return_annotation
-                                )
-                                if return_hint.startswith(
-                                    "<class '"
-                                ) and return_hint.endswith("'>"):
-                                    return_hint = return_hint[8:-2]
-                                msg = (
-                                    "Type-check error whilst checking the return value "
-                                    f"of {name}.\n"
-                                    f"Called with arguments: {param_values}\n"
-                                    f"Return value: {return_value}\n"
-                                    f"Parameter annotations: {param_hints}.\n"
-                                    f"Return annotation: {return_hint}.\n"
-                                    + _exc_shape_info(memos)
-                                )
-                                if config.jaxtyping_remove_typechecker_stack:
-                                    raise TypeCheckError(msg) from None
-                                else:
-                                    raise TypeCheckError(msg) from e
+                                raise TypeCheckError(msg) from e
 
                     return out
                 finally:

@@ -24,7 +24,7 @@ from typing import Any, Generic, TypeVar
 import jax.tree_util as jtu
 import typeguard
 
-from ._raise import jaxtyping_raise_from
+from ._errors import AnnotationError
 from ._storage import (
     clear_treeflatten_memo,
     clear_treepath_memo,
@@ -141,14 +141,11 @@ class _MetaPyTree(type):
                     try:
                         prev_structure = pytree_memo[identifier]
                     except KeyError as e:
-                        jaxtyping_raise_from(
-                            NameError(
-                                f"Cannot process composite structure '{cls.structure}' "
-                                f"as the structure name {identifier} has not been seen "
-                                "before."
-                            ),
-                            e,
-                        )
+                        raise AnnotationError(
+                            f"Cannot process composite structure '{cls.structure}' "
+                            f"as the structure name {identifier} has not been seen "
+                            "before."
+                        ) from e
                     # Not using `PyTreeDef.compose` due to JAX bug #18218.
                     prev_pytree = jtu.tree_unflatten(
                         prev_structure, [0] * prev_structure.num_leaves
