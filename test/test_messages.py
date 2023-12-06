@@ -14,8 +14,8 @@ def test_arg_localisation(typecheck):
 
     matches = [
         "Type-check error whilst checking the parameters of f",
-        "The problem arose whilst typechecking argument 'z'.",
-        "Called with arguments: {'x': 'hi', 'y': 'bye', 'z': 'not-an-int'}",
+        "The problem arose whilst typechecking parameter 'z'.",
+        "Called with parameters: {'x': 'hi', 'y': 'bye', 'z': 'not-an-int'}",
         r"Parameter annotations: \(x: str, y: str, z: int\).",
     ]
     for match in matches:
@@ -30,8 +30,8 @@ def test_arg_localisation(typecheck):
     y = jnp.zeros((4, 3))
     matches = [
         "Type-check error whilst checking the parameters of g",
-        "The problem arose whilst typechecking argument 'y'.",
-        r"Called with arguments: {'x': f32\[2,3\], 'y': f32\[4,3\]}",
+        "The problem arose whilst typechecking parameter 'y'.",
+        r"Called with parameters: {'x': f32\[2,3\], 'y': f32\[4,3\]}",
         (
             r"Parameter annotations: \(x: Float\[Array, 'a b'\], y: "
             r"Float\[Array, 'b c'\]\)."
@@ -54,9 +54,9 @@ def test_return(typecheck):
     y = {"a": 1}
     matches = [
         "Type-check error whilst checking the return value of f",
-        r"Called with arguments: {'x': \(1, 2\), 'y': {'a': 1}}",
-        "Return value: 'foo'",
-        r"Return annotation: PyTree\[Any, \"T S\"\].",
+        r"Called with parameters: {'x': \(1, 2\), 'y': {'a': 1}}",
+        "Actual value: 'foo'",
+        r"Expected type: PyTree\[Any, \"T S\"\].",
         (
             "The current values for each jaxtyping PyTree structure annotation are as "
             "follows."
@@ -82,9 +82,9 @@ def test_dataclass_attribute(typecheck):
 
     matches = [
         "Type-check error whilst checking the parameters of M",
-        "The problem arose whilst typechecking argument 'z'.",
+        "The problem arose whilst typechecking parameter 'z'.",
         (
-            r"Called with arguments: {'self': M\(\.\.\.\), 'x': f32\[2,3\], "
+            r"Called with parameters: {'self': M\(\.\.\.\), 'x': f32\[2,3\], "
             r"'y': \(1, \(3, 4\)\), 'z': 'not-an-int'}"
         ),
         (
