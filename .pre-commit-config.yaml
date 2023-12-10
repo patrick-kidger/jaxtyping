@@ -18,12 +18,11 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 repos:
-  - repo: https://github.com/ambv/black
-    rev: 23.9.1
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.7
     hooks:
-    - id: black
-  - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: 'v0.0.291'
-    hooks:
-      - id: ruff
-        args: ["--fix"]
+      - id: ruff  # linter
+        types_or: [ python, pyi, jupyter ]
+        args: [ --fix ]
+      - id: ruff-format  # formatter
+        types_or: [ python, pyi, jupyter ]
