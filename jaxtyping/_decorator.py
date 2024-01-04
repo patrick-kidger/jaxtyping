@@ -83,7 +83,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
         @dataclass
         class MyDataclass:
             x: int
-            y: Float[Array "b c"]
+            y: Float[Array, "b c"]
         ```
 
     **Arguments:**
@@ -476,7 +476,7 @@ class _JaxtypingContext:
 def _check_dataclass_annotations(self, typechecker):
     """Creates and calls a function that checks the attributes of `self`
 
-    `self` should be a dataclass instancae. `typechecker` should be e.g.
+    `self` should be a dataclass instance. `typechecker` should be e.g.
     `beartype.beartype` or `typeguard.typechecked`.
     """
     parameters = [inspect.Parameter("self", inspect.Parameter.POSITIONAL_OR_KEYWORD)]
