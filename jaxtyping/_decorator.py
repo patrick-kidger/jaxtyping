@@ -92,8 +92,8 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
 
     - `fn`: The function or dataclass to decorate. In practice if you want to use
         dataclasses with JAX, then
-        [`equinox.Module`](https://github.com/patrick-kidger/equinox) is our recommended
-        approach:
+        [`equinox.Module`](https://docs.kidger.site/equinox/api/module/module/) is our
+        recommended approach:
         ```python
         import equinox as eqx
 
