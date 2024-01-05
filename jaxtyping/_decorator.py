@@ -80,7 +80,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
 
         # Type-check a dataclass
         from dataclasses import dataclass
-        
+
         @jaxtyped(typechecker=typechecker)
         @dataclass
         class MyDataclass:
@@ -96,7 +96,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
         approach:
         ```python
         import equinox as eqx
-        
+
         @jaxtyped(typechecker=typechecker)
         class MyModule(eqx.Module):
             ...
