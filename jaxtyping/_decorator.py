@@ -79,6 +79,8 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
             return x[:, :, None] * y[:, None, :]
 
         # Type-check a dataclass
+        from dataclasses import dataclass
+        
         @jaxtyped(typechecker=typechecker)
         @dataclass
         class MyDataclass:
@@ -88,7 +90,18 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
 
     **Arguments:**
 
-    - `fn`: The function or dataclass to decorate.
+    - `fn`: The function or dataclass to decorate. In practice if you want to use
+        dataclasses with JAX, then
+        [`equinox.Module`](https://github.com/patrick-kidger/equinox) is our recommended
+        approach:
+        ```python
+        import equinox as eqx
+        
+        @jaxtyped(typechecker=typechecker)
+        class MyModule(eqx.Module):
+            ...
+        ```
+
     - `typechecker`: Keyword-only argument: the runtime type-checker to use. This should
         be a function decorator that will raise an exception if there is a type error,
         e.g.
