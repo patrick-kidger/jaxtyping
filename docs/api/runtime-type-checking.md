@@ -8,6 +8,10 @@ There are two approaches: either use [`jaxtyping.jaxtyped`][] to typecheck a sin
 
 In either case, the actual business of checking types is performed with the help of a runtime type-checking library. The two most popular are [beartype](https://github.com/beartype/beartype) and [typeguard](https://github.com/agronholm/typeguard). (If using typeguard, then specifically the version `2.*` series should be used. Later versions -- `3` and `4` -- have some known issues.)
 
+!!! warning
+
+    Avoid using `from __future__ import annotations`, or stringified type annotations, where possible. These are largely incompatible with runtime type checking. See also [this FAQ entry](../faq.md#dataclass-annotations-arent-being-checked-properly).
+
 ---
 
 ::: jaxtyping.jaxtyped

@@ -360,28 +360,6 @@ def install_import_hook(modules: Union[str, Sequence[str]], typechecker: Optiona
 
     !!! warning
 
-        Stringified dataclass annotations, e.g.
-        ```python
-        @dataclass()
-        class Foo:
-            x: "int"
-        ```
-        will be silently skipped without checking them. This is because these are
-        essentially impossible to resolve at runtime. Such stringified annotations
-        typically occur either when using them for forward references, or when using
-        `from __future__ import annotations`. (You should never use the latter, it is
-        largely incompatible with runtime type checking.)
-
-        Partially stringified dataclass annotations, e.g.
-        ```python
-        @dataclass()
-        class Foo:
-            x: tuple["int"]
-        ```
-        will likely raise an error, and must not be used at all.
-
-    !!! warning
-
         If a function already has any decorators on it, then `@jaxtyped` will get added
         at the bottom of the decorator list, e.g.
         ```python
