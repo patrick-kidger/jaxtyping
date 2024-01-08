@@ -36,7 +36,7 @@ else:
 
 from ._config import config
 from ._errors import AnnotationError, TypeCheckError
-from ._storage import pop_shape_memo, push_shape_memo
+from ._storage import get_shape_memo, pop_shape_memo, push_shape_memo
 
 
 class _Sentinel:
@@ -808,3 +808,21 @@ def _no_jaxtyping_note(e: Exception) -> bool:
 
 
 _spacer = "--------------------\n"
+
+
+def print_bindings():
+    """Prints the values of the current jaxtyping axis bindings. Intended for debugging.
+
+    That is, whilst doing runtime type checking, so that e.g. the `foo` and `bar` of
+    `Float[Array, "foo bar"]` are assigned values -- this function will print out those
+    values.
+
+    **Arguments:**
+
+    Nothing.
+
+    **Returns:**
+
+    Nothing.
+    """
+    print(_exc_shape_info(get_shape_memo()))

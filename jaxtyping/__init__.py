@@ -30,7 +30,7 @@ from ._array_types import (
     set_array_name_format as set_array_name_format,
 )
 from ._config import config as config
-from ._decorator import jaxtyped as jaxtyped
+from ._decorator import jaxtyped as jaxtyped, print_bindings as print_bindings
 from ._errors import (
     AnnotationError as AnnotationError,
     TypeCheckError as TypeCheckError,
