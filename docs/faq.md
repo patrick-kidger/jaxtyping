@@ -20,6 +20,24 @@ Some tooling in the Python ecosystem assumes that only the latter is true, and w
 
 In the case of `flake8`, or Ruff, this can be resolved. Multi-dimensional arrays (e.g. `Float32[Array, "b c"]`) will throw a very unusual error (F722, syntax error in forward annotation), so you can safely just disable this particular error globally. Uni-dimensional arrays (e.g. `Float32[Array, "x"]`) will throw an error that's actually useful (F821, undefined name), so instead of disabling this globally, you should instead prepend a space to the start of your shape, e.g. `Float32[Array, " x"]`. `jaxtyping` will treat this in the same way, whilst `flake8` will now throw an F722 error that you can disable as before.
 
+## Dataclass annotations aren't being checked properly.
+
+Stringified dataclass annotations, e.g.
+```python
+@dataclass()
+class Foo:
+   x: "int"
+```
+will be silently skipped without checking them. This is because these are essentially impossible to resolve at runtime. Such stringified annotations typically occur either when using them for forward references, or when using `from __future__ import annotations`. (You should essentially never use the latter, it is largely incompatible with runtime type checking and as such is [being replaced in Python 3.13](https://peps.python.org/pep-0649/).)
+
+Partially stringified dataclass annotations, e.g.
+```python
+@dataclass()
+class Foo:
+   x: tuple["int"]
+```
+will likely raise an error, and must not be used at all.
+
 ## Does jaxtyping use [PEP 646](https://www.python.org/dev/peps/pep-0646/) (variadic generics)?
 
 The intention of PEP 646 was to make it possible for static type checkers to perform shape checks of arrays. Unfortunately, this still isn't yet practical, so jaxtyping deliberately does not use this. (Yet?)
