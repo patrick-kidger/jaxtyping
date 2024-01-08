@@ -1,9 +1,10 @@
 import abc
 
+import jax.numpy as jnp
 import jax.random as jr
 import pytest
 
-from jaxtyping import Array, Float, jaxtyped
+from jaxtyping import Array, Float, jaxtyped, print_bindings
 
 from .helpers import ParamError, ReturnError
 
@@ -166,3 +167,17 @@ def test_local_stringified_annotation(typecheck):
     # We don't check that errors are raised if it goes wrong, since we can't usually
     # resolve local type annotations at runtime. Best we can hope for is not to raise
     # a spurious error about not being able to find the type.
+
+
+def test_print_bindings(typecheck, capfd):
+    @jaxtyped(typechecker=typecheck)
+    def f(x: Float[Array, "foo bar"]):
+        print_bindings()
+
+    capfd.readouterr()
+    f(jnp.zeros((3, 4)))
+    text, _ = capfd.readouterr()
+    assert text == (
+        "The current values for each jaxtyping axis annotation are as follows."
+        "\nfoo=3\nbar=4\n"
+    )

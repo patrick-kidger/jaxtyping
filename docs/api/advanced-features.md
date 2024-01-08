@@ -7,6 +7,10 @@
         members:
             false
 
+## Printing axis bindings
+
+::: jaxtyping.print_bindings
+
 ## Introspection
 
 If you're writing your own type hint parser, then you may wish to detect if some Python object is a jaxtyping-provided type.
