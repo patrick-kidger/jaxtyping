@@ -71,6 +71,62 @@ def pop_shape_memo() -> None:
     _shape_storage.memo_stack.pop()
 
 
+def shape_str(memos) -> str:
+    """Gives debug information on the current state of jaxtyping's internal memos.
+    Used in type-checking error messages.
+
+    **Arguments:**
+
+    - `memos`: as returned by `get_shape_memo` or `push_shape_memo`.
+    """
+    single_memo, variadic_memo, pytree_memo, _ = memos
+    single_memo = {
+        name: size
+        for name, size in single_memo.items()
+        if not name.startswith("~~delete~~")
+    }
+    variadic_memo = {
+        name: shape
+        for name, (_, shape) in variadic_memo.items()
+        if not name.startswith("~~delete~~")
+    }
+    pieces = []
+    if len(single_memo) > 0 or len(variadic_memo) > 0:
+        pieces.append(
+            "The current values for each jaxtyping axis annotation are as follows."
+        )
+        for name, size in single_memo.items():
+            pieces.append(f"{name}={size}")
+        for name, shape in variadic_memo.items():
+            pieces.append(f"{name}={shape}")
+    if len(pytree_memo) > 0:
+        pieces.append(
+            "The current values for each jaxtyping PyTree structure annotation are as "
+            "follows."
+        )
+        for name, structure in pytree_memo.items():
+            pieces.append(f"{name}={structure}")
+    return "\n".join(pieces)
+
+
+def print_bindings():
+    """Prints the values of the current jaxtyping axis bindings. Intended for debugging.
+
+    That is, whilst doing runtime type checking, so that e.g. the `foo` and `bar` of
+    `Float[Array, "foo bar"]` are assigned values -- this function will print out those
+    values.
+
+    **Arguments:**
+
+    Nothing.
+
+    **Returns:**
+
+    Nothing.
+    """
+    print(shape_str(get_shape_memo()))
+
+
 _treepath_storage = threading.local()
 
 
