@@ -1,5 +1,7 @@
 import abc
+from typing import Iterator
 
+import jax.numpy as jnp
 import jax.random as jr
 import pytest
 
@@ -166,3 +168,37 @@ def test_local_stringified_annotation(typecheck):
     # We don't check that errors are raised if it goes wrong, since we can't usually
     # resolve local type annotations at runtime. Best we can hope for is not to raise
     # a spurious error about not being able to find the type.
+
+
+def test_generators(typecheck):
+    # Simple test, like in https://github.com/patrick-kidger/jaxtyping/issues/91
+    @jaxtyped(typechecker=typecheck)
+    def gen1(a: Float[Array, "*"]) -> Iterator[Float[Array, "*"]]:
+        yield a
+
+    next(gen1(jnp.zeros(3)))
+    next(gen1(jnp.zeros((3, 4))))
+
+    @jaxtyped(typechecker=typecheck)
+    def gen2(a: Float[Array, "4"]) -> Iterator[Float[Array, "3"]]:
+        yield a
+
+    # Runtime typechecking of generators is generally impossible
+    # See https://github.com/beartype/beartype/issues/7
+    # Thus we expect to pass this, even though we should not
+    next(gen2(jnp.zeros(4)))
+
+    # But we can still check inputs
+    with pytest.raises(ParamError):
+        next(gen2(jnp.zeros(2)))
+
+    # Using the typecheck as a separate decorator
+    @jaxtyped(typechecker=None)
+    @typecheck
+    def gen3(a: Float[Array, "*"]) -> Iterator[Float[Array, "*"]]:
+        yield a
+
+    @jaxtyped(typechecker=None)
+    def f():
+        next(gen3(jnp.zeros(3)))
+        next(gen3(jnp.zeros((3, 4))))
