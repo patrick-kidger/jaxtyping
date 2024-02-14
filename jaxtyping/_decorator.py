@@ -309,6 +309,15 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
             # in which case make a best-effort attempt to add shape information for any
             # type errors.
 
+            # we want to detect generators, and ignore return annotations on them,
+            # to avoid issues with O(n) typechecking trying to typecheck yielded values
+            wrp = fn
+            while hasattr(wrp, "__wrapped__"):
+                wrp = wrp.__wrapped__
+                if inspect.isgeneratorfunction(wrp):
+                    fn.__annotations__["return"] = Any
+                    break
+
             signature = inspect.signature(fn)
 
             @ft.wraps(fn)
@@ -318,6 +327,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                 try:
                     return fn(*args, **kwargs)
                 except Exception as e:
+                    # add_note api is support from python 3.11+
                     if sys.version_info >= (3, 11) and _no_jaxtyping_note(e):
                         shape_info = _exc_shape_info(memos)
                         if shape_info != "":

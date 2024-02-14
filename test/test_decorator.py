@@ -5,9 +5,15 @@ import jax.numpy as jnp
 import jax.random as jr
 import pytest
 
-from jaxtyping import Array, Float, jaxtyped
+from jaxtyping import Array, Float, jaxtyped, Shaped
 
 from .helpers import ParamError, ReturnError
+
+
+try:
+    import torch
+except ImportError:
+    torch = None
 
 
 class M(metaclass=abc.ABCMeta):
@@ -170,35 +176,47 @@ def test_local_stringified_annotation(typecheck):
     # a spurious error about not being able to find the type.
 
 
-def test_generators(typecheck):
-    # Simple test, like in https://github.com/patrick-kidger/jaxtyping/issues/91
+def test_generators_simple(typecheck):
     @jaxtyped(typechecker=typecheck)
-    def gen1(a: Float[Array, "*"]) -> Iterator[Float[Array, "*"]]:
+    def gen(a: Float[Array, "*"]) -> Iterator[Float[Array, "*"]]:
         yield a
 
-    next(gen1(jnp.zeros(3)))
-    next(gen1(jnp.zeros((3, 4))))
-
     @jaxtyped(typechecker=typecheck)
-    def gen2(a: Float[Array, "4"]) -> Iterator[Float[Array, "3"]]:
-        yield a
+    def foo():
+        next(gen(jnp.zeros(2)))
+        next(gen(jnp.zeros((3, 4))))
 
-    # Runtime typechecking of generators is generally impossible
-    # See https://github.com/beartype/beartype/issues/7
-    # Thus we expect to pass this, even though we should not
-    next(gen2(jnp.zeros(4)))
+    foo()
 
-    # But we can still check inputs
-    with pytest.raises(ParamError):
-        next(gen2(jnp.zeros(2)))
 
-    # Using the typecheck as a separate decorator
+def test_generators_double_decorator(typecheck):
     @jaxtyped(typechecker=None)
     @typecheck
-    def gen3(a: Float[Array, "*"]) -> Iterator[Float[Array, "*"]]:
+    def gen(a: Float[Array, "*in"]) -> Iterator[Float[Array, "*out"]]:  # noqa: F821
         yield a
+
+    @jaxtyped(typechecker=None)
+    @typecheck
+    def foo():
+        next(gen(jnp.zeros(1)))
+        next(gen(jnp.zeros(2)))
+
+    foo()
+
+
+def test_generators_original_issue(typecheck):
+    # Effectively the same as https://github.com/patrick-kidger/jaxtyping/issues/91
+    if torch is None:
+        pytest.skip("torch is not available")
+
+    @jaxtyped(typechecker=None)
+    @typecheck
+    def g(x: Shaped[torch.Tensor, "*"]) -> Iterator[Shaped[torch.Tensor, "*"]]:
+        yield x
 
     @jaxtyped(typechecker=None)
     def f():
-        next(gen3(jnp.zeros(3)))
-        next(gen3(jnp.zeros((3, 4))))
+        next(g(torch.zeros(1)))
+        next(g(torch.zeros(2)))
+
+    f()
