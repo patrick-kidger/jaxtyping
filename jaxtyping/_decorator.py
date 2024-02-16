@@ -34,6 +34,7 @@ else:
     traceback_util.register_exclusion(__file__)
 
 
+from ._array_types import _MetaAbstractArray
 from ._config import config
 from ._errors import AnnotationError, TypeCheckError
 from ._storage import pop_shape_memo, push_shape_memo
@@ -314,9 +315,22 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
             wrp = fn
             while hasattr(wrp, "__wrapped__"):
                 wrp = wrp.__wrapped__
-                if inspect.isgeneratorfunction(wrp):
-                    fn.__annotations__["return"] = Any
-                    break
+            if inspect.isgeneratorfunction(wrp):
+                # recursively parse all the annotations, and mark all the jaxtyping
+                # annotations as not needing instance checks, aka making them
+                # 'Any', while still being visible as original ones for the typechecker
+                def modify_annotation(ann):
+                    if isinstance(ann, _MetaAbstractArray):
+                        ann._skip_instancecheck = True
+                    elif hasattr(ann, "__args__"):
+                        for sub_ann in ann.__args__:
+                            modify_annotation(sub_ann)
+                    elif hasattr(ann, "__origin__"):
+                        modify_annotation(ann.__origin__)
+
+                # just to make sure: check that fn has valid return annotations
+                if hasattr(fn, "__annotations__") and "return" in fn.__annotations__:
+                    modify_annotation(fn.__annotations__["return"])
 
             signature = inspect.signature(fn)
 

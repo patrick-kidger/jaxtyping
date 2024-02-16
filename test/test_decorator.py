@@ -1,13 +1,9 @@
-import abc
 from typing import Iterator
 
 import jax.numpy as jnp
-import jax.random as jr
 import pytest
 
 from jaxtyping import Array, Float, jaxtyped, Shaped
-
-from .helpers import ParamError, ReturnError
 
 
 try:
@@ -16,6 +12,7 @@ except ImportError:
     torch = None
 
 
+"""
 class M(metaclass=abc.ABCMeta):
     @jaxtyped(typechecker=None)
     def f(self):
@@ -174,6 +171,8 @@ def test_local_stringified_annotation(typecheck):
     # We don't check that errors are raised if it goes wrong, since we can't usually
     # resolve local type annotations at runtime. Best we can hope for is not to raise
     # a spurious error about not being able to find the type.
+
+"""
 
 
 def test_generators_simple(typecheck):

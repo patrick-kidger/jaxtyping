@@ -159,7 +159,11 @@ def _check_dims(
 
 
 class _MetaAbstractArray(type):
+    _skip_instancecheck: bool = False
+
     def __instancecheck__(cls, obj):
+        if cls._skip_instancecheck:
+            return True
         if not isinstance(obj, cls.array_type):
             return False
         if get_treeflatten_memo():
