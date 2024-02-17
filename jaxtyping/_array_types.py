@@ -652,10 +652,12 @@ class AbstractDtype(metaclass=_MetaAbstractDtype):
 _prng_key = "prng_key"
 _bool = "bool"
 _bool_ = "bool_"
+_uint4 = "uint4"
 _uint8 = "uint8"
 _uint16 = "uint16"
 _uint32 = "uint32"
 _uint64 = "uint64"
+_int4 = "int4"
 _int8 = "int8"
 _int16 = "int16"
 _int32 = "int32"
@@ -681,10 +683,12 @@ def _make_dtype(_dtypes, name):
     return _Cls
 
 
+UInt4 = _make_dtype(_uint4, "UInt4")
 UInt8 = _make_dtype(_uint8, "UInt8")
 UInt16 = _make_dtype(_uint16, "UInt16")
 UInt32 = _make_dtype(_uint32, "UInt32")
 UInt64 = _make_dtype(_uint64, "UInt64")
+Int4 = _make_dtype(_int4, "Int4")
 Int8 = _make_dtype(_int8, "Int8")
 Int16 = _make_dtype(_int16, "Int16")
 Int32 = _make_dtype(_int32, "Int32")
@@ -697,8 +701,8 @@ Complex64 = _make_dtype(_complex64, "Complex64")
 Complex128 = _make_dtype(_complex128, "Complex128")
 
 bools = [_bool, _bool_]
-uints = [_uint8, _uint16, _uint32, _uint64]
-ints = [_int8, _int16, _int32, _int64]
+uints = [_uint4, _uint8, _uint16, _uint32, _uint64]
+ints = [_int4, _int8, _int16, _int32, _int64]
 floats = [_bfloat16, _float16, _float32, _float64]
 complexes = [_complex64, _complex128]
 
