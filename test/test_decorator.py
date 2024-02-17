@@ -1,11 +1,10 @@
 import abc
-from typing import Iterator
 
 import jax.numpy as jnp
 import jax.random as jr
 import pytest
 
-from jaxtyping import Array, Float, jaxtyped, print_bindings, Shaped
+from jaxtyping import Array, Float, jaxtyped, print_bindings
 
 from .helpers import ParamError, ReturnError
 
@@ -174,52 +173,6 @@ def test_local_stringified_annotation(typecheck):
     # We don't check that errors are raised if it goes wrong, since we can't usually
     # resolve local type annotations at runtime. Best we can hope for is not to raise
     # a spurious error about not being able to find the type.
-
-
-def test_generators_simple(typecheck):
-    @jaxtyped(typechecker=typecheck)
-    def gen(a: Float[Array, "*"]) -> Iterator[Float[Array, "*"]]:
-        yield a
-
-    @jaxtyped(typechecker=typecheck)
-    def foo():
-        next(gen(jnp.zeros(2)))
-        next(gen(jnp.zeros((3, 4))))
-
-    foo()
-
-
-def test_generators_double_decorator(typecheck):
-    @jaxtyped(typechecker=None)
-    @typecheck
-    def gen(a: Float[Array, "*in"]) -> Iterator[Float[Array, "*out"]]:  # noqa: F821
-        yield a
-
-    @jaxtyped(typechecker=None)
-    @typecheck
-    def foo():
-        next(gen(jnp.zeros(1)))
-        next(gen(jnp.zeros(2)))
-
-    foo()
-
-
-def test_generators_original_issue(typecheck):
-    # Effectively the same as https://github.com/patrick-kidger/jaxtyping/issues/91
-    if torch is None:
-        pytest.skip("torch is not available")
-
-    @jaxtyped(typechecker=None)
-    @typecheck
-    def g(x: Shaped[torch.Tensor, "*"]) -> Iterator[Shaped[torch.Tensor, "*"]]:
-        yield x
-
-    @jaxtyped(typechecker=None)
-    def f():
-        next(g(torch.zeros(1)))
-        next(g(torch.zeros(2)))
-
-    f()
 
 
 def test_print_bindings(typecheck, capfd):

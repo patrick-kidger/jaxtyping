@@ -159,7 +159,7 @@ def _check_dims(
 
 
 class _MetaAbstractArray(type):
-    _skip_instancecheck: bool = False
+    _skip_instancecheck = False
 
     def __instancecheck__(cls, obj: Any) -> bool:
         return cls.__instancecheck_str__(obj) == ""
@@ -167,7 +167,6 @@ class _MetaAbstractArray(type):
     def __instancecheck_str__(cls, obj: Any) -> str:
         if cls._skip_instancecheck:
             return ""
-
         if not isinstance(obj, cls.array_type):
             return f"this value is not an instance of the underlying array type {cls.array_type}"  # noqa: E501
         if get_treeflatten_memo():
