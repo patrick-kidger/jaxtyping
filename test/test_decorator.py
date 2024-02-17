@@ -9,12 +9,6 @@ from jaxtyping import Array, Float, jaxtyped, print_bindings
 from .helpers import ParamError, ReturnError
 
 
-try:
-    import torch
-except ImportError:
-    torch = None
-
-
 class M(metaclass=abc.ABCMeta):
     @jaxtyped(typechecker=None)
     def f(self):

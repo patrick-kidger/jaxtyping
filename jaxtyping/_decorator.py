@@ -22,7 +22,6 @@ import functools as ft
 import inspect
 import itertools as it
 import sys
-import typing
 import warnings
 from typing import Any, get_args, get_origin, get_type_hints, overload
 
@@ -494,12 +493,12 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
         return wrapped_fn
 
 
-# recursively parse all the annotations, and mark all the jaxtyping
+# Recursively parse all the parts of an annotation, and mark all the jaxtyping
 # annotations as not needing instance checks, replacing them with
-# 'typing.Any', any other non-jaxtyping annotations are left as is
+# 'typing.Any'. All other non-jaxtyping annotations are left as is
 def _change_annotations_to_any(ann):
     if not inspect.isclass(ann):
-        class_of_ann = typing.get_origin(ann)
+        class_of_ann = get_origin(ann)
     else:
         class_of_ann = ann
 
@@ -507,7 +506,7 @@ def _change_annotations_to_any(ann):
         return Any
 
     if hasattr(ann, "__args__"):
-        new_args = [_change_annotations_to_any(sub) for sub in typing.get_args(ann)]
+        new_args = [_change_annotations_to_any(sub) for sub in get_args(ann)]
         setattr(ann, "__args__", tuple(new_args))
 
     return ann
