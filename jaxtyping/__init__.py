@@ -124,7 +124,7 @@ else:
         Real as Real,
         Shaped as Shaped,
         UInt as UInt,
-        Uint4 as Uint4,
+        UInt4 as UInt4,
         UInt8 as UInt8,
         UInt16 as UInt16,
         UInt32 as UInt32,
