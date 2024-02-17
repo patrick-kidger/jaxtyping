@@ -72,6 +72,7 @@ def test_dtypes():
         Float64,
         Inexact,
         Int,
+        Int4,
         Int8,
         Int16,
         Int32,
@@ -79,6 +80,7 @@ def test_dtypes():
         Num,
         Shaped,
         UInt,
+        UInt4,
         UInt8,
         UInt16,
         UInt32,
@@ -130,7 +132,9 @@ def test_any_dtype(jaxtyp, typecheck, getkey):
 
     g(jr.normal(getkey(), (3, 4)))
     g(jnp.array([[True, False]]))
+    g(jnp.array([[1, 2], [3, 4]], dtype=jnp.int4))
     g(jnp.array([[1, 2], [3, 4]], dtype=jnp.int8))
+    g(jnp.array([[1, 2], [3, 4]], dtype=jnp.uint4))
     g(jnp.array([[1, 2], [3, 4]], dtype=jnp.uint16))
     g(jr.normal(getkey(), (3, 4), dtype=jnp.complex128))
     g(jr.normal(getkey(), (3, 4), dtype=jnp.bfloat16))

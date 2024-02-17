@@ -32,6 +32,7 @@ from typing import (
     Annotated as Float64,  # noqa: F401
     Annotated as Inexact,  # noqa: F401
     Annotated as Int,  # noqa: F401
+    Annotated as Int4,  # noqa: F401
     Annotated as Int8,  # noqa: F401
     Annotated as Int16,  # noqa: F401
     Annotated as Int32,  # noqa: F401
@@ -42,6 +43,7 @@ from typing import (
     Annotated as Real,  # noqa: F401
     Annotated as Shaped,  # noqa: F401
     Annotated as UInt,  # noqa: F401
+    Annotated as UInt4,  # noqa: F401
     Annotated as UInt8,  # noqa: F401
     Annotated as UInt16,  # noqa: F401
     Annotated as UInt32,  # noqa: F401

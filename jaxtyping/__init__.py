@@ -37,6 +37,7 @@ from ._errors import (
 )
 from ._import_hook import install_import_hook as install_import_hook
 from ._ipython_extension import load_ipython_extension as load_ipython_extension
+from ._storage import print_bindings as print_bindings
 
 
 # Now import Array and ArrayLike
@@ -84,6 +85,7 @@ if typing.TYPE_CHECKING:
         Float64 as Float64,
         Inexact as Inexact,
         Int as Int,
+        Int4 as Int4,
         Int8 as Int8,
         Int16 as Int16,
         Int32 as Int32,
@@ -94,6 +96,7 @@ if typing.TYPE_CHECKING:
         Real as Real,
         Shaped as Shaped,
         UInt as UInt,
+        Uint4 as Uint4,
         UInt8 as UInt8,
         UInt16 as UInt16,
         UInt32 as UInt32,
@@ -112,6 +115,7 @@ else:
         Float64 as Float64,
         Inexact as Inexact,
         Int as Int,
+        Int4 as Int4,
         Int8 as Int8,
         Int16 as Int16,
         Int32 as Int32,
@@ -121,6 +125,7 @@ else:
         Real as Real,
         Shaped as Shaped,
         UInt as UInt,
+        UInt4 as UInt4,
         UInt8 as UInt8,
         UInt16 as UInt16,
         UInt32 as UInt32,

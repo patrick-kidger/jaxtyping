@@ -37,7 +37,7 @@ else:
 from ._array_types import _MetaAbstractArray
 from ._config import config
 from ._errors import AnnotationError, TypeCheckError
-from ._storage import pop_shape_memo, push_shape_memo
+from ._storage import pop_shape_memo, push_shape_memo, shape_str
 
 
 class _Sentinel:
@@ -343,7 +343,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                 except Exception as e:
                     # add_note api is support from python 3.11+
                     if sys.version_info >= (3, 11) and _no_jaxtyping_note(e):
-                        shape_info = _exc_shape_info(memos)
+                        shape_info = shape_str(memos)
                         if shape_info != "":
                             msg = (
                                 "The preceding error occurred within the scope of a "
@@ -435,7 +435,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                             "----------------------\n"
                             f"Called with parameters: {param_values}\n"
                             f"Parameter annotations: {param_hints}.\n"
-                            + _exc_shape_info(memos)
+                            + shape_str(memos)
                         )
                         if config.jaxtyping_remove_typechecker_stack:
                             raise TypeCheckError(msg) from None
@@ -488,7 +488,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                                 "----------------------\n"
                                 f"Called with parameters: {param_values}\n"
                                 f"Parameter annotations: {param_hints}.\n"
-                                + _exc_shape_info(memos)
+                                + shape_str(memos)
                             )
                             if config.jaxtyping_remove_typechecker_stack:
                                 raise TypeCheckError(msg) from None
@@ -778,40 +778,6 @@ def _pformat(x, short_self: bool):
 
         pformat = ft.partial(pprint.pformat, indent=2, compact=True)
     return pformat(x)
-
-
-def _exc_shape_info(memos) -> str:
-    """Gives debug information on the current state of jaxtyping's internal memos.
-    Used in type-checking error messages.
-    """
-    single_memo, variadic_memo, pytree_memo, _ = memos
-    single_memo = {
-        name: size
-        for name, size in single_memo.items()
-        if not name.startswith("~~delete~~")
-    }
-    variadic_memo = {
-        name: shape
-        for name, (_, shape) in variadic_memo.items()
-        if not name.startswith("~~delete~~")
-    }
-    pieces = []
-    if len(single_memo) > 0 or len(variadic_memo) > 0:
-        pieces.append(
-            "The current values for each jaxtyping axis annotation are as follows."
-        )
-        for name, size in single_memo.items():
-            pieces.append(f"{name}={size}")
-        for name, shape in variadic_memo.items():
-            pieces.append(f"{name}={shape}")
-    if len(pytree_memo) > 0:
-        pieces.append(
-            "The current values for each jaxtyping PyTree structure annotation are as "
-            "follows."
-        )
-        for name, structure in pytree_memo.items():
-            pieces.append(f"{name}={structure}")
-    return "\n".join(pieces)
 
 
 class _jaxtyping_note_str(str):
