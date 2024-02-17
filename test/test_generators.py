@@ -15,51 +15,64 @@ except ImportError:
     torch = None
 
 
-async def _async_generator(x: Float[Array, "*"]) -> AsyncIterator[Float[Array, "*"]]:
-    try:
-        import asyncio
+def test_generators_simple(typecheck):
+    @jaxtyped(typechecker=typecheck)
+    def gen(x: Float[Array, "*"]) -> Iterator[Float[Array, "*"]]:
+        yield x
 
-        await asyncio.sleep(0.01)
-    except ImportError:
-        pytest.skip("asyncio not available")
-    yield x
+    @jaxtyped(typechecker=typecheck)
+    def foo():
+        next(gen(jnp.zeros(2)))
+        next(gen(jnp.zeros((3, 4))))
 
-
-async def _async_foo(async_generator):
-    await next(async_generator(jnp.zeros(2)))
-    await next(async_generator(jnp.zeros((3, 4))))
+    foo()
 
 
-def _simple_generator(x: Float[Array, "*"]) -> Iterator[Float[Array, "*"]]:
-    yield x
+def test_generators_double_decorator(typecheck):
+    @jaxtyped(typechecker=None)
+    @typecheck
+    def gen(x: Float[Array, "*"]) -> Iterator[Float[Array, "*"]]:
+        yield x
+
+    @jaxtyped(typechecker=None)
+    def foo():
+        next(gen(jnp.zeros(2)))
+        next(gen(jnp.zeros((3, 4))))
+
+    foo()
 
 
-def _simple_foo(generator):
-    next(generator(jnp.zeros(2)))
-    next(generator(jnp.zeros((3, 4))))
+@pytest.mark.asyncio
+async def test_async_generators_simple(typecheck):
+    @jaxtyped(typechecker=typecheck)
+    async def gen(x: Float[Array, "*"]) -> AsyncIterator[Float[Array, "*"]]:
+        yield x
+
+    @jaxtyped(typechecker=typecheck)
+    async def foo():
+        async for _ in gen(jnp.zeros(2)):
+            pass
+        async for _ in gen(jnp.zeros((3, 4))):
+            pass
+
+    await foo()
 
 
-@pytest.fixture(
-    params=[(_simple_generator, _simple_foo), (_async_generator, _async_foo)]
-)
-def generator_and_foo(request):
-    return request.param
+@pytest.mark.asyncio
+async def test_async_generators_double_decorator(typecheck):
+    @jaxtyped(typechecker=None)
+    @typecheck
+    async def gen(x: Float[Array, "*"]) -> AsyncIterator[Float[Array, "*"]]:
+        yield x
 
+    @jaxtyped(typechecker=None)
+    async def foo():
+        async for _ in gen(jnp.zeros(2)):
+            pass
+        async for _ in gen(jnp.zeros((3, 4))):
+            pass
 
-def test_generators_simple(typecheck, generator_and_foo):
-    generator, foo = generator_and_foo
-    generator = jaxtyped(typechecker=typecheck)(generator)
-    foo = jaxtyped(typechecker=typecheck)(foo)
-
-    foo(generator)
-
-
-def test_generators_double_decorator(typecheck, generator_and_foo):
-    generator, foo = generator_and_foo
-    generator = jaxtyped(typechecker=None)(typecheck(generator))
-    foo = jaxtyped(typechecker=None)(foo)
-
-    foo(generator)
+    await foo()
 
 
 def test_generators_dont_modify_same_annotations(typecheck):
@@ -97,6 +110,8 @@ def test_generators_original_issue(typecheck):
 
 
 ### Some unit tests for the annotations modifier
+
+
 def test_generators_annotations_modifier():
     assert _change_annotations_to_any(Float[Array, "1"]) == Any
     assert _change_annotations_to_any(Iterator[Float[Array, "1"]]) == Iterator[Any]

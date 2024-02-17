@@ -4,5 +4,6 @@ equinox
 IPython
 jaxlib
 pytest
+pytest-asyncio
 tensorflow
 typeguard<3
