@@ -19,6 +19,7 @@
 
 import enum
 import functools as ft
+import os
 import re
 import sys
 import types
@@ -36,16 +37,26 @@ from ._storage import (
 )
 
 
-try:
-    import jax
-except (ImportError, RuntimeError, AttributeError):
-    # We catch `RuntimeError` as JAX will throw this if it's present, but unable to run
-    # on the current machine. This fails with this error.
-    # We catch `AttributeError` as the above then leaves the module in a partially
-    # initialised state, which causes subsequent imports to fail with this error.
+LOAD_JAX = os.environ.get("JAXTYPING_LOAD_JAX", "yes")
+
+if LOAD_JAX in {"yes", ""}:
+    try:
+        import jax
+    except (ImportError, RuntimeError, AttributeError):
+        # We catch `RuntimeError` as JAX will throw this if it's present, but unable to run
+        # on the current machine. This fails with this error.
+        # We catch `AttributeError` as the above then leaves the module in a partially
+        # initialised state, which causes subsequent imports to fail with this error.
+        has_jax = False
+    else:
+        has_jax = True
+elif LOAD_JAX == "no":
     has_jax = False
 else:
-    has_jax = True
+    raise ValueError(
+        "You must set the `JAXTYPING_LOAD_JAX` parameter to either 'yes', 'no', or ''. "
+        f"It is currently set to '{LOAD_JAX}'."
+    )
 
 
 _array_name_format = "dtype_and_shape"

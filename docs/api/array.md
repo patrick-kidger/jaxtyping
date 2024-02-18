@@ -107,6 +107,8 @@ BatchImage = Float[Array, "batch channels height width"]
 
 Note that `jaxtyping.{Array, ArrayLike}` are only available if JAX has been installed.
 
+You can disable the automatic `jax` import by setting the environment variable `JAXTYPING_LOAD_JAX="no"`.
+
 ## Scalars, PRNG keys
 
 For convenience, jaxtyping also includes `jaxtyping.Scalar`, `jaxtyping.ScalarLike`, and `jaxtyping.PRNGKeyArray`, defined as:
