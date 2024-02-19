@@ -287,35 +287,24 @@ class _MetaAbstractArray(type):
 @ft.lru_cache(maxsize=None)
 def _make_metaclass(base_metaclass):
     class MetaAbstractArray(_MetaAbstractArray, base_metaclass):
+        def _get_props(cls):
+            props_tuple = (
+                cls.index_variadic,
+                cls.dims,
+                cls.array_type,
+                cls.dtypes,
+                cls.dim_str,
+            )
+            return props_tuple
+
         def __eq__(cls, other):
             if type(cls) is not type(other):
                 return False
 
-            id_tuple = (
-                cls.index_variadic,
-                cls.dims,
-                cls.array_type,
-                cls.dtypes,
-                cls.dim_str,
-            )
-            other_id_tuple = (
-                other.index_variadic,
-                other.dims,
-                other.array_type,
-                other.dtypes,
-                other.dim_str,
-            )
-            return id_tuple == other_id_tuple
+            return cls._get_props() == other._get_props()
 
         def __hash__(cls):
-            id_tuple = (
-                cls.index_variadic,
-                cls.dims,
-                cls.array_type,
-                cls.dtypes,
-                cls.dim_str,
-            )
-            return hash(id_tuple)
+            return hash(cls._get_props())
 
     return MetaAbstractArray
 
