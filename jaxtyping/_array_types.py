@@ -50,7 +50,6 @@ def set_array_name_format(value):
 
 _any_dtype = object()
 
-
 _anonymous_dim = object()
 _anonymous_variadic_dim = object()
 
@@ -67,6 +66,19 @@ class _NamedDim:
         self.broadcastable = broadcastable
         self.treepath = treepath
 
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+
+        return (
+            self.name == other.name
+            and self.broadcastable == other.broadcastable
+            and self.treepath == other.treepath
+        )
+
+    def __hash__(self):
+        return hash((self.name, self.broadcastable, self.treepath))
+
 
 class _NamedVariadicDim:
     def __init__(self, name, broadcastable, treepath):
@@ -74,17 +86,47 @@ class _NamedVariadicDim:
         self.broadcastable = broadcastable
         self.treepath = treepath
 
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+
+        return (
+            self.name == other.name
+            and self.broadcastable == other.broadcastable
+            and self.treepath == other.treepath
+        )
+
+    def __hash__(self):
+        return hash((self.name, self.broadcastable, self.treepath))
+
 
 class _FixedDim:
     def __init__(self, size, broadcastable):
         self.size = size
         self.broadcastable = broadcastable
 
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        return self.size == other.size and self.broadcastable == other.broadcastable
+
+    def __hash__(self):
+        return hash((self.size, self.broadcastable))
+
 
 class _SymbolicDim:
     def __init__(self, elem, broadcastable):
         self.elem = elem
         self.broadcastable = broadcastable
+
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+
+        return self.elem == other and self.broadcastable == other.broadcastable
+
+    def __hash__(self):
+        return hash((self.elem, self.broadcastable))
 
 
 _AbstractDimOrVariadicDim = Union[
@@ -147,10 +189,14 @@ def _check_dims(
 
 
 class _MetaAbstractArray(type):
+    _skip_instancecheck: bool = False
+
     def __instancecheck__(cls, obj: Any) -> bool:
         return cls.__instancecheck_str__(obj) == ""
 
     def __instancecheck_str__(cls, obj: Any) -> str:
+        if cls._skip_instancecheck:
+            return ""
         if not isinstance(obj, cls.array_type):
             return f"this value is not an instance of the underlying array type {cls.array_type}"  # noqa: E501
         if get_treeflatten_memo():
@@ -283,7 +329,35 @@ class _MetaAbstractArray(type):
 @ft.lru_cache(maxsize=None)
 def _make_metaclass(base_metaclass):
     class MetaAbstractArray(_MetaAbstractArray, base_metaclass):
-        pass
+        def __eq__(cls, other):
+            if type(cls) is not type(other):
+                return False
+
+            id_tuple = (
+                cls.index_variadic,
+                cls.dims,
+                cls.array_type,
+                cls.dtypes,
+                cls.dim_str,
+            )
+            other_id_tuple = (
+                other.index_variadic,
+                other.dims,
+                other.array_type,
+                other.dtypes,
+                other.dim_str,
+            )
+            return id_tuple == other_id_tuple
+
+        def __hash__(cls):
+            id_tuple = (
+                cls.index_variadic,
+                cls.dims,
+                cls.array_type,
+                cls.dtypes,
+                cls.dim_str,
+            )
+            return hash(id_tuple)
 
     return MetaAbstractArray
 
@@ -314,14 +388,13 @@ class AbstractArray(metaclass=_MetaAbstractArray):
 
 _not_made = object()
 
-
 _union_types = [typing.Union]
 if sys.version_info >= (3, 10):
     _union_types.append(types.UnionType)
 
 
 @ft.lru_cache(maxsize=None)
-def _make_array(array_type, dim_str, dtypes, name):
+def _make_array_cached(array_type, dim_str, dtypes, name):
     if not isinstance(dim_str, str):
         raise ValueError(
             "Shape specification must be a string. Axes should be separated with "
@@ -536,22 +609,33 @@ def _make_array(array_type, dim_str, dtypes, name):
         name = type_str
     else:
         raise ValueError(f"array_name_format {_array_name_format} not recognised")
-    metaclass = _make_metaclass(type(array_type))
-    out = metaclass(
-        name,
-        (array_type, AbstractArray),
-        dict(
-            array_type=array_type,
-            dtypes=dtypes,
-            dims=dims,
-            index_variadic=index_variadic,
-            dim_str=dim_str,
-        ),
-    )
-    if getattr(typing, "GENERATING_DOCUMENTATION", False):
-        out.__module__ = "builtins"
-    else:
-        out.__module__ = "jaxtyping"
+
+    return (array_type, name, dtypes, dims, index_variadic, dim_str)
+
+
+def _make_array(*args, **kwargs):
+    out = _make_array_cached(*args, **kwargs)
+
+    if type(out) is tuple:
+        array_type, name, dtypes, dims, index_variadic, dim_str = out
+        metaclass = _make_metaclass(type(array_type))
+
+        out = metaclass(
+            name,
+            (array_type, AbstractArray),
+            dict(
+                array_type=array_type,
+                dtypes=dtypes,
+                dims=dims,
+                index_variadic=index_variadic,
+                dim_str=dim_str,
+            ),
+        )
+        if getattr(typing, "GENERATING_DOCUMENTATION", False):
+            out.__module__ = "builtins"
+        else:
+            out.__module__ = "jaxtyping"
+
     return out
 
 

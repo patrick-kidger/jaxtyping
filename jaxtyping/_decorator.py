@@ -317,11 +317,21 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                 wrp = wrp.__wrapped__
 
             if inspect.isgeneratorfunction(wrp) or inspect.isasyncgenfunction(wrp):
+                # recursively parse all the annotations, and mark all the jaxtyping
+                # annotations as not needing instance checks, while still being
+                # visible as original ones for the typechecker
+                def modify_annotation(ann):
+                    if isinstance(ann, _MetaAbstractArray):
+                        setattr(ann, "_skip_instancecheck", True)
+                    elif hasattr(ann, "__args__"):
+                        for sub_ann in get_args(ann):
+                            modify_annotation(sub_ann)
+                    elif hasattr(ann, "__origin__"):
+                        modify_annotation(get_origin(ann))
+
                 # just to make sure: check that fn has valid return annotations
-                if hasattr(fn, "__annotations__") and ("return" in fn.__annotations__):
-                    fn.__annotations__["return"] = _change_annotations_to_any(
-                        fn.__annotations__["return"]
-                    )
+                if hasattr(fn, "__annotations__") and "return" in fn.__annotations__:
+                    modify_annotation(fn.__annotations__["return"])
 
             signature = inspect.signature(fn)
 
@@ -491,25 +501,6 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                     pop_shape_memo()
 
         return wrapped_fn
-
-
-# Recursively parse all the parts of an annotation, and mark all the jaxtyping
-# annotations as not needing instance checks, replacing them with
-# 'typing.Any'. All other non-jaxtyping annotations are left as is
-def _change_annotations_to_any(ann):
-    if not inspect.isclass(ann):
-        class_of_ann = get_origin(ann)
-    else:
-        class_of_ann = ann
-
-    if isinstance(class_of_ann, _MetaAbstractArray):
-        return Any
-
-    if hasattr(ann, "__args__"):
-        new_args = [_change_annotations_to_any(sub) for sub in get_args(ann)]
-        setattr(ann, "__args__", tuple(new_args))
-
-    return ann
 
 
 class _JaxtypingContext:

@@ -1,10 +1,9 @@
-from typing import Any, AsyncIterator, Callable, Iterator, Union
+from typing import AsyncIterator, Iterator
 
 import jax.numpy as jnp
 import pytest
 
 from jaxtyping import Array, Float, jaxtyped, Shaped
-from jaxtyping._decorator import _change_annotations_to_any
 
 from .helpers import ParamError
 
@@ -107,25 +106,3 @@ def test_generators_original_issue(typecheck):
         next(g(torch.zeros(2)))
 
     f()
-
-
-### Some unit tests for the annotations modifier
-
-
-def test_generators_annotations_modifier():
-    assert _change_annotations_to_any(Float[Array, "1"]) == Any
-    assert _change_annotations_to_any(Iterator[Float[Array, "1"]]) == Iterator[Any]
-
-    assert (
-        _change_annotations_to_any(
-            Union[
-                Union[
-                    Iterator[Float[Array, "*"]],
-                    Iterator[Callable[..., Float[Array, "1"]]],
-                ],
-                Iterator[Float[Array, "2"]],
-                Float[Array, "3"],
-            ]
-        )
-        == Union[Union[Iterator[Any], Iterator[Callable[..., Any]]], Iterator[Any], Any]
-    )
