@@ -27,6 +27,20 @@ def test_generators_simple(typecheck):
     foo()
 
 
+def test_generators_return_no_annotations(typecheck):
+    @jaxtyped(typechecker=None)
+    @typecheck
+    def gen(x: Float[Array, "*"]):
+        yield x
+
+    @jaxtyped(typechecker=None)
+    def foo():
+        next(gen(jnp.zeros(2)))
+        next(gen(jnp.zeros((3, 4))))
+
+    foo()
+
+
 def test_generators_double_decorator(typecheck):
     @jaxtyped(typechecker=None)
     @typecheck

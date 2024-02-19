@@ -322,8 +322,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                 # annotations as not needing instance checks, while still being
                 # visible as original ones for the typechecker
                 def modify_annotation(ann):
-                    origin = ann if inspect.isclass(ann) else get_origin(ann)
-                    if origin is not None and issubclass(origin, AbstractArray):
+                    if inspect.isclass(ann) and issubclass(ann, AbstractArray):
                         ann.make_transparent()
 
                     for sub_ann in get_args(ann):
