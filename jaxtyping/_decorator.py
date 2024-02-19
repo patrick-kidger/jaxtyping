@@ -19,11 +19,17 @@
 
 import dataclasses
 import functools as ft
+import importlib.util
 import inspect
 import itertools as it
 import sys
 import warnings
 from typing import Any, get_args, get_origin, get_type_hints, overload
+
+from ._array_types import _MetaAbstractArray
+from ._config import config
+from ._errors import AnnotationError, TypeCheckError
+from ._storage import pop_shape_memo, push_shape_memo, shape_str
 
 
 try:
@@ -34,18 +40,13 @@ else:
     traceback_util.register_exclusion(__file__)
 
 
-from ._array_types import _MetaAbstractArray
-from ._config import config
-from ._errors import AnnotationError, TypeCheckError
-from ._storage import pop_shape_memo, push_shape_memo, shape_str
-
-
 class _Sentinel:
     def __repr__(self):
         return "sentinel"
 
 
 _sentinel = _Sentinel()
+_tb_flag = True
 
 
 @overload
@@ -193,6 +194,13 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
         `jaxtyped(typechecker=None)`. Usage like this is very rare; it's mostly only
         useful when working at the global scope.
     """
+
+    global _tb_flag
+    if _tb_flag and importlib.util.find_spec("jax._src.traceback_util") is not None:
+        import jax._src.traceback_util as traceback_util
+
+        traceback_util.register_exclusion(__file__)
+        _tb_flag = False
 
     # First handle the `jaxtyped("context")` usage, which is a special case.
     if fn == "context":

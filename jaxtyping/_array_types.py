@@ -36,18 +36,6 @@ from ._storage import (
 )
 
 
-try:
-    import jax
-except (ImportError, RuntimeError, AttributeError):
-    # We catch `RuntimeError` as JAX will throw this if it's present, but unable to run
-    # on the current machine. This fails with this error.
-    # We catch `AttributeError` as the above then leaves the module in a partially
-    # initialised state, which causes subsequent imports to fail with this error.
-    has_jax = False
-else:
-    has_jax = True
-
-
 _array_name_format = "dtype_and_shape"
 
 
@@ -721,10 +709,4 @@ Num = _make_dtype(uints + ints + floats + complexes, "Num")
 
 Shaped = _make_dtype(_any_dtype, "Shaped")
 
-if has_jax:
-    Key = _make_dtype(_prng_key, "Key")
-    # New-style `jax.random.key` have scalar shape and dtype `key<foo>`.
-    # Old-style `jax.random.PRNGKey` have shape `(2,)` and dtype `uint32`.
-    PRNGKeyArray = Union[Key[jax.Array, ""], UInt32[jax.Array, "2"]]
-    Scalar = Shaped[jax.Array, ""]
-    ScalarLike = Shaped[jax.typing.ArrayLike, ""]
+Key = _make_dtype(_prng_key, "Key")

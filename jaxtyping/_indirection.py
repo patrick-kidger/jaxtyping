@@ -48,7 +48,12 @@ from typing import (
     Annotated as UInt16,  # noqa: F401
     Annotated as UInt32,  # noqa: F401
     Annotated as UInt64,  # noqa: F401
+    TYPE_CHECKING,
 )
+
+
+if not TYPE_CHECKING:
+    assert False
 
 from jax import (
     Array as PRNGKeyArray,  # noqa: F401
