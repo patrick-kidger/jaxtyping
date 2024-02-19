@@ -26,7 +26,8 @@ import sys
 import warnings
 from typing import Any, get_args, get_origin, get_type_hints, overload
 
-from ._array_types import _MetaAbstractArray
+from jaxtyping import AbstractArray
+
 from ._config import config
 from ._errors import AnnotationError, TypeCheckError
 from ._storage import pop_shape_memo, push_shape_memo, shape_str
@@ -321,13 +322,12 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                 # annotations as not needing instance checks, while still being
                 # visible as original ones for the typechecker
                 def modify_annotation(ann):
-                    if isinstance(ann, _MetaAbstractArray):
-                        setattr(ann, "_skip_instancecheck", True)
-                    elif hasattr(ann, "__args__"):
-                        for sub_ann in get_args(ann):
-                            modify_annotation(sub_ann)
-                    elif hasattr(ann, "__origin__"):
-                        modify_annotation(get_origin(ann))
+                    origin = ann if inspect.isclass(ann) else get_origin(ann)
+                    if origin is not None and issubclass(origin, AbstractArray):
+                        ann.make_transparent()
+
+                    for sub_ann in get_args(ann):
+                        modify_annotation(sub_ann)
 
                 # just to make sure: check that fn has valid return annotations
                 if hasattr(fn, "__annotations__") and "return" in fn.__annotations__:

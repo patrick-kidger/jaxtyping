@@ -149,6 +149,9 @@ def _check_dims(
 class _MetaAbstractArray(type):
     _skip_instancecheck: bool = False
 
+    def make_transparent(cls):
+        cls._skip_instancecheck = True
+
     def __instancecheck__(cls, obj: Any) -> bool:
         return cls.__instancecheck_str__(obj) == ""
 
