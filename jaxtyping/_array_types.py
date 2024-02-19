@@ -23,6 +23,7 @@ import re
 import sys
 import types
 import typing
+from dataclasses import dataclass
 from typing import Any, Literal, NoReturn, Optional, Union
 
 import numpy as np
@@ -60,73 +61,30 @@ class _DimType(enum.Enum):
     symbolic = enum.auto()
 
 
+@dataclass(frozen=True)
 class _NamedDim:
-    def __init__(self, name, broadcastable, treepath):
-        self.name = name
-        self.broadcastable = broadcastable
-        self.treepath = treepath
-
-    def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-
-        return (
-            self.name == other.name
-            and self.broadcastable == other.broadcastable
-            and self.treepath == other.treepath
-        )
-
-    def __hash__(self):
-        return hash((self.name, self.broadcastable, self.treepath))
+    name: str
+    broadcastable: bool
+    treepath: Any
 
 
+@dataclass(frozen=True)
 class _NamedVariadicDim:
-    def __init__(self, name, broadcastable, treepath):
-        self.name = name
-        self.broadcastable = broadcastable
-        self.treepath = treepath
-
-    def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-
-        return (
-            self.name == other.name
-            and self.broadcastable == other.broadcastable
-            and self.treepath == other.treepath
-        )
-
-    def __hash__(self):
-        return hash((self.name, self.broadcastable, self.treepath))
+    name: str
+    broadcastable: bool
+    treepath: Any
 
 
+@dataclass(frozen=True)
 class _FixedDim:
-    def __init__(self, size, broadcastable):
-        self.size = size
-        self.broadcastable = broadcastable
-
-    def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        return self.size == other.size and self.broadcastable == other.broadcastable
-
-    def __hash__(self):
-        return hash((self.size, self.broadcastable))
+    size: str
+    broadcastable: bool
 
 
+@dataclass(frozen=True)
 class _SymbolicDim:
-    def __init__(self, elem, broadcastable):
-        self.elem = elem
-        self.broadcastable = broadcastable
-
-    def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-
-        return self.elem == other and self.broadcastable == other.broadcastable
-
-    def __hash__(self):
-        return hash((self.elem, self.broadcastable))
+    elem: Any
+    broadcastable: bool
 
 
 _AbstractDimOrVariadicDim = Union[
