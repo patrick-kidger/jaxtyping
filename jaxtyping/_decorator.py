@@ -32,14 +32,6 @@ from ._errors import AnnotationError, TypeCheckError
 from ._storage import pop_shape_memo, push_shape_memo, shape_str
 
 
-try:
-    import jax._src.traceback_util as traceback_util
-except ImportError:
-    pass
-else:
-    traceback_util.register_exclusion(__file__)
-
-
 class _Sentinel:
     def __repr__(self):
         return "sentinel"
