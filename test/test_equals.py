@@ -22,7 +22,6 @@ from jaxtyping import (
         lambda: Shaped[PRNGKeyArray, "2"],
         lambda: Float[float, "#*shape"],
         lambda: PyTree[int],
-        lambda: PyTree[float],
         lambda: PyTree[Float[Array, ""]],
         lambda: PyTree[Float32[Array, "*m b c"]],
         lambda: PyTree[PyTree[Float32[Array, "1 2 b *"]]],
