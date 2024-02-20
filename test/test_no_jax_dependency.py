@@ -1,9 +1,14 @@
 import subprocess
+import sys
+
+
+_py_path = sys.executable
 
 
 def test_no_jax_dependency():
     result = subprocess.run(
-        "python -c 'import jaxtyping; import sys; sys.exit(\"jax\" in sys.modules)'",
+        f"{_py_path} -c "
+        "'import jaxtyping; import sys; sys.exit(\"jax\" in sys.modules)'",
         shell=True,
     )
     assert result.returncode == 0
@@ -13,7 +18,7 @@ def test_no_jax_dependency():
 # subprocess.)
 def test_meta():
     result = subprocess.run(
-        "python -c 'import jaxtyping; import jax; import sys; "
+        f"{_py_path} -c 'import jaxtyping; import jax; import sys; "
         'sys.exit("jax" in sys.modules)\'',
         shell=True,
     )
