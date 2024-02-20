@@ -26,6 +26,8 @@ import sys
 import warnings
 from typing import Any, get_args, get_origin, get_type_hints, overload
 
+from jaxtyping import AbstractArray
+
 from ._config import config
 from ._errors import AnnotationError, TypeCheckError
 from ._storage import pop_shape_memo, push_shape_memo, shape_str
@@ -309,6 +311,27 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
             # in which case make a best-effort attempt to add shape information for any
             # type errors.
 
+            # we want to detect generators, and ignore return annotations on them,
+            # to avoid issues with O(n) typechecking trying to typecheck yielded values
+            wrp = fn
+            while hasattr(wrp, "__wrapped__"):
+                wrp = wrp.__wrapped__
+
+            if inspect.isgeneratorfunction(wrp) or inspect.isasyncgenfunction(wrp):
+                # recursively parse all the annotations, and mark all the jaxtyping
+                # annotations as not needing instance checks, while still being
+                # visible as original ones for the typechecker
+                def modify_annotation(ann):
+                    if inspect.isclass(ann) and issubclass(ann, AbstractArray):
+                        ann.make_transparent()
+
+                    for sub_ann in get_args(ann):
+                        modify_annotation(sub_ann)
+
+                # just to make sure: check that fn has valid return annotations
+                if hasattr(fn, "__annotations__") and "return" in fn.__annotations__:
+                    modify_annotation(fn.__annotations__["return"])
+
             signature = inspect.signature(fn)
 
             @ft.wraps(fn)
@@ -318,6 +341,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                 try:
                     return fn(*args, **kwargs)
                 except Exception as e:
+                    # add_note api is support from python 3.11+
                     if sys.version_info >= (3, 11) and _no_jaxtyping_note(e):
                         shape_info = shape_str(memos)
                         if shape_info != "":

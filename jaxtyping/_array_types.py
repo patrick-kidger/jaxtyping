@@ -23,6 +23,7 @@ import re
 import sys
 import types
 import typing
+from dataclasses import dataclass
 from typing import Any, Literal, NoReturn, Optional, Union
 
 import numpy as np
@@ -50,7 +51,6 @@ def set_array_name_format(value):
 
 _any_dtype = object()
 
-
 _anonymous_dim = object()
 _anonymous_variadic_dim = object()
 
@@ -61,30 +61,30 @@ class _DimType(enum.Enum):
     symbolic = enum.auto()
 
 
+@dataclass(frozen=True)
 class _NamedDim:
-    def __init__(self, name, broadcastable, treepath):
-        self.name = name
-        self.broadcastable = broadcastable
-        self.treepath = treepath
+    name: str
+    broadcastable: bool
+    treepath: Any
 
 
+@dataclass(frozen=True)
 class _NamedVariadicDim:
-    def __init__(self, name, broadcastable, treepath):
-        self.name = name
-        self.broadcastable = broadcastable
-        self.treepath = treepath
+    name: str
+    broadcastable: bool
+    treepath: Any
 
 
+@dataclass(frozen=True)
 class _FixedDim:
-    def __init__(self, size, broadcastable):
-        self.size = size
-        self.broadcastable = broadcastable
+    size: str
+    broadcastable: bool
 
 
+@dataclass(frozen=True)
 class _SymbolicDim:
-    def __init__(self, elem, broadcastable):
-        self.elem = elem
-        self.broadcastable = broadcastable
+    elem: Any
+    broadcastable: bool
 
 
 _AbstractDimOrVariadicDim = Union[
@@ -147,10 +147,17 @@ def _check_dims(
 
 
 class _MetaAbstractArray(type):
+    _skip_instancecheck: bool = False
+
+    def make_transparent(cls):
+        cls._skip_instancecheck = True
+
     def __instancecheck__(cls, obj: Any) -> bool:
         return cls.__instancecheck_str__(obj) == ""
 
     def __instancecheck_str__(cls, obj: Any) -> str:
+        if cls._skip_instancecheck:
+            return ""
         if not isinstance(obj, cls.array_type):
             return f"this value is not an instance of the underlying array type {cls.array_type}"  # noqa: E501
         if get_treeflatten_memo():
@@ -283,7 +290,24 @@ class _MetaAbstractArray(type):
 @ft.lru_cache(maxsize=None)
 def _make_metaclass(base_metaclass):
     class MetaAbstractArray(_MetaAbstractArray, base_metaclass):
-        pass
+        def _get_props(cls):
+            props_tuple = (
+                cls.index_variadic,
+                cls.dims,
+                cls.array_type,
+                cls.dtypes,
+                cls.dim_str,
+            )
+            return props_tuple
+
+        def __eq__(cls, other):
+            if type(cls) is not type(other):
+                return False
+
+            return cls._get_props() == other._get_props()
+
+        def __hash__(cls):
+            return hash(cls._get_props())
 
     return MetaAbstractArray
 
@@ -314,14 +338,13 @@ class AbstractArray(metaclass=_MetaAbstractArray):
 
 _not_made = object()
 
-
 _union_types = [typing.Union]
 if sys.version_info >= (3, 10):
     _union_types.append(types.UnionType)
 
 
 @ft.lru_cache(maxsize=None)
-def _make_array(array_type, dim_str, dtypes, name):
+def _make_array_cached(array_type, dim_str, dtypes, name):
     if not isinstance(dim_str, str):
         raise ValueError(
             "Shape specification must be a string. Axes should be separated with "
@@ -536,22 +559,33 @@ def _make_array(array_type, dim_str, dtypes, name):
         name = type_str
     else:
         raise ValueError(f"array_name_format {_array_name_format} not recognised")
-    metaclass = _make_metaclass(type(array_type))
-    out = metaclass(
-        name,
-        (array_type, AbstractArray),
-        dict(
-            array_type=array_type,
-            dtypes=dtypes,
-            dims=dims,
-            index_variadic=index_variadic,
-            dim_str=dim_str,
-        ),
-    )
-    if getattr(typing, "GENERATING_DOCUMENTATION", False):
-        out.__module__ = "builtins"
-    else:
-        out.__module__ = "jaxtyping"
+
+    return (array_type, name, dtypes, dims, index_variadic, dim_str)
+
+
+def _make_array(*args, **kwargs):
+    out = _make_array_cached(*args, **kwargs)
+
+    if type(out) is tuple:
+        array_type, name, dtypes, dims, index_variadic, dim_str = out
+        metaclass = _make_metaclass(type(array_type))
+
+        out = metaclass(
+            name,
+            (array_type, AbstractArray),
+            dict(
+                array_type=array_type,
+                dtypes=dtypes,
+                dims=dims,
+                index_variadic=index_variadic,
+                dim_str=dim_str,
+            ),
+        )
+        if getattr(typing, "GENERATING_DOCUMENTATION", False):
+            out.__module__ = "builtins"
+        else:
+            out.__module__ = "jaxtyping"
+
     return out
 
 

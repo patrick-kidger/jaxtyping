@@ -25,7 +25,12 @@ import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
 import pytest
-import torch
+
+
+try:
+    import torch
+except ImportError:
+    torch = None
 
 from jaxtyping import (
     AbstractDtype,
@@ -553,7 +558,9 @@ def test_arraylike(typecheck, getkey):
 def test_subclass():
     assert issubclass(Float[Array, ""], Array)
     assert issubclass(Float[np.ndarray, ""], np.ndarray)
-    assert issubclass(Float[torch.Tensor, ""], torch.Tensor)
+
+    if torch is not None:
+        assert issubclass(Float[torch.Tensor, ""], torch.Tensor)
 
 
 def test_ignored_names():
