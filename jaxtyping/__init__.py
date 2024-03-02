@@ -145,6 +145,7 @@ else:
                         pass
 
                     Array.__module__ = "builtins"
+                    Array.__qualname__ = "Array"
                     return Array
                 else:
                     import jax
@@ -157,6 +158,7 @@ else:
                         pass
 
                     ArrayLike.__module__ = "builtins"
+                    ArrayLike.__qualname__ = "ArrayLike"
                     return ArrayLike
                 else:
                     import jax.typing
@@ -169,6 +171,7 @@ else:
                         pass
 
                     PRNGKeyArray.__module__ = "builtins"
+                    PRNGKeyArray.__qualname__ = "PRNGKeyArray"
                     return PRNGKeyArray
                 else:
                     # New-style `jax.random.key` have scalar shape and dtype `key<foo>`.
@@ -216,6 +219,7 @@ else:
                     if typing.GENERATING_DOCUMENTATION:
                         # Equinox etc. docs get just `PyTreeDef`.
                         # jaxtyping docs get `jaxtyping.PyTreeDef`.
+                        PyTreeDef.__qualname__ = "PyTreeDef"
                         PyTreeDef.__module__ = "builtins"
                     return PyTreeDef
                 else:
