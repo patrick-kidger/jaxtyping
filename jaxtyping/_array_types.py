@@ -229,7 +229,7 @@ class _MetaAbstractArray(type):
             return _check_dims(cls.dims, obj.shape, single_memo, arg_memo)
         else:
             if obj.ndim < len(cls.dims) - 1:
-                return f"this array has {obj.ndim} dimensions, which is fewer than {len(cls.dims - 1)} that is the minimum expected by the type hint"  # noqa: E501
+                return f"this array has {obj.ndim} dimensions, which is fewer than {len(cls.dims) - 1} that is the minimum expected by the type hint"  # noqa: E501
             i = cls.index_variadic
             j = -(len(cls.dims) - i - 1)
             if j == 0:
