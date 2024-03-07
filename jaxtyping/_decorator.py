@@ -189,7 +189,11 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
     """
 
     global _tb_flag
-    if _tb_flag and importlib.util.find_spec("jax._src.traceback_util") is not None:
+    if (
+        _tb_flag
+        and importlib.util.find_spec("jax") is not None
+        and importlib.util.find_spec("jax._src.traceback_util") is not None
+    ):
         import jax._src.traceback_util as traceback_util
 
         traceback_util.register_exclusion(__file__)
