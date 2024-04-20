@@ -43,16 +43,32 @@ Have a read of the [Array annotations](./api/array.md) documentation on the left
 
 ## See also: other libraries in the JAX ecosystem
 
-[Equinox](https://github.com/patrick-kidger/equinox): neural networks.
+#### Always useful
+
+[Equinox](https://github.com/patrick-kidger/equinox): neural networks and everything not already in core JAX!
+
+#### Deep learning
 
 [Optax](https://github.com/deepmind/optax): first-order gradient (SGD, Adam, ...) optimisers.
 
-[Diffrax](https://github.com/patrick-kidger/diffrax): numerical differential equation solvers.
-
-[Lineax](https://github.com/google/lineax): linear solvers and linear least squares.
-
-[Eqxvision](https://github.com/paganpasta/eqxvision): computer vision models.
-
-[sympy2jax](https://github.com/google/sympy2jax): SymPy<->JAX conversion; train symbolic expressions via gradient descent.
+[Orbax](https://github.com/google/orbax): checkpointing (async/multi-host/multi-device).
 
 [Levanter](https://github.com/stanford-crfm/levanter): scalable+reliable training of foundation models (e.g. LLMs).
+
+#### Scientific computing
+
+[Diffrax](https://github.com/patrick-kidger/diffrax): numerical differential equation solvers.
+
+[Optimistix](https://github.com/patrick-kidger/optimistix): root finding, minimisation, fixed points, and least squares.
+
+[Lineax](https://github.com/patrick-kidger/lineax): linear solvers.
+
+[BlackJAX](https://github.com/blackjax-devs/blackjax): probabilistic+Bayesian sampling.
+
+[sympy2jax](https://github.com/patrick-kidger/sympy2jax): SymPy<->JAX conversion; train symbolic expressions via gradient descent.
+
+[PySR](https://github.com/milesCranmer/PySR): symbolic regression. (Non-JAX honourable mention!)
+
+#### Awesome JAX
+
+[Awesome JAX](https://github.com/n2cholas/awesome-jax): a longer list of other JAX projects.## Finally## See also: other libraries in the JAX ecosystem
