@@ -170,7 +170,8 @@ class JaxtypingTransformer(ast.NodeVisitor):
         # had any annotated arguments or annotated return types, and if not, we
         # would skip adding the `@jaxtyped` decorator.
         # However, this has been removed because it would ignore functions that
-        # had type annotations in the body of the function (or `assert isinstance(..., SomeType)`).
+        # had type annotations in the body of the function (or
+        # `assert isinstance(..., SomeType)`).
 
         # Place at the end of the decorator list, because:
         # - as otherwise we wrap e.g. `jax.custom_{jvp,vjp}` and lose the ability
