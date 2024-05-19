@@ -1,6 +1,6 @@
 <h1 align="center">jaxtyping</h1>
 
-Type annotations **and runtime type-checking** for:
+[Use type annotations **and runtime type-checking**](https://jax.readthedocs.io/en/latest/jep/12049-type-annotations.html) for:
 
 1. shape and dtype of [JAX](https://github.com/google/jax) arrays; *(Now also supports PyTorch, NumPy, and TensorFlow!)*
 2. [PyTrees](https://jax.readthedocs.io/en/latest/pytrees.html).
