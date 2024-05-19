@@ -342,6 +342,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
             @ft.wraps(fn)
             def wrapped_fn(*args, **kwargs):  # pyright: ignore
                 bound = signature.bind(*args, **kwargs)
+                bound.apply_defaults()
                 memos = push_shape_memo(bound.arguments)
                 try:
                     return fn(*args, **kwargs)
@@ -410,6 +411,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                 # Raise bind-time errors before we do any shape analysis. (I.e. skip
                 # the pointless jaxtyping information for a non-typechecking failure.)
                 bound = param_signature.bind(*args, **kwargs)
+                bound.apply_defaults()
 
                 memos = push_shape_memo(bound.arguments)
                 try:
