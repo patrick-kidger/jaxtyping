@@ -166,24 +166,28 @@ class JaxtypingTransformer(ast.NodeVisitor):
         return node
 
     def visit_FunctionDef(self, node: ast.FunctionDef):
-        has_annotated_args = any(arg for arg in node.args.args if arg.annotation)
-        has_annotated_return = bool(node.returns)
-        if has_annotated_args or has_annotated_return:
-            # Place at the end of the decorator list, because:
-            # - as otherwise we wrap e.g. `jax.custom_{jvp,vjp}` and lose the ability
-            #     to `defjvp` etc.
-            # - decorators frequently remove annotations from functions, and we'd like
-            #     to use those annotations.
-            # - typeguard in particular wants to be at the end of the decorator list, as
-            #     it works by recompling the wrapped function.
-            #
-            # Note that the counter-argument here is that we'd like to place this
-            # at the start of the decorator list, in case a typechecking annotation
-            # has been manually applied, and we'd need to be above that. In this
-            # case we're just going to have to need to ask the user to remove their
-            # typechecking annotation (and let this decorator do it instead).
-            # It's more important we be compatible with normal JAX code.
-            node.decorator_list.append(self._typechecker.get_ast())
+        # Originally, we had some code here to explicitly check if the function
+        # had any annotated arguments or annotated return types, and if not, we
+        # would skip adding the `@jaxtyped` decorator.
+        # However, this has been removed because it would ignore functions that
+        # had type annotations in the body of the function (or
+        # `assert isinstance(..., SomeType)`).
+
+        # Place at the end of the decorator list, because:
+        # - as otherwise we wrap e.g. `jax.custom_{jvp,vjp}` and lose the ability
+        #     to `defjvp` etc.
+        # - decorators frequently remove annotations from functions, and we'd like
+        #     to use those annotations.
+        # - typeguard in particular wants to be at the end of the decorator list, as
+        #     it works by recompling the wrapped function.
+        #
+        # Note that the counter-argument here is that we'd like to place this
+        # at the start of the decorator list, in case a typechecking annotation
+        # has been manually applied, and we'd need to be above that. In this
+        # case we're just going to have to need to ask the user to remove their
+        # typechecking annotation (and let this decorator do it instead).
+        # It's more important we be compatible with normal JAX code.
+        node.decorator_list.append(self._typechecker.get_ast())
 
         self._parents.append(node)
         self.generic_visit(node)

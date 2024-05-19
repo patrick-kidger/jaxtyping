@@ -229,6 +229,21 @@ Bar(Foo, Foo, Foo)
 with pytest.raises(ParamError):
     Bar(1, Foo, Foo)
 
+
+#
+# Test that assert isinstance works (even if no arg/return annotations)
+
+
+def isinstance_test(x):
+    assert isinstance(x, Float32[jnp.ndarray, " b"])
+    _ = x
+
+
+isinstance_test(jnp.array([1.0]))
+with pytest.raises(AssertionError):
+    isinstance_test(jnp.array(1))
+
+
 # Record that we've finished our checks successfully
 
 jaxtyping._test_import_hook_counter += 1
