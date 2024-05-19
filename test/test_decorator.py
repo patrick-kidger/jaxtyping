@@ -117,6 +117,17 @@ def test_defaults(jaxtyp, typecheck):
     f(1)
 
 
+def test_default_bindings(getkey, jaxtyp, typecheck):
+    @jaxtyp(typecheck)
+    def f(x: int, y: int = 1) -> Float[Array, "x {y}"]:
+        return jr.normal(getkey(), (x, y))
+
+    f(1)
+    f(1, 1)
+    f(1, 0)
+    f(1, 5)
+
+
 class _GlobalFoo:
     pass
 
