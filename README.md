@@ -8,7 +8,11 @@ Type annotations **and runtime type-checking** for:
 
 **For example:**
 ```python
-from jaxtyping import Array, Float, PyTree
+from jaxtyping import Array, Float, PyTree, , UInt, Int, Bool
+import torch
+impport numpy as np
+import tensorflow as tf
+
 
 # Accepts floating-point 2D arrays with matching axes
 def matrix_multiply(x: Float[Array, "dim1 dim2"],
@@ -21,6 +25,15 @@ def accepts_pytree_of_ints(x: PyTree[int]):
 
 def accepts_pytree_of_arrays(x: PyTree[Float[Array, "batch c1 c2"]]):
     ...
+
+def accepts_torch.Long(x: Int[torch.Tensor, "batch channel height width"]):
+  ....
+
+def accepts_numpy_float(x :Float[np.ndarray, "batch sequence features"]):
+  ...
+
+def accepts_tensorflow_uint(x: hint = UInt[tf.Tensor, "b c h w"]):
+  ...
 ```
 
 ## Installation
