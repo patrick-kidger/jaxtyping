@@ -19,6 +19,7 @@
 
 import enum
 import functools as ft
+import importlib.util
 import re
 import sys
 import types
@@ -26,7 +27,17 @@ import typing
 from dataclasses import dataclass
 from typing import Any, Literal, NoReturn, Optional, Union
 
-import numpy as np
+
+# Bit of a hack, but jaxtyping provides nicer error messages than typeguard. This means
+# we sometimes want to use it as our runtime type checker everywhere, even in non-array
+# use-cases, for which numpy is too heavy a dependency.
+# Honestly we should probably consider factoring out part of jaxtyping into a separate
+# package. (Specifically (a) the multi-argument checking and (b) the better error
+# messages and (c) the import hook that places the checker on the bottom of the
+# decorator stack.) And resist the urge to write our own runtime type-checker, I really
+# don't want to have to keep that up-to-date with changes in the Python typing spec...
+if importlib.util.find_spec("numpy") is not None:
+    import numpy as np
 
 from ._errors import AnnotationError
 from ._storage import (
