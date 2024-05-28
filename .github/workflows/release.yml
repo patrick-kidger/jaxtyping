@@ -44,3 +44,4 @@ jobs:
             email-token: ${{ secrets.email_token }}
             email-server: ${{ secrets.email_server }}
             email-target: ${{ secrets.email_target }}
+            email-starttls: true
