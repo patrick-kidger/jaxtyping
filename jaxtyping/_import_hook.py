@@ -80,8 +80,10 @@ def _optimized_cache_from_source(typechecker_hash, /, path, debug_override=None)
     #    for importlib and decorator lookup.
     # Version 8: Now using new-style `jaxtyped(typechecker=...)` rather than old-style
     #    double-decorators.
+    # Version 9: Now reporting the correct source code lines. (Important when used with
+    #    a debugger.)
     return cache_from_source(
-        path, debug_override, optimization=f"jaxtyping8{typechecker_hash}"
+        path, debug_override, optimization=f"jaxtyping9{typechecker_hash}"
     )
 
 
@@ -89,8 +91,6 @@ class Typechecker:
     lookup = {}
 
     def __init__(self, typechecker):
-        self.ast = None
-
         if isinstance(typechecker, str):
             # If the typechecker is a string, then we parse it
             string_to_eval = (
@@ -121,18 +121,17 @@ class Typechecker:
         return self.hash
 
     def get_ast(self):
-        # we compile AST only if we missed importlib cache
-        if self.ast is None:
-            self.ast = (
-                ast.parse(
-                    f"@jaxtyping.jaxtyped(typechecker=jaxtyping._import_hook.Typechecker.lookup['{self.hash}'])\n"
-                    "def _():\n    ..."
-                )
-                .body[0]
-                .decorator_list[0]
+        # Note that we compile AST only if we missed importlib cache.
+        # No caching on this function! We modify the return type every time, with
+        # its appropriate source code location.
+        return (
+            ast.parse(
+                f"@jaxtyping.jaxtyped(typechecker=jaxtyping._import_hook.Typechecker.lookup['{self.hash}'])\n"
+                "def _():\n    ..."
             )
-
-        return self.ast
+            .body[0]
+            .decorator_list[0]
+        )
 
 
 class JaxtypingTransformer(ast.NodeVisitor):
@@ -159,7 +158,9 @@ class JaxtypingTransformer(ast.NodeVisitor):
     def visit_ClassDef(self, node: ast.ClassDef):
         # Place at the start of the decorator list, so that `@dataclass` decorators get
         # called first.
-        node.decorator_list.insert(0, self._typechecker.get_ast())
+        decorator = self._typechecker.get_ast()
+        ast.copy_location(decorator, node)
+        node.decorator_list.insert(0, decorator)
         self._parents.append(node)
         self.generic_visit(node)
         self._parents.pop()
@@ -173,6 +174,8 @@ class JaxtypingTransformer(ast.NodeVisitor):
         # had type annotations in the body of the function (or
         # `assert isinstance(..., SomeType)`).
 
+        decorator = self._typechecker.get_ast()
+        ast.copy_location(decorator, node)
         # Place at the end of the decorator list, because:
         # - as otherwise we wrap e.g. `jax.custom_{jvp,vjp}` and lose the ability
         #     to `defjvp` etc.
@@ -187,7 +190,7 @@ class JaxtypingTransformer(ast.NodeVisitor):
         # case we're just going to have to need to ask the user to remove their
         # typechecking annotation (and let this decorator do it instead).
         # It's more important we be compatible with normal JAX code.
-        node.decorator_list.append(self._typechecker.get_ast())
+        node.decorator_list.append(decorator)
 
         self._parents.append(node)
         self.generic_visit(node)
