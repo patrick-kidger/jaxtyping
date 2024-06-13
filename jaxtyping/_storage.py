@@ -112,9 +112,17 @@ def shape_str(memos) -> str:
 def print_bindings():
     """Prints the values of the current jaxtyping axis bindings. Intended for debugging.
 
-    That is, whilst doing runtime type checking, so that e.g. the `foo` and `bar` of
-    `Float[Array, "foo bar"]` are assigned values -- this function will print out those
-    values.
+    For example, this can be used to find the values bound to `foo` and `bar` in
+
+    ```python
+    @jaxtyped(typechecker=...)
+    def f(x: Float[Array, "foo bar"]):
+        print_bindings()
+        ...
+    ```
+
+    noting that these values are bounding during runtime typechecking, so that the
+    [`jaxtyping.jaxtyped`][] decorator is required.
 
     **Arguments:**
 
