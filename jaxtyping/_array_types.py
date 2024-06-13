@@ -157,6 +157,10 @@ def _check_dims(
     return ""
 
 
+def _dtype_is_numpy_struct_array(dtype):
+    return dtype.type.__name__ == "void" and dtype is not np.dtype(np.void)
+
+
 class _MetaAbstractArray(type):
     _skip_instancecheck: bool = False
 
@@ -177,6 +181,9 @@ class _MetaAbstractArray(type):
         if hasattr(obj.dtype, "type") and hasattr(obj.dtype.type, "__name__"):
             # JAX, numpy
             dtype = obj.dtype.type.__name__
+            # numpy structured array is strictly a subtype of np.void
+            if _dtype_is_numpy_struct_array(obj.dtype):
+                dtype = str(obj.dtype)
         elif hasattr(obj.dtype, "as_numpy_dtype"):
             # TensorFlow
             dtype = obj.dtype.as_numpy_dtype.__name__
@@ -755,3 +762,34 @@ Num = _make_dtype(uints + ints + floats + complexes, "Num")
 Shaped = _make_dtype(_any_dtype, "Shaped")
 
 Key = _make_dtype(_prng_key, "Key")
+
+
+def make_numpy_struct_dtype(dtype: np.dtype, name: str):
+    """Creates a type annotation for [numpy structured array](https://numpy.org/doc/stable/user/basics.rec.html#structured-arrays)
+    It does exact match on the name, order, and dtype of all its fields.
+
+    !!! Example
+
+        ```python
+        label_t = np.dtype([('first', np.uint8), ('second', np.int8)])
+        Label = make_numpy_struct_dtype(label_t, 'Label')
+        ```
+        after that, you can use it just like any AbstractDtype
+        ```python
+        a: Label[np.ndarray, 'a b'] = np.array([[(1, 0), (0, 1)]], dtype=label_t)
+        ```
+
+    **Arguments:**
+
+    - `dtype`: The numpy dtype that the returned annotation matches
+
+    - `name`: The python class name for the returned dtype annotation
+
+    **Returns:**
+
+    A type annotation with classname `name` and matching exactly `dtype`.
+    It can be used like any usual subclasses of AbstractDtypes.
+    """
+    if not (isinstance(dtype, np.dtype) and _dtype_is_numpy_struct_array(dtype)):
+        raise ValueError(f"Expecting a numpy structured array dtype, not {dtype}")
+    return _make_dtype(str(dtype), name)
