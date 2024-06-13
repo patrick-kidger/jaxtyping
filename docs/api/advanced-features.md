@@ -7,6 +7,8 @@
         members:
             false
 
+::: jaxtyping.make_numpy_struct_dtype
+
 ## Printing axis bindings
 
 ::: jaxtyping.print_bindings

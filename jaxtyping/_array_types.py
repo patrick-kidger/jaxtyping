@@ -764,9 +764,9 @@ Shaped = _make_dtype(_any_dtype, "Shaped")
 Key = _make_dtype(_prng_key, "Key")
 
 
-def make_numpy_struct_dtype(dtype: np.dtype, name: str):
+def make_numpy_struct_dtype(dtype: "np.dtype", name: str):
     """Creates a type annotation for [numpy structured array](https://numpy.org/doc/stable/user/basics.rec.html#structured-arrays)
-    It does exact match on the name, order, and dtype of all its fields.
+    It performs an exact match on the name, order, and dtype of all its fields.
 
     !!! Example
 
@@ -774,21 +774,22 @@ def make_numpy_struct_dtype(dtype: np.dtype, name: str):
         label_t = np.dtype([('first', np.uint8), ('second', np.int8)])
         Label = make_numpy_struct_dtype(label_t, 'Label')
         ```
-        after that, you can use it just like any AbstractDtype
+
+        after that, you can use it just like any other [`jaxtyping.AbstractDtype`][]:
+
         ```python
         a: Label[np.ndarray, 'a b'] = np.array([[(1, 0), (0, 1)]], dtype=label_t)
         ```
 
     **Arguments:**
 
-    - `dtype`: The numpy dtype that the returned annotation matches
-
-    - `name`: The python class name for the returned dtype annotation
+    - `dtype`: The numpy structured dtype to use.
+    - `name`: The name to use for the returned Python class.
 
     **Returns:**
 
-    A type annotation with classname `name` and matching exactly `dtype`.
-    It can be used like any usual subclasses of AbstractDtypes.
+    A type annotation with classname `name` that matches exactly `dtype` when used like
+    any other [`jaxtyping.AbstractDtype`][].
     """
     if not (isinstance(dtype, np.dtype) and _dtype_is_numpy_struct_array(dtype)):
         raise ValueError(f"Expecting a numpy structured array dtype, not {dtype}")
