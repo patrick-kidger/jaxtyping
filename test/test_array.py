@@ -92,6 +92,24 @@ def test_dtypes():
             assert key == val.__name__
 
 
+def test_numpy_struct_dtype():
+    from jaxtyping import make_numpy_struct_dtype
+
+    dtype1 = np.dtype([("first", np.uint8), ("second", bool)])
+    Dtype1 = make_numpy_struct_dtype(dtype1, "Dtype1")
+    arr = np.array([0, False], dtype=dtype1)
+
+    assert isinstance(arr, Dtype1[np.ndarray, "_"])
+
+    dtype2 = np.dtype([("third", np.uint8), ("second", bool)])
+    Dtype2 = make_numpy_struct_dtype(dtype2, "Dtype2")
+    assert not isinstance(arr, Dtype2[np.ndarray, "_"])
+
+    dtype3 = np.dtype([("second", bool), ("first", np.uint8)])
+    Dtype3 = make_numpy_struct_dtype(dtype3, "Dtype3")
+    assert not isinstance(arr, Dtype3[np.ndarray, "_"])
+
+
 def test_return(jaxtyp, typecheck, getkey):
     @jaxtyp(typecheck)
     def g(x: Float[Array, "b c"]) -> Float[Array, "c b"]:

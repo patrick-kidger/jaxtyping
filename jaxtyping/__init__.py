@@ -28,6 +28,7 @@ from ._array_types import (
     AbstractArray as AbstractArray,
     AbstractDtype as AbstractDtype,
     get_array_name_format as get_array_name_format,
+    make_numpy_struct_dtype as make_numpy_struct_dtype,
     set_array_name_format as set_array_name_format,
 )
 from ._config import config as config
