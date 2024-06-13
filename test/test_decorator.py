@@ -1,4 +1,5 @@
 import abc
+from typing import no_type_check
 
 import jax.numpy as jnp
 import jax.random as jr
@@ -192,3 +193,18 @@ def test_print_bindings(typecheck, capfd):
         "The current values for each jaxtyping axis annotation are as follows."
         "\nfoo=3\nbar=4\n"
     )
+
+
+def test_no_type_check(typecheck):
+    @jaxtyped(typechecker=typecheck)
+    @no_type_check
+    def f(x: Float[Array, "foo bar"]):
+        pass
+
+    @no_type_check
+    @jaxtyped(typechecker=typecheck)
+    def g(x: Float[Array, "foo bar"]):
+        pass
+
+    f("not an array")
+    g("not an array")

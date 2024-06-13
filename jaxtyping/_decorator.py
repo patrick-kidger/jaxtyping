@@ -405,7 +405,11 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
 
             @ft.wraps(fn)
             def wrapped_fn(*args, **kwargs):
-                if config.jaxtyping_disable:
+                if (
+                    config.jaxtyping_disable
+                    or getattr(fn, "__no_type_check__", False)
+                    or getattr(wrapped_fn, "__no_type_check__", False)
+                ):
                     return fn(*args, **kwargs)
 
                 # Raise bind-time errors before we do any shape analysis. (I.e. skip

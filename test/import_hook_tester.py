@@ -18,6 +18,7 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import dataclasses
+from typing import no_type_check
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -242,6 +243,14 @@ def isinstance_test(x):
 isinstance_test(jnp.array([1.0]))
 with pytest.raises(AssertionError):
     isinstance_test(jnp.array(1))
+
+
+@no_type_check
+def f(_: Float32[jnp.ndarray, "foo bar"]):
+    pass
+
+
+f("not an array")
 
 
 # Record that we've finished our checks successfully
