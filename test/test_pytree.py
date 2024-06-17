@@ -54,7 +54,7 @@ def test_subscript(getkey, typecheck):
 
     g(1)
     g([1, 2, {"a": 3}])
-    g(jax.tree_map(lambda _: 1, make_mlp(getkey())))
+    g(jax.tree.map(lambda _: 1, make_mlp(getkey())))
 
     with pytest.raises(ParamError):
         g(object())
