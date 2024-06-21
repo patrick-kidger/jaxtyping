@@ -1,4 +1,4 @@
-from typing import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Iterator
 
 import jax.numpy as jnp
 import pytest

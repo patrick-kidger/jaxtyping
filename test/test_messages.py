@@ -13,7 +13,7 @@ def test_arg_localisation(typecheck):
         pass
 
     matches = [
-        "Type-check error whilst checking the parameters of f",
+        "Type-check error whilst checking the parameters of .*<locals>.f",
         "The problem arose whilst typechecking parameter 'z'.",
         "Called with parameters: {'x': 'hi', 'y': 'bye', 'z': 'not-an-int'}",
         r"Parameter annotations: \(x: str, y: str, z: int\).",
@@ -29,7 +29,7 @@ def test_arg_localisation(typecheck):
     x = jnp.zeros((2, 3))
     y = jnp.zeros((4, 3))
     matches = [
-        "Type-check error whilst checking the parameters of g",
+        "Type-check error whilst checking the parameters of .*.<locals>.g",
         "The problem arose whilst typechecking parameter 'y'.",
         r"Called with parameters: {'x': f32\[2,3\], 'y': f32\[4,3\]}",
         (
@@ -53,7 +53,7 @@ def test_return(typecheck):
     x = (1, 2)
     y = {"a": 1}
     matches = [
-        "Type-check error whilst checking the return value of f",
+        "Type-check error whilst checking the return value of .*.<locals>.f",
         r"Called with parameters: {'x': \(1, 2\), 'y': {'a': 1}}",
         "Actual value: 'foo'",
         r"Expected type: PyTree\[Any, \"T S\"\].",
@@ -81,7 +81,7 @@ def test_dataclass_attribute(typecheck):
     z = "not-an-int"
 
     matches = [
-        "Type-check error whilst checking the parameters of M",
+        "Type-check error whilst checking the parameters of .*.<locals>.M",
         "The problem arose whilst typechecking parameter 'z'.",
         (
             r"Called with parameters: {'self': M\(\.\.\.\), 'x': f32\[2,3\], "

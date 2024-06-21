@@ -438,14 +438,16 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                             typechecker,
                         )
                         try:
-                            name = fn.__name__
+                            module_name = fn.__module__
+                            qualname = fn.__qualname__
                         except AttributeError:
-                            name = fn.__class__.__name__
+                            module_name = fn.__class__.__module__
+                            qualname = fn.__class__.__qualname__
                         param_values = _pformat(bound.arguments, short_self=True)
                         param_hints = _remove_typing(param_signature)
                         msg = (
                             "Type-check error whilst checking the parameters of "
-                            f"{name}.{argmsg}\n"
+                            f"{module_name}.{qualname}.{argmsg}\n"
                             "----------------------\n"
                             f"Called with parameters: {param_values}\n"
                             f"Parameter annotations: {param_hints}.\n"
@@ -481,9 +483,11 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                             raise
                         except Exception as e:
                             try:
-                                name = fn.__name__
+                                module_name = fn.__module__
+                                qualname = fn.__qualname__
                             except AttributeError:
-                                name = fn.__class__.__name__
+                                module_name = fn.__class__.__module__
+                                qualname = fn.__class__.__qualname__
                             param_values = _pformat(bound.arguments, short_self=True)
                             return_value = _pformat(out, short_self=False)
                             param_hints = _remove_typing(param_signature)
@@ -496,7 +500,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                                 return_hint = return_hint[8:-2]
                             msg = (
                                 "Type-check error whilst checking the return value "
-                                f"of {name}.\n"
+                                f"of {module_name}.{qualname}.\n"
                                 f"Actual value: {return_value}\n"
                                 f"Expected type: {return_hint}.\n"
                                 "----------------------\n"
@@ -565,6 +569,7 @@ def _check_dataclass_annotations(self, typechecker):
     f = _make_fn_with_signature(
         self.__class__.__name__, signature, module, output=False
     )
+    f.__qualname__ = self.__class__.__qualname__
     f = jaxtyped(f, typechecker=typechecker)
     f(self, **values)
 
