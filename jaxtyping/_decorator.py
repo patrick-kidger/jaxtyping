@@ -264,6 +264,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
 
             @ft.wraps(init)
             def __init__(self, *args, **kwargs):
+                __tracebackhide__ = True
                 init(self, *args, **kwargs)
                 # `fn.__init__` is late-binding to the `__init__` function that
                 # we're in now. (Or to someone else's monkey-patch.) Either way,
@@ -341,6 +342,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
 
             @ft.wraps(fn)
             def wrapped_fn(*args, **kwargs):  # pyright: ignore
+                __tracebackhide__ = True
                 bound = signature.bind(*args, **kwargs)
                 bound.apply_defaults()
                 memos = push_shape_memo(bound.arguments)
@@ -405,6 +407,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
 
             @ft.wraps(fn)
             def wrapped_fn(*args, **kwargs):
+                __tracebackhide__ = True
                 if (
                     config.jaxtyping_disable
                     or getattr(fn, "__no_type_check__", False)
