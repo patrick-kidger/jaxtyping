@@ -20,7 +20,7 @@ def test_generators_simple(jaxtyp, typecheck):
         yield x
 
     @jaxtyp(typecheck)
-    def foo():
+    def foo() -> None:
         next(gen(jnp.zeros(2)))
         next(gen(jnp.zeros((3, 4))))
 
@@ -81,7 +81,7 @@ def test_generators_original_issue(jaxtyp, typecheck):
         yield x
 
     @jaxtyp(typecheck)
-    def f():
+    def f() -> None:
         next(g(torch.zeros(1)))
         next(g(torch.zeros(2)))
 

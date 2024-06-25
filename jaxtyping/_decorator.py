@@ -393,16 +393,18 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
             param_signature = full_signature.replace(
                 return_annotation=inspect.Signature.empty
             )
+            name = getattr(fn, "__name__", "<no name found>")
+            qualname = getattr(fn, "__qualname__", "<no qualname found>")
             module = getattr(fn, "__module__", "generated")
 
+            # Use the same name so that typeguard warnings look correct.
             full_fn, output_name = _make_fn_with_signature(
-                "check_return", full_signature, module, output=True
+                name, qualname, module, full_signature, output=True
+            )
+            param_fn = _make_fn_with_signature(
+                name, qualname, module, param_signature, output=False
             )
             full_fn = typechecker(full_fn)
-
-            param_fn = _make_fn_with_signature(
-                "check_params", param_signature, module, output=False
-            )
             param_fn = typechecker(param_fn)
 
             @ft.wraps(fn)
@@ -565,17 +567,19 @@ def _check_dataclass_annotations(self, typechecker):
         values[field.name] = value
 
     signature = inspect.Signature(parameters)
-    module = self.__class__.__module__
     f = _make_fn_with_signature(
-        self.__class__.__name__, signature, module, output=False
+        self.__class__.__name__,
+        self.__class__.__qualname__,
+        self.__class__.__module__,
+        signature,
+        output=False,
     )
-    f.__qualname__ = self.__class__.__qualname__
     f = jaxtyped(f, typechecker=typechecker)
     f(self, **values)
 
 
 def _make_fn_with_signature(
-    name: str, signature: inspect.Signature, module: str, output: bool
+    name: str, qualname: str, module: str, signature: inspect.Signature, output: bool
 ):
     """Dynamically creates a function `fn` with name `name` and signature `signature`.
 
@@ -697,6 +701,7 @@ def _make_fn_with_signature(
     exec(fnstr, scope)
     fn = scope[name]
     fn.__module__ = module
+    fn.__qualname__ = qualname
     assert fn is not None
     if output:
         return fn, output_name
@@ -745,7 +750,7 @@ def _get_problem_arg(
         assert keep_annotation is not sentinel
         new_signature = inspect.Signature(new_parameters)
         fn = _make_fn_with_signature(
-            "check_single_arg", new_signature, module, output=False
+            "check_single_arg", "check_single_arg", module, new_signature, output=False
         )
         fn = typechecker(fn)  # but no `jaxtyped`; keep the same environment.
         try:

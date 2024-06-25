@@ -96,7 +96,7 @@ def test_context(getkey):
 
 def test_varargs(jaxtyp, typecheck):
     @jaxtyp(typecheck)
-    def f(*args):
+    def f(*args) -> None:
         pass
 
     f(1, 2)
@@ -104,7 +104,7 @@ def test_varargs(jaxtyp, typecheck):
 
 def test_varkwargs(jaxtyp, typecheck):
     @jaxtyp(typecheck)
-    def f(**kwargs):
+    def f(**kwargs) -> None:
         pass
 
     f(a=1, b=2)
@@ -112,7 +112,7 @@ def test_varkwargs(jaxtyp, typecheck):
 
 def test_defaults(jaxtyp, typecheck):
     @jaxtyp(typecheck)
-    def f(x: int, y=1):
+    def f(x: int, y=1) -> None:
         pass
 
     f(1)

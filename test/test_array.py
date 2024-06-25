@@ -154,7 +154,7 @@ def test_any_dtype(jaxtyp, typecheck, getkey):
     g(jnp.array([[1, 2], [3, 4]], dtype=jnp.int8))
     g(jnp.array([[1, 2], [3, 4]], dtype=jnp.uint4))
     g(jnp.array([[1, 2], [3, 4]], dtype=jnp.uint16))
-    g(jr.normal(getkey(), (3, 4), dtype=jnp.complex128))
+    g(jr.normal(getkey(), (3, 4), dtype=jnp.complex64))
     g(jr.normal(getkey(), (3, 4), dtype=jnp.bfloat16))
 
     with pytest.raises(ParamError):
