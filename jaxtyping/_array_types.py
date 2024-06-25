@@ -188,14 +188,12 @@ class _MetaAbstractArray(type):
             # TensorFlow
             dtype = obj.dtype.as_numpy_dtype.__name__
         else:
-            # PyTorch
-            repr_dtype = repr(obj.dtype).split(".")
-            if len(repr_dtype) == 2 and repr_dtype[0] == "torch":
-                dtype = repr_dtype[1]
-            else:
-                raise AnnotationError(
-                    "Unrecognised array/tensor type to extract dtype from"
-                )
+            # Everyone else, including PyTorch.
+            # This offers an escape hatch for anyone looking to use jaxtyping for their
+            # own array-like types.
+            dtype = obj.dtype
+            if not isinstance(dtype, str):
+                *_, dtype = repr(obj.dtype).rsplit(".", 1)
 
         if cls.dtypes is not _any_dtype:
             in_dtypes = False
