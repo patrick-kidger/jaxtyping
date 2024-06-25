@@ -710,3 +710,59 @@ def test_scalar_variadic_dim():
 def test_scalar_dtype_mismatch():
     with pytest.raises(ValueError):
         Float[bool, "..."]
+
+
+def test_custom_array(jaxtyp, typecheck):
+    class MyArray1:
+        @property
+        def dtype(self):
+            return "foo"
+
+        @property
+        def shape(self):
+            return (3,)
+
+    class MyArray2:
+        @property
+        def dtype(self):
+            return "bar"
+
+        @property
+        def shape(self):
+            return (3,)
+
+    class MyArray3:
+        @property
+        def dtype(self):
+            return "foo"
+
+        @property
+        def shape(self):
+            return (4,)
+
+    class FooDtype(AbstractDtype):
+        dtypes = ["foo"]
+
+    @jaxtyp(typecheck)
+    def f(x: FooDtype[MyArray1, "3"]):
+        pass
+
+    f(MyArray1())
+    with pytest.raises(ParamError):
+        f(MyArray2())
+    with pytest.raises(ParamError):
+        f(MyArray3())
+
+    @jaxtyp(typecheck)
+    def g(x: FooDtype[MyArray1, "3"], y: FooDtype[MyArray1, "4"]):
+        pass
+
+    with pytest.raises(ParamError):
+        g(MyArray1(), MyArray1())
+
+    @jaxtyp(typecheck)
+    def h(x: FooDtype[MyArray1, "3"], y: FooDtype[MyArray3, "4"]):
+        pass
+
+    with pytest.raises(ParamError):
+        g(MyArray1(), MyArray3())
