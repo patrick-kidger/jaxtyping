@@ -390,12 +390,10 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                     parameters=new_params, return_annotation=return_annotation
                 )
 
-            param_signature = full_signature.replace(
-                return_annotation=inspect.Signature.empty
-            )
+            param_signature = full_signature.replace(return_annotation=Any)
             name = getattr(fn, "__name__", "<no name found>")
             qualname = getattr(fn, "__qualname__", "<no qualname found>")
-            module = getattr(fn, "__module__", "generated")
+            module = getattr(fn, "__module__", "<generated_by_jaxtyping>")
 
             # Use the same name so that typeguard warnings look correct.
             full_fn, output_name = _make_fn_with_signature(
