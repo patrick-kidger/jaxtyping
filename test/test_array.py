@@ -19,7 +19,7 @@
 
 import dataclasses as dc
 import sys
-from typing import get_args, get_origin, Union
+from typing import Any, get_args, get_origin, TypeVar, Union
 
 import jax.numpy as jnp
 import jax.random as jr
@@ -766,3 +766,67 @@ def test_custom_array(jaxtyp, typecheck):
 
     with pytest.raises(ParamError):
         g(MyArray1(), MyArray3())
+
+
+@pytest.mark.parametrize(
+    "array_type", [Any, TypeVar("T"), TypeVar("T", bound=ArrayLike)]
+)
+def test_any(array_type, jaxtyp, typecheck):
+    class DuckArray1:
+        @property
+        def shape(self):
+            return 3, 4
+
+        @property
+        def dtype(self):
+            return np.array([], dtype=np.float32).dtype
+
+    class DuckArray2:
+        @property
+        def shape(self):
+            return 3, 4, 5
+
+        @property
+        def dtype(self):
+            return np.array([], dtype=np.float32).dtype
+
+    class DuckArray3:
+        @property
+        def shape(self):
+            return 3, 4
+
+        @property
+        def dtype(self):
+            return np.array([], dtype=np.int32).dtype
+
+    @jaxtyp(typecheck)
+    def f(x: Float[array_type, "foo bar"]):
+        del x
+
+    f(np.arange(12.0).reshape(3, 4))
+    f(jnp.arange(12.0).reshape(3, 4))
+    if isinstance(array_type, TypeVar) and array_type.__bound__ is ArrayLike:
+        with pytest.raises(ParamError):
+            f(DuckArray1())
+    else:
+        f(DuckArray1())
+
+    # Wrong shape
+    with pytest.raises(ParamError):
+        f(np.arange(12.0).reshape(3, 2, 2))
+    with pytest.raises(ParamError):
+        f(jnp.arange(12.0).reshape(3, 2, 2))
+    with pytest.raises(ParamError):
+        f(DuckArray2())
+
+    # Wrong dtype
+    with pytest.raises(ParamError):
+        f(np.arange(12).reshape(3, 4))
+    with pytest.raises(ParamError):
+        f(jnp.arange(12).reshape(3, 4))
+    with pytest.raises(ParamError):
+        f(DuckArray3())
+
+    # Not an array
+    with pytest.raises(ParamError):
+        f(1)
