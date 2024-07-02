@@ -25,7 +25,7 @@ import sys
 import types
 import typing
 from dataclasses import dataclass
-from typing import Any, Literal, NoReturn, Optional, Union
+from typing import Any, Literal, NoReturn, Optional, TypeVar, Union
 
 
 # Bit of a hack, but jaxtyping provides nicer error messages than typeguard. This means
@@ -173,8 +173,12 @@ class _MetaAbstractArray(type):
     def __instancecheck_str__(cls, obj: Any) -> str:
         if cls._skip_instancecheck:
             return ""
-        if not isinstance(obj, cls.array_type):
-            return f"this value is not an instance of the underlying array type {cls.array_type}"  # noqa: E501
+        if cls.array_type is Any:
+            if not (hasattr(obj, "shape") and hasattr(obj, "dtype")):
+                return "this value does not have both `shape` and `dtype` attributes."
+        else:
+            if not isinstance(obj, cls.array_type):
+                return f"this value is not an instance of the underlying array type {cls.array_type}"  # noqa: E501
         if get_treeflatten_memo():
             return ""
 
@@ -622,6 +626,12 @@ class _MetaAbstractDtype(type):
             )
         array_type, dim_str = item
         dim_str = dim_str.strip()
+        if isinstance(array_type, TypeVar):
+            bound = array_type.__bound__
+            if bound is None:
+                array_type = Any
+            else:
+                array_type = bound
         del item
         if typing.get_origin(array_type) in _union_types:
             out = [
