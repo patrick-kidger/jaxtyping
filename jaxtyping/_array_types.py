@@ -143,10 +143,11 @@ def _check_dims(
             except NameError as e:
                 raise AnnotationError(
                     f"Cannot process symbolic axis '{cls_dim.elem}' as "
-                    "some axis names have not been processed. In practice you "
-                    "should usually only use symbolic axes in annotations "
-                    "for return types, referring only to axes annotated for "
-                    "arguments."
+                    "some axis names have not been processed. "
+                    "Have you applied the `jaxtyped` decorator? "
+                    "In practice you should usually only use symbolic axes in "
+                    "annotations for return types, referring only to axes "
+                    "annotated for arguments."
                 ) from e
             if eval_size != obj_size:
                 return f"the dimension size {obj_size} does not equal the existing value of {cls_dim.elem}={eval_size}"  # noqa: E501
