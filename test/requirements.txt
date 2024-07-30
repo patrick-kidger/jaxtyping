@@ -2,7 +2,7 @@ beartype
 cloudpickle
 equinox
 IPython
-jaxlib
+jax
 pytest
 pytest-asyncio
 tensorflow
