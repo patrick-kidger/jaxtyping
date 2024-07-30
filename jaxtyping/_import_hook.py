@@ -144,7 +144,7 @@ class JaxtypingTransformer(ast.NodeVisitor):
         for i, child in enumerate(node.body):
             if isinstance(child, ast.ImportFrom) and child.module == "__future__":
                 continue
-            elif isinstance(child, ast.Expr) and isinstance(child.value, ast.Str):
+            elif isinstance(child, ast.Expr) and isinstance(child.value, ast.Constant):
                 continue  # module docstring
             else:
                 node.body.insert(i, ast.Import(names=[ast.alias("jaxtyping", None)]))
