@@ -316,7 +316,7 @@ def install_import_hook(modules: Union[str, Sequence[str]], typechecker: Optiona
 
         If you don't like using the `with` block, the hook can be used without that:
         ```python
-        hook = install_import_hook(...):
+        hook = install_import_hook(...)
         import ...
         hook.uninstall()
         ```
@@ -326,7 +326,7 @@ def install_import_hook(modules: Union[str, Sequence[str]], typechecker: Optiona
         install_import_hook(["foo", "bar.baz"], ...)
         ```
 
-    **Arguments:**:
+    **Arguments:**
 
     - `modules`: the names of the modules in which to automatically apply `@jaxtyped`.
     - `typechecker`: the module and function of the typechecker you want to use, as a
