@@ -58,7 +58,7 @@ The real problem is that Python's static typing ecosystem is a complicated colle
    [The numeric tower is broken](https://stackoverflow.com/a/69383462);  
    [int is not a number](https://github.com/python/mypy/issues/3186#issuecomment-885718629);  
    [virtual base classes don't work](https://github.com/python/mypy/issues/2922);  
-   [complex lies about having comparison operations, so type checkers have to lie about that lie in order to remove them again](https://posita.github.io/numerary/0.4/whytho/);  
+   [complex lies about having comparison operations, so type checkers have to lie about that lie in order to remove them again](https://beartype.github.io/numerary/0.4/whytho/);  
    `typing.*` don't work with `isinstance`;  
    co/contra-variance are baked into containers (not specified at use-time);  
    `dict` is variadic despite... not being variadic;  
