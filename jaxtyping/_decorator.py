@@ -24,13 +24,27 @@ import inspect
 import itertools as it
 import sys
 import warnings
-from typing import Any, get_args, get_origin, get_type_hints, NoReturn, overload
+from collections.abc import Callable
+from typing import (
+    Any,
+    get_args,
+    get_origin,
+    get_type_hints,
+    NoReturn,
+    overload,
+    ParamSpec,
+    TypeVar,
+)
 
 from jaxtyping import AbstractArray
 
 from ._config import config
 from ._errors import AnnotationError, TypeCheckError
 from ._storage import pop_shape_memo, push_shape_memo, shape_str
+
+
+_Params = ParamSpec("_Params")
+_Return = TypeVar("_Return")
 
 
 class _Sentinel:
@@ -43,12 +57,17 @@ _tb_flag = True
 
 
 @overload
-def jaxtyped(*, typechecker=_sentinel):
+def jaxtyped(
+    *,
+    typechecker=_sentinel,
+) -> Callable[[Callable[_Params, _Return]], Callable[_Params, _Return]]:
     ...
 
 
 @overload
-def jaxtyped(fn, *, typechecker=_sentinel):
+def jaxtyped(
+    fn: Callable[_Params, _Return], *, typechecker=_sentinel
+) -> Callable[_Params, _Return]:
     ...
 
 
