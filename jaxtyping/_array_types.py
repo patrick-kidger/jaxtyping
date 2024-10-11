@@ -322,11 +322,11 @@ def _make_metaclass(base_metaclass):
     class MetaAbstractArray(_MetaAbstractArray, base_metaclass):
         def _get_props(cls):
             props_tuple = (
-                cls.index_variadic,
-                cls.dims,
-                cls.array_type,
-                cls.dtypes,
-                cls.dim_str,
+                getattr(cls, "index_variadic", None),
+                getattr(cls, "dims", None),
+                getattr(cls, "array_type", None),
+                getattr(cls, "dtypes", None),
+                getattr(cls, "dim_str", None),
             )
             return props_tuple
 
@@ -337,9 +337,7 @@ def _make_metaclass(base_metaclass):
             return cls._get_props() == other._get_props()
 
         def __hash__(cls):
-            # Does not use `_get_props` as these attributes don't necessarily exist
-            # during depickling. See #198.
-            return 0
+            return hash(cls._get_props())
 
     return MetaAbstractArray
 
