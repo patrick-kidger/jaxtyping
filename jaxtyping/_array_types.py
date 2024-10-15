@@ -337,7 +337,9 @@ def _make_metaclass(base_metaclass):
             return cls._get_props() == other._get_props()
 
         def __hash__(cls):
-            return hash(cls._get_props())
+            # Does not use `_get_props` as these attributes don't necessarily exist
+            # during depickling. See #198.
+            return 0
 
     return MetaAbstractArray
 
