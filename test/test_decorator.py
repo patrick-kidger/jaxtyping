@@ -1,13 +1,15 @@
 import abc
+import dataclasses
 from typing import no_type_check
 
 import jax.numpy as jnp
 import jax.random as jr
 import pytest
+import typeguard
 
 from jaxtyping import Array, Float, jaxtyped, print_bindings
 
-from .helpers import ParamError, ReturnError
+from .helpers import assert_no_garbage, ParamError, ReturnError
 
 
 class M(metaclass=abc.ABCMeta):
@@ -208,3 +210,29 @@ def test_no_type_check(typecheck):
 
     f("not an array")
     g("not an array")
+
+
+def test_no_garbage(typecheck):
+    if typecheck is typeguard.typechecked:
+        # Currently fails due to reference cycles in typeguard.
+        pytest.skip()
+
+    with assert_no_garbage():
+
+        @jaxtyped(typechecker=typecheck)
+        @dataclasses.dataclass
+        class _Obj:
+            x: int
+
+        _Obj(x=5)
+
+
+def test_no_garbage_identity_typecheck():
+    with assert_no_garbage():
+
+        @jaxtyped(typechecker=lambda x: x)
+        @dataclasses.dataclass
+        class _Obj:
+            x: int
+
+        _Obj(x=5)

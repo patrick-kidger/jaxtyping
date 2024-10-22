@@ -24,6 +24,7 @@ import inspect
 import itertools as it
 import sys
 import warnings
+import weakref
 from collections.abc import Callable
 from typing import (
     Any,
@@ -519,13 +520,16 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
 
                 return out
 
+            wrapped_fn_holder = []  # Avoids introducing a reference cycle.
+
             @ft.wraps(fn)
             def wrapped_fn(*args, **kwargs):
                 __tracebackhide__ = True
+
                 if (
                     config.jaxtyping_disable
                     or getattr(fn, "__no_type_check__", False)
-                    or getattr(wrapped_fn, "__no_type_check__", False)
+                    or getattr(wrapped_fn_holder[0](), "__no_type_check__", False)
                 ):
                     return fn(*args, **kwargs)
 
@@ -541,6 +545,8 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                     return wrapped_fn_impl(args, kwargs, bound, memos)
                 finally:
                     pop_shape_memo()
+
+            wrapped_fn_holder.append(weakref.ref(wrapped_fn))
 
         return wrapped_fn
 
@@ -723,6 +729,7 @@ def _make_fn_with_signature(
     fnstr = f"def {name}({argstr}){retstr}:\n    {outstr}"
     exec(fnstr, scope)
     fn = scope[name]
+    del scope[name]  # Avoids introducing a reference cycle.
     fn.__module__ = module
     fn.__qualname__ = qualname
     assert fn is not None
