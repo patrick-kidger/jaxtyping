@@ -57,6 +57,15 @@ _sentinel = _Sentinel()
 _tb_flag = True
 
 
+def _apply_typechecker(typechecker, fn):
+    """Calls `typechecker(fn)` in an isolated frame, returning the result.
+
+    This avoids reference cycles that can otherwise occur if `typechecker` grabs
+    the calling frame's locals.
+    """
+    return typechecker(fn)
+
+
 @overload
 def jaxtyped(
     *,
@@ -422,8 +431,8 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
             param_fn = _make_fn_with_signature(
                 name, qualname, module, param_signature, output=False
             )
-            full_fn = typechecker(full_fn)
-            param_fn = typechecker(param_fn)
+            full_fn = _apply_typechecker(typechecker, full_fn)
+            param_fn = _apply_typechecker(typechecker, param_fn)
 
             def wrapped_fn_impl(args, kwargs, bound, memos):
                 # First type-check just the parameters before the function is
@@ -790,7 +799,9 @@ def _get_problem_arg(
         fn = _make_fn_with_signature(
             "check_single_arg", "check_single_arg", module, new_signature, output=False
         )
-        fn = typechecker(fn)  # but no `jaxtyped`; keep the same environment.
+        fn = _apply_typechecker(
+            typechecker, fn
+        )  # but no `jaxtyped`; keep the same environment.
         try:
             fn(*args, **kwargs)
         except Exception as e:
