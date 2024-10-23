@@ -1,5 +1,6 @@
 import abc
 import dataclasses
+import sys
 from typing import no_type_check
 
 import jax.numpy as jnp
@@ -231,6 +232,31 @@ def test_no_garbage_identity_typecheck():
     with assert_no_garbage():
 
         @jaxtyped(typechecker=lambda x: x)
+        @dataclasses.dataclass
+        class _Obj:
+            x: int
+
+        _Obj(x=5)
+
+
+def test_no_garbage_frame_capture_typecheck():
+    with assert_no_garbage():
+        # Some typechecker implementations (e.g., typeguard 2.13.3) capture the calling
+        # frame's f_locals. This test checks that the calling frames in jaxtyping are
+        # sufficiently isolated to avoid introducing reference cycles when a
+        # typechecker does this.
+        def frame_locals_capture(fn):
+            locals = sys._getframe(1).f_locals
+
+            def wrapper(*args, **kwargs):
+                # Required to ensure wrapper holds a reference to f_locals, which is
+                # the scenario under test.
+                _ = locals
+                return fn(*args, **kwargs)
+
+            return wrapper
+
+        @jaxtyped(typechecker=frame_locals_capture)
         @dataclasses.dataclass
         class _Obj:
             x: int
