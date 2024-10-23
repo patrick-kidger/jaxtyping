@@ -58,7 +58,7 @@ _tb_flag = True
 
 
 def _apply_typechecker(typechecker, fn):
-    """Calls `typechecker(fn)` in an isolated frame.
+    """Calls `typechecker(fn)` in an isolated frame, returning the result.
 
     This avoids reference cycles that can otherwise occur if `typechecker` grabs
     the calling frame's locals.

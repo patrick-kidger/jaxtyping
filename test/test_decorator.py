@@ -6,7 +6,6 @@ from typing import no_type_check
 import jax.numpy as jnp
 import jax.random as jr
 import pytest
-import typeguard
 
 from jaxtyping import Array, Float, jaxtyped, print_bindings
 
@@ -214,10 +213,6 @@ def test_no_type_check(typecheck):
 
 
 def test_no_garbage(typecheck):
-    if typecheck is typeguard.typechecked:
-        # Currently fails due to reference cycles in typeguard.
-        pytest.skip()
-
     with assert_no_garbage():
 
         @jaxtyped(typechecker=typecheck)
