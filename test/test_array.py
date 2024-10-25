@@ -33,6 +33,7 @@ except ImportError:
     torch = None
 
 from jaxtyping import (
+    AbstractArray,
     AbstractDtype,
     AnnotationError,
     Array,
@@ -528,6 +529,15 @@ def test_deferred_symbolic_dataclass(typecheck):
         A(3, jnp.zeros(4))
 
 
+def _to_set(x) -> set[tuple]:
+    return {
+        (xi.index_variadic, xi.dims, xi.array_type, xi.dtypes, xi.dim_str)
+        if issubclass(xi, AbstractArray)
+        else xi
+        for xi in x
+    }
+
+
 def test_arraylike(typecheck, getkey):
     floatlike1 = Float32[ArrayLike, ""]
     floatlike2 = Float[ArrayLike, ""]
@@ -536,41 +546,51 @@ def test_arraylike(typecheck, getkey):
     assert get_origin(floatlike1) is Union
     assert get_origin(floatlike2) is Union
     assert get_origin(floatlike3) is Union
-    assert set(get_args(floatlike1)) == {
-        Float32[Array, ""],
-        Float32[np.ndarray, ""],
-        Float32[np.number, ""],
-        float,
-    }
-    assert set(get_args(floatlike2)) == {
-        Float[Array, ""],
-        Float[np.ndarray, ""],
-        Float[np.number, ""],
-        float,
-    }
-    assert set(get_args(floatlike3)) == {
-        Float32[Array, "4"],
-        Float32[np.ndarray, "4"],
-    }
+    assert _to_set(get_args(floatlike1)) == _to_set(
+        [
+            Float32[Array, ""],
+            Float32[np.ndarray, ""],
+            Float32[np.number, ""],
+            float,
+        ]
+    )
+    assert _to_set(get_args(floatlike2)) == _to_set(
+        [
+            Float[Array, ""],
+            Float[np.ndarray, ""],
+            Float[np.number, ""],
+            float,
+        ]
+    )
+    assert _to_set(get_args(floatlike3)) == _to_set(
+        [
+            Float32[Array, "4"],
+            Float32[np.ndarray, "4"],
+        ]
+    )
 
     shaped1 = Shaped[ArrayLike, ""]
     shaped2 = Shaped[ArrayLike, "4"]
     assert get_origin(shaped1) is Union
     assert get_origin(shaped2) is Union
-    assert set(get_args(shaped1)) == {
-        Shaped[Array, ""],
-        Shaped[np.ndarray, ""],
-        Shaped[np.bool_, ""],
-        Shaped[np.number, ""],
-        bool,
-        int,
-        float,
-        complex,
-    }
-    assert set(get_args(shaped2)) == {
-        Shaped[Array, "4"],
-        Shaped[np.ndarray, "4"],
-    }
+    assert _to_set(get_args(shaped1)) == _to_set(
+        [
+            Shaped[Array, ""],
+            Shaped[np.ndarray, ""],
+            Shaped[np.bool_, ""],
+            Shaped[np.number, ""],
+            bool,
+            int,
+            float,
+            complex,
+        ]
+    )
+    assert _to_set(get_args(shaped2)) == _to_set(
+        [
+            Shaped[Array, "4"],
+            Shaped[np.ndarray, "4"],
+        ]
+    )
 
 
 def test_subclass():

@@ -3,6 +3,7 @@ cloudpickle
 equinox
 IPython
 jax
+numpy<2
 pytest
 pytest-asyncio
 tensorflow

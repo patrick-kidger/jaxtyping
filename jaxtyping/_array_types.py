@@ -320,26 +320,23 @@ class _MetaAbstractArray(type):
 @ft.lru_cache(maxsize=None)
 def _make_metaclass(base_metaclass):
     class MetaAbstractArray(_MetaAbstractArray, base_metaclass):
-        def _get_props(cls):
-            props_tuple = (
-                cls.index_variadic,
-                cls.dims,
-                cls.array_type,
-                cls.dtypes,
-                cls.dim_str,
-            )
-            return props_tuple
-
+        # We have to use identity-based eq/hash behaviour. The reason for this is that
+        # when deserializing using cloudpickle (very common, it seems), that cloudpickle
+        # will actually attempt to put a partially constructed class in a dictionary.
+        # So if we start accessing `cls.index_variadic` and the like here, then that
+        # explodes.
+        # See
+        # https://github.com/patrick-kidger/jaxtyping/issues/198
+        # https://github.com/patrick-kidger/jaxtyping/issues/261
+        #
+        # This does mean that if you want to compare two array annotations for equality
+        # (e.g. this happens in jaxtyping's tests as part of checking correctness) then
+        # a custom equality function must be used -- we can't put it here.
         def __eq__(cls, other):
-            if type(cls) is not type(other):
-                return False
-
-            return cls._get_props() == other._get_props()
+            return cls is other
 
         def __hash__(cls):
-            # Does not use `_get_props` as these attributes don't necessarily exist
-            # during depickling. See #198.
-            return 0
+            return id(cls)
 
     return MetaAbstractArray
 
