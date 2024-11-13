@@ -22,7 +22,6 @@ import typing
 from typing import Any, Generic, TypeVar
 
 import jax.tree_util as jtu
-import typeguard
 
 from ._errors import AnnotationError
 from ._storage import (
@@ -95,14 +94,16 @@ class _MetaPyTree(type):
             #
             # Deliberately not using @jaxtyped so that we share the same `memo` as
             # whatever dynamic context we're currently in.
-            @typeguard.typechecked
+            from ._typeguard import typechecked
+
+            @typechecked
             def accepts_leaftype(x: cls.leaftype):
                 pass
 
             def is_leaftype(x):
                 try:
                     accepts_leaftype(x)
-                except _TypeCheckError:
+                except TypeError:
                     return False
                 else:
                     return True
@@ -247,14 +248,6 @@ class _MetaPyTree(type):
         else:
             X.__module__ = "jaxtyping"
         return X
-
-
-try:
-    # new typeguard
-    _TypeCheckError = (TypeError, typeguard.TypeCheckError)
-except AttributeError:
-    # old typeguard
-    _TypeCheckError = TypeError
 
 
 # Can't do `class PyTree(Generic[_T]): ...` because we need to override the
