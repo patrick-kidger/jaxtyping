@@ -70,15 +70,13 @@ def _apply_typechecker(typechecker, fn):
 def jaxtyped(
     *,
     typechecker=_sentinel,
-) -> Callable[[Callable[_Params, _Return]], Callable[_Params, _Return]]:
-    ...
+) -> Callable[[Callable[_Params, _Return]], Callable[_Params, _Return]]: ...
 
 
 @overload
 def jaxtyped(
     fn: Callable[_Params, _Return], *, typechecker=_sentinel
-) -> Callable[_Params, _Return]:
-    ...
+) -> Callable[_Params, _Return]: ...
 
 
 def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
