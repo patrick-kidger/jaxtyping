@@ -694,8 +694,7 @@ def test_extension(jaxtyp, typecheck, getkey):
     Y = Float[X, "b"]
 
     @jaxtyp(typecheck)
-    def f(a: X, b: Y):
-        ...
+    def f(a: X, b: Y): ...
 
     a = jr.normal(getkey(), (3, 4))
     b = jr.normal(getkey(), (4,))
@@ -708,8 +707,7 @@ def test_extension(jaxtyp, typecheck, getkey):
         f(a, a)
 
     @typecheck
-    def g(a: Shaped[PRNGKeyArray, "2"]):
-        ...
+    def g(a: Shaped[PRNGKeyArray, "2"]): ...
 
     with pytest.raises(ParamError):
         g(jr.PRNGKey(0))

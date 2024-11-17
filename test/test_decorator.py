@@ -14,8 +14,7 @@ from .helpers import assert_no_garbage, ParamError, ReturnError
 
 class M(metaclass=abc.ABCMeta):
     @jaxtyped(typechecker=None)
-    def f(self):
-        ...
+    def f(self): ...
 
     @jaxtyped(typechecker=None)
     @classmethod
@@ -39,13 +38,11 @@ class M(metaclass=abc.ABCMeta):
 
     @jaxtyped(typechecker=None)
     @abc.abstractmethod
-    def i1(self):
-        ...
+    def i1(self): ...
 
     @abc.abstractmethod
     @jaxtyped(typechecker=None)
-    def i2(self):
-        ...
+    def i2(self): ...
 
 
 class N:

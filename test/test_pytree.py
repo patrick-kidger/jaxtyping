@@ -166,8 +166,7 @@ def test_pytree_namedtuple(typecheck):
         y: Float[jnp.ndarray, "b c"]
 
     @typecheck
-    def g(x: PyTree[CustomNamedTuple]):
-        ...
+    def g(x: PyTree[CustomNamedTuple]): ...
 
     g(
         CustomNamedTuple(
