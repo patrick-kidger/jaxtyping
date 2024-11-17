@@ -84,18 +84,45 @@ Float32[Array, "some_shape"]
 
 ## Array
 
-The array should usually be a `jaxtyping.Array`, which is an alias for `jax.numpy.ndarray` (which is itself an alias for `jax.Array`).
-
-`jaxtyping.ArrayLike` is also available, which is an alias for `jax.typing.ArrayLike`. This is a union over JAX arrays and the builtin `bool`/`int`/`float`/`complex`.
-
-You can use non-JAX types as well. jaxtyping also supports NumPy, TensorFlow, and PyTorch, e.g.:
+The array should typically be either one of:
 ```python
-Float[np.ndarray, "..."]
-Float[tf.Tensor, "..."]
-Float[torch.Tensor, "..."]
+jaxtyping.Array / jax.Array / jax.numpy.ndarray  # these are all aliases of one another
+np.ndarray
+torch.Tensor
+tf.Tensor
+```
+That is -- despite the now-historical name! -- jaxtyping also supports NumPy + PyTorch + TensorFlow.
+
+Some other types are also supported here:
+
+**Unions:** these are unpacked. For example, `SomeDtype[Union[A, B], "some shape"]` is equivalent to `Union[SomeDtype[A, "some shape"], SomeDtype[B, "some shape"]]`. A common example of a union type here is `np.typing.ArrayLike`.
+
+**Any:** use `typing.Any` to check just the shape/dtype, but not the array type.
+
+**Duck-type arrays:** anything with `.shape` and `.dtype` attributes. For example,
+```python
+class MyDuckArray:
+    @property
+    def shape(self) -> tuple[int, ...]:
+        return (3, 4, 5)
+
+    @property
+    def dtype(self) -> str:
+        return "my_dtype"
+
+class MyDtype(jaxtyping.AbstractDtype):
+    dtypes = ["my_dtype"]
+
+x = MyDuckArray()
+assert isinstance(x, MyDtype[MyDuckArray, "3 4 5"])
+# checks that `type(x) == MyDuckArray`
+# and that `x.shape == (3, 4, 5)`
+# and that `x.dtype == "my_dtype"`
 ```
 
-Shape-and-dtype specified jaxtyping arrays can also be used, e.g.
+**TypeVars:** in this case the runtime array is checked for matching the bounds or constraints of the `typing.TypeVar`.
+
+**Existing jaxtyped annotations:**
 ```python
 Image = Float[Array, "channels height width"]
 BatchImage = Float[Image, "batch"]
