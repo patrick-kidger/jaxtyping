@@ -1,7 +1,7 @@
 [project]
 name = "jaxtyping"
 version = "0.2.35"
-description = "Type annotations and runtime checking for shape and dtype of JAX arrays, and PyTrees."
+description = "Type annotations and runtime checking for shape and dtype of JAX/NumPy/PyTorch/etc. arrays."
 readme = "README.md"
 requires-python =">=3.9"
 license = {file = "LICENSE"}
