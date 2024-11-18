@@ -33,9 +33,16 @@ from typing import (
     get_type_hints,
     NoReturn,
     overload,
-    ParamSpec,
     TypeVar,
 )
+
+
+try:
+    from typing import ParamSpec
+except ImportError:
+    # Python < 3.10
+    from typing_extensions import ParamSpec
+
 
 from jaxtyping import AbstractArray
 

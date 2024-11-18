@@ -23,7 +23,9 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
 urls = {repository = "https://github.com/google/jaxtyping" }
-dependencies = []
+dependencies = [
+  "typing_extensions; python_version < '3.10'"
+]
 entry-points = {pytest11 = {jaxtyping = "jaxtyping._pytest_plugin"}}
 
 [build-system]
