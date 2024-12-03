@@ -855,7 +855,10 @@ def _pformat(x, short_self: bool):
         import pprint
 
         pformat = ft.partial(pprint.pformat, indent=2, compact=True)
-    return pformat(x)
+    try:
+        return pformat(x)
+    except Exception:
+        return f"<Exception raised when pretty-formatting object of type {type(x)}.>"
 
 
 class _jaxtyping_note_str(str):
