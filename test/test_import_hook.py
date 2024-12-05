@@ -32,26 +32,6 @@ import jaxtyping
 _here = pathlib.Path(__file__).parent
 
 
-try:
-    typeguard_version = importlib.metadata.version("typeguard")
-except Exception as e:
-    raise ImportError("Could not find typeguard version") from e
-else:
-    try:
-        major, _, _ = typeguard_version.split(".")
-        major = int(major)
-    except Exception as e:
-        raise ImportError(
-            f"Unexpected typeguard version {typeguard_version}; not formatted as "
-            "`major.minor.patch`"
-        ) from e
-if major != 2:
-    raise ImportError(
-        "jaxtyping's tests required typeguard version 2. (Versions 3 and 4 are both "
-        "known to have bugs.)"
-    )
-
-
 assert not hasattr(jaxtyping, "_test_import_hook_counter")
 jaxtyping._test_import_hook_counter = 0
 
