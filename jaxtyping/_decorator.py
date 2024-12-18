@@ -33,7 +33,9 @@ from typing import (
     get_type_hints,
     NoReturn,
     overload,
+    Type,
     TypeVar,
+    Union,
 )
 
 
@@ -73,17 +75,23 @@ def _apply_typechecker(typechecker, fn):
     return typechecker(fn)
 
 
+_T = TypeVar("_T")
+
+
 @overload
 def jaxtyped(
     *,
     typechecker=_sentinel,
-) -> Callable[[Callable[_Params, _Return]], Callable[_Params, _Return]]: ...
+) -> Union[
+    Callable[[Callable[_Params, _Return]], Callable[_Params, _Return]],
+    Callable[[Type[_T]], Type[_T]],
+]: ...
 
 
 @overload
 def jaxtyped(
-    fn: Callable[_Params, _Return], *, typechecker=_sentinel
-) -> Callable[_Params, _Return]: ...
+    fn: Union[Callable[_Params, _Return], Type[_T]], *, typechecker=_sentinel
+) -> Union[Callable[_Params, _Return], Type[_T]]: ...
 
 
 def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
