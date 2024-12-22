@@ -440,6 +440,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
             param_fn = _apply_typechecker(typechecker, param_fn)
 
             def wrapped_fn_impl(args, kwargs, bound, memos):
+                __tracebackhide__ = True
                 # First type-check just the parameters before the function is
                 # called.
                 try:
