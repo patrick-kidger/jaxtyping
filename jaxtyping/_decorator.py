@@ -34,6 +34,7 @@ from typing import (
     NoReturn,
     overload,
     TypeVar,
+    Union,
 )
 
 
@@ -53,6 +54,10 @@ from ._storage import pop_shape_memo, push_shape_memo, shape_str
 
 _Params = ParamSpec("_Params")
 _Return = TypeVar("_Return")
+_T = TypeVar("_T")
+# Not `TypeVar(..., type, Callable)` as else the output type of our first overload is
+# just `type`, and not the particular class that is decorated.
+_TypeOrCallable = TypeVar("_TypeOrCallable", bound=Union[type, Callable])
 
 
 class _Sentinel:
@@ -77,7 +82,11 @@ def _apply_typechecker(typechecker, fn):
 def jaxtyped(
     *,
     typechecker=_sentinel,
-) -> Callable[[Callable[_Params, _Return]], Callable[_Params, _Return]]: ...
+) -> Callable[[_TypeOrCallable], _TypeOrCallable]: ...
+
+
+@overload
+def jaxtyped(fn: type[_T], *, typechecker=_sentinel) -> type[_T]: ...
 
 
 @overload
