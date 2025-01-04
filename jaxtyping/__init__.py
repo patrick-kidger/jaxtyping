@@ -22,7 +22,7 @@ import importlib.metadata
 import importlib.util
 import typing
 import warnings
-from typing import Union
+from typing import TypeAlias, Union
 
 from ._array_types import (
     AbstractArray as AbstractArray,
@@ -43,8 +43,6 @@ from ._storage import print_bindings as print_bindings
 
 
 if typing.TYPE_CHECKING:
-    import typing_extensions
-
     from jax import Array as Array
     from jax.tree_util import PyTreeDef as PyTreeDef
     from jax.typing import ArrayLike as ArrayLike, DTypeLike as DTypeLike
@@ -90,7 +88,7 @@ if typing.TYPE_CHECKING:
     )
 
     # Set up to deliberately confuse a static type checker.
-    PyTree: typing_extensions.TypeAlias = getattr(typing, "foo" + "bar")
+    PyTree: TypeAlias = getattr(typing, "foo" + "bar")
     # What's going on with this madness?
     #
     # At static-type-checking-time, we want `PyTree` to be a type for which both

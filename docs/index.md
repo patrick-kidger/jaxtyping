@@ -13,7 +13,7 @@ jaxtyping is a library providing type annotations **and runtime type-checking** 
 pip install jaxtyping
 ```
 
-Requires Python 3.9+.
+Requires Python 3.10+.
 
 JAX is an optional dependency, required for a few JAX-specific types. If JAX is not installed then these will not be available, but you may still use jaxtyping to provide shape/dtype annotations for PyTorch/NumPy/TensorFlow/etc.
 

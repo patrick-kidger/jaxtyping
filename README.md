@@ -29,7 +29,7 @@ def accepts_pytree_of_arrays(x: PyTree[Float[Array, "batch c1 c2"]]):
 pip install jaxtyping
 ```
 
-Requires Python 3.9+.
+Requires Python 3.10+.
 
 JAX is an optional dependency, required for a few JAX-specific types. If JAX is not installed then these will not be available, but you may still use jaxtyping to provide shape/dtype annotations for PyTorch/NumPy/TensorFlow/etc.
 

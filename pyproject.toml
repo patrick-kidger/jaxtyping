@@ -3,7 +3,7 @@ name = "jaxtyping"
 version = "0.2.36"
 description = "Type annotations and runtime checking for shape and dtype of JAX/NumPy/PyTorch/etc. arrays."
 readme = "README.md"
-requires-python =">=3.9"
+requires-python =">=3.10"
 license = {file = "LICENSE"}
 authors = [
   {name = "Patrick Kidger", email = "contact@kidger.site"},
@@ -23,9 +23,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
 urls = {repository = "https://github.com/google/jaxtyping" }
-dependencies = [
-  "typing_extensions; python_version < '3.10'"
-]
+dependencies = ["wadler_lindig>=0.1.0"]
 entry-points = {pytest11 = {jaxtyping = "jaxtyping._pytest_plugin"}}
 
 [build-system]
