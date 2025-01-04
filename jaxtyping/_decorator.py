@@ -33,17 +33,10 @@ from typing import (
     get_type_hints,
     NoReturn,
     overload,
+    ParamSpec,
     TypeVar,
     Union,
 )
-
-
-try:
-    from typing import ParamSpec
-except ImportError:
-    # Python < 3.10
-    from typing_extensions import ParamSpec
-
 
 from jaxtyping import AbstractArray
 
@@ -847,12 +840,12 @@ def _pformat(x, short_self: bool):
     # No performance concerns from delayed imports -- this is only used when we're about
     # to raise an error anyway.
     try:
-        # TODO(kidger): this is pretty ugly. We have a circular dependency
-        # equinox->jaxtyping->equinox. We could consider moving all the pretty-printing
-        # code from equinox into jaxtyping maybe? Or into some shared dependency?
+        # If we can, use `eqx.tree_pformat`, which wraps `wadler_lindig.pformat` with
+        # understanding of a few other JAX-specific things.
         import equinox as eqx
 
         pformat = eqx.tree_pformat
+
         if short_self:
             try:
                 self = x["self"]
@@ -862,9 +855,23 @@ def _pformat(x, short_self: bool):
                 is_self = lambda y: y is self
                 pformat = ft.partial(pformat, truncate_leaf=is_self)
     except Exception:
-        import pprint
+        # Failing that fall back to `wadler_lindig.pformat` directly.
+        import wadler_lindig
 
-        pformat = ft.partial(pprint.pformat, indent=2, compact=True)
+        pformat = wadler_lindig.pformat
+
+        if short_self:
+            try:
+                self = x["self"]
+            except KeyError:
+                pass
+            else:
+
+                def custom(obj):
+                    if obj is self:
+                        return wadler_lindig.TextDoc(f"{type(obj).__name__}(...)")
+
+                pformat = ft.partial(pformat, custom=custom)
     try:
         return pformat(x)
     except Exception:
