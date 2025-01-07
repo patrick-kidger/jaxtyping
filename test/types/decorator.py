@@ -11,8 +11,8 @@ from jaxtyping import Float, Int, jaxtyped
 class User:
     name: str
     age: int
-    items: Float[tf.Tensor, "N"]  # noqa: F821
-    timestamps: Int[tf.Tensor, "N"]  # noqa: F821
+    items: Float[tf.Tensor, " N"]
+    timestamps: Int[tf.Tensor, " N"]
 
 
 @jaxtyped(typechecker=beartype)
