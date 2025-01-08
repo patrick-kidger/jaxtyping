@@ -26,3 +26,18 @@ repos:
       - id: ruff  # linter
         types_or: [ python, pyi, jupyter ]
         args: [ --fix ]
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.391
+    hooks:
+    - id: pyright
+      files: ^test/types/
+      additional_dependencies:
+          [beartype, numpy<2]
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.14.1  
+    hooks:
+      - id: mypy
+        files: ^test/types/
+        additional_dependencies:
+          [beartype, numpy<2]
+        args: ["--ignore-missing-imports", "--follow-imports=skip"]
