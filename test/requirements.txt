@@ -7,4 +7,4 @@ numpy<2
 pytest
 pytest-asyncio
 tensorflow
-typeguard<3
+typeguard
