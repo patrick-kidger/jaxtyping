@@ -4,3 +4,4 @@ build/
 dist/
 site/
 .all_objects.cache
+.venv
