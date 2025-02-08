@@ -198,9 +198,18 @@ else:
 
                 return Shaped[jax.Array, ""]
             elif item == "ScalarLike":
-                import jax.typing
+                if getattr(typing, "GENERATING_DOCUMENTATION", False):
 
-                return Shaped[jax.typing.ArrayLike, ""]
+                    class ScalarLike:
+                        pass
+
+                    ScalarLike.__module__ = "builtins"
+                    ScalarLike.__qualname__ = "ScalarLike"
+                    return ScalarLike
+                else:
+                    import jax.typing
+
+                    return jax.typing.ArrayLike
             elif item == "PyTree":
                 from ._pytree_type import PyTree
 
