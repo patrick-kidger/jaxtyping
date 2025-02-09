@@ -209,7 +209,7 @@ else:
                 else:
                     import jax.typing
 
-                    return jax.typing.ArrayLike
+                    return Shaped[jax.typing.ArrayLike, ""]
             elif item == "PyTree":
                 from ._pytree_type import PyTree
 
