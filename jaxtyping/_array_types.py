@@ -17,6 +17,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import copyreg
 import enum
 import functools as ft
 import importlib.util
@@ -317,6 +318,10 @@ class _MetaAbstractArray(type):
             assert False
 
 
+def _pickle_array_annotation(x: type["AbstractArray"]):
+    return x.dtype.__getitem__, ((x.array_type, x.dim_str),)
+
+
 @ft.lru_cache(maxsize=None)
 def _make_metaclass(base_metaclass):
     class MetaAbstractArray(_MetaAbstractArray, base_metaclass):
@@ -338,6 +343,8 @@ def _make_metaclass(base_metaclass):
         def __hash__(cls):
             return id(cls)
 
+    copyreg.pickle(MetaAbstractArray, _pickle_array_annotation)
+
     return MetaAbstractArray
 
 
@@ -358,11 +365,15 @@ class AbstractArray(metaclass=_MetaAbstractArray):
     you can check `issubclass(annotation, jaxtyping.AbstractArray)`.
     """
 
+    # This is what it was defined with.
+    dtype: type["AbstractDtype"]
     array_type: Any
+    dim_str: str
+
+    # This is the processed information we need for later typechecking.
     dtypes: list[str]
     dims: tuple[_AbstractDimOrVariadicDim, ...]
     index_variadic: Optional[int]
-    dim_str: str
 
 
 _not_made = object()
@@ -595,8 +606,8 @@ def _make_array_cached(array_type, dim_str, dtypes, name):
     return (array_type, name, dtypes, dims, index_variadic, dim_str)
 
 
-def _make_array(*args, **kwargs):
-    out = _make_array_cached(*args, **kwargs)
+def _make_array(x, dim_str, dtype):
+    out = _make_array_cached(x, dim_str, dtype.dtypes, dtype.__name__)
 
     if type(out) is tuple:
         array_type, name, dtypes, dims, index_variadic, dim_str = out
@@ -610,11 +621,12 @@ def _make_array(*args, **kwargs):
             name,
             (AbstractArray,) if array_type is Any else (array_type, AbstractArray),
             dict(
+                dtype=dtype,
                 array_type=array_type,
+                dim_str=dim_str,
                 dtypes=dtypes,
                 dims=dims,
                 index_variadic=index_variadic,
-                dim_str=dim_str,
             ),
         )
         if getattr(typing, "GENERATING_DOCUMENTATION", False):
@@ -654,10 +666,7 @@ class _MetaAbstractDtype(type):
                 array_type = bound
         del item
         if get_origin(array_type) in _union_types:
-            out = [
-                _make_array(x, dim_str, cls.dtypes, cls.__name__)
-                for x in get_args(array_type)
-            ]
+            out = [_make_array(x, dim_str, cls) for x in get_args(array_type)]
             out = tuple(x for x in out if x is not _not_made)
             if len(out) == 0:
                 raise ValueError("Invalid jaxtyping type annotation.")
@@ -666,7 +675,7 @@ class _MetaAbstractDtype(type):
             else:
                 out = Union[out]
         else:
-            out = _make_array(array_type, dim_str, cls.dtypes, cls.__name__)
+            out = _make_array(array_type, dim_str, cls)
             if out is _not_made:
                 raise ValueError("Invalid jaxtyping type annotation.")
         return out
