@@ -853,3 +853,8 @@ def test_any(array_type, jaxtyp, typecheck):
     # Not an array
     with pytest.raises(ParamError):
         f(1)
+
+
+def test_non_instantiation():
+    with pytest.raises(RuntimeError, match="cannot be instantiated"):
+        Float[Array, ""]()  # pyright: ignore[reportCallIssue]

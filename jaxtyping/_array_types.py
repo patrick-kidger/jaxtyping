@@ -375,6 +375,12 @@ class AbstractArray(metaclass=_MetaAbstractArray):
     dims: tuple[_AbstractDimOrVariadicDim, ...]
     index_variadic: Optional[int]
 
+    def __new__(cls, *args, **kwargs):
+        raise RuntimeError(
+            "jaxtyping annotations cannot be instantiated -- they should be used for "
+            "type hints only."
+        )
+
 
 _not_made = object()
 
