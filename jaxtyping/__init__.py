@@ -198,9 +198,9 @@ else:
 
                 return Shaped[jax.Array, ""]
             elif item == "ScalarLike":
-                import jax.typing
+                from . import ArrayLike
 
-                return Shaped[jax.typing.ArrayLike, ""]
+                return Shaped[ArrayLike, ""]
             elif item == "PyTree":
                 from ._pytree_type import PyTree
 
