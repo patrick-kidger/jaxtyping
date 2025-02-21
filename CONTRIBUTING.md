@@ -30,7 +30,7 @@ Next verify the tests all pass:
 ```bash
 pip install -r test/requirements.txt
 pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
-pytest
+pytest ./test
 ```
 
 Then push your changes back to your fork of the repository:

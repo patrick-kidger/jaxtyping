@@ -32,6 +32,11 @@ try:
 except ImportError:
     torch = None
 
+try:
+    import mlx.core as mx
+except ImportError:
+    mx = None
+
 from jaxtyping import (
     AbstractArray,
     AbstractDtype,
@@ -604,6 +609,12 @@ def test_subclass():
 
     if torch is not None:
         assert issubclass(Float[torch.Tensor, ""], torch.Tensor)
+
+    if mx is not None:
+        # Nanobind classes can't be a base type.
+        # Maybe this can be fixed in the future, but it does not
+        # impact type checking.
+        assert not issubclass(Float[mx.array, ""], mx.array)
 
 
 def test_ignored_names():
