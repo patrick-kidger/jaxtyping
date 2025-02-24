@@ -98,7 +98,7 @@ class _NamedVariadicDim:
 
 @dataclass(frozen=True)
 class _FixedDim:
-    size: str
+    size: int
     broadcastable: bool
 
 
