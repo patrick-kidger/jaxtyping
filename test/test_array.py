@@ -603,20 +603,6 @@ def test_arraylike(typecheck, getkey):
     )
 
 
-def test_subclass():
-    assert issubclass(Float[Array, ""], Array)
-    assert issubclass(Float[np.ndarray, ""], np.ndarray)
-
-    if torch is not None:
-        assert issubclass(Float[torch.Tensor, ""], torch.Tensor)
-
-    if mx is not None:
-        # Nanobind classes can't be a base type.
-        # Maybe this can be fixed in the future, but it does not
-        # impact type checking.
-        assert not issubclass(Float[mx.array, ""], mx.array)
-
-
 def test_ignored_names():
     x = Float[np.ndarray, "foo=4"]
 

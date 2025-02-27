@@ -617,14 +617,10 @@ def _make_array(x, dim_str, dtype):
 
     if type(out) is tuple:
         array_type, name, dtypes, dims, index_variadic, dim_str = out
-        # Nanobind classes can't be a base type
-        can_subclass = array_type is Any or "nanobind." in str(type(array_type))
-        metaclass = (
-            _make_metaclass(type) if can_subclass else _make_metaclass(type(array_type))
-        )
+        metaclass = _make_metaclass(type)
         out = metaclass(
             name,
-            (AbstractArray,) if can_subclass else (array_type, AbstractArray),
+            (AbstractArray,),
             dict(
                 dtype=dtype,
                 array_type=array_type,
