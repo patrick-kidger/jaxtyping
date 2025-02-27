@@ -2,7 +2,7 @@
 
 Type annotations **and runtime type-checking** for:
 
-1. shape and dtype of [JAX](https://github.com/google/jax) arrays; *(Now also supports PyTorch, NumPy, and TensorFlow!)*
+1. shape and dtype of [JAX](https://github.com/google/jax), [NumPy](https://github.com/numpy/numpy), [MLX](https://github.com/ml-explore/mlx), [PyTorch](https://github.com/pytorch/pytorch), [Tensorflow](https://github.com/tensorflow/tensorflow) arrays/tensors.
 2. [PyTrees](https://jax.readthedocs.io/en/latest/pytrees.html).
 
 
@@ -11,6 +11,7 @@ Type annotations **and runtime type-checking** for:
 from jaxtyping import Array, Float, PyTree
 
 # Accepts floating-point 2D arrays with matching axes
+# Feel free to replace 'Array' by torch.Tensor, np.ndarray, tf.Tensor or mx.array.
 def matrix_multiply(x: Float[Array, "dim1 dim2"],
                     y: Float[Array, "dim2 dim3"]
                   ) -> Float[Array, "dim1 dim3"]:
