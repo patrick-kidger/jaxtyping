@@ -617,15 +617,10 @@ def _make_array(x, dim_str, dtype):
 
     if type(out) is tuple:
         array_type, name, dtypes, dims, index_variadic, dim_str = out
-        metaclass = (
-            _make_metaclass(type)
-            if array_type is Any
-            else _make_metaclass(type(array_type))
-        )
-
+        metaclass = _make_metaclass(type)
         out = metaclass(
             name,
-            (AbstractArray,) if array_type is Any else (array_type, AbstractArray),
+            (AbstractArray,),
             dict(
                 dtype=dtype,
                 array_type=array_type,
