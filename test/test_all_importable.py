@@ -18,12 +18,14 @@ def test_all_importable():
         Complex128,  # noqa: F401
         Integer,  # noqa: F401
         UInt,  # noqa: F401
+        UInt2,  # noqa: F401
         UInt4,  # noqa: F401
         UInt8,  # noqa: F401
         UInt16,  # noqa: F401
         UInt32,  # noqa: F401
         UInt64,  # noqa: F401
         Int,  # noqa: F401
+        Int2,  # noqa: F401
         Int4,  # noqa: F401
         Int8,  # noqa: F401
         Int16,  # noqa: F401
