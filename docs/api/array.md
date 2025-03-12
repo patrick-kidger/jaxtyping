@@ -66,9 +66,9 @@ The dtype should be any one of (all imported from `jaxtyping`):
                 - Of particular precision: `Complex64`, `Complex128`
         - Any integer or unsigned intger: `Integer`
             - Any unsigned integer: `UInt`
-                - Of particular precision: `UInt4`, `UInt8`, `UInt16`, `UInt32`, `UInt64`
+                - Of particular precision: `UInt2`, `UInt4`, `UInt8`, `UInt16`, `UInt32`, `UInt64`
             - Any signed integer: `Int`
-                - Of particular precision: `Int4`, `Int8`, `Int16`, `Int32`, `Int64`
+                - Of particular precision: `Int2`, `Int4`, `Int8`, `Int16`, `Int32`, `Int64`
         - Any floating, integer, or unsigned integer: `Real`.
 
 Unless you really want to force a particular precision, then for most applications you should probably allow any floating-point, any integer, etc. That is, use
