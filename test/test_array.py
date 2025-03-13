@@ -602,14 +602,6 @@ def test_arraylike(typecheck, getkey):
     )
 
 
-def test_subclass():
-    assert issubclass(Float[Array, ""], Array)
-    assert issubclass(Float[np.ndarray, ""], np.ndarray)
-
-    if torch is not None:
-        assert issubclass(Float[torch.Tensor, ""], torch.Tensor)
-
-
 def test_ignored_names():
     x = Float[np.ndarray, "foo=4"]
 

@@ -318,34 +318,18 @@ class _MetaAbstractArray(type):
             assert False
 
 
+def _return_abstractarray():
+    return AbstractArray
+
+
 def _pickle_array_annotation(x: type["AbstractArray"]):
-    return x.dtype.__getitem__, ((x.array_type, x.dim_str),)
+    if x is AbstractArray:
+        return _return_abstractarray, ()
+    else:
+        return x.dtype.__getitem__, ((x.array_type, x.dim_str),)
 
 
-@ft.lru_cache(maxsize=None)
-def _make_metaclass(base_metaclass):
-    class MetaAbstractArray(_MetaAbstractArray, base_metaclass):
-        # We have to use identity-based eq/hash behaviour. The reason for this is that
-        # when deserializing using cloudpickle (very common, it seems), that cloudpickle
-        # will actually attempt to put a partially constructed class in a dictionary.
-        # So if we start accessing `cls.index_variadic` and the like here, then that
-        # explodes.
-        # See
-        # https://github.com/patrick-kidger/jaxtyping/issues/198
-        # https://github.com/patrick-kidger/jaxtyping/issues/261
-        #
-        # This does mean that if you want to compare two array annotations for equality
-        # (e.g. this happens in jaxtyping's tests as part of checking correctness) then
-        # a custom equality function must be used -- we can't put it here.
-        def __eq__(cls, other):
-            return cls is other
-
-        def __hash__(cls):
-            return id(cls)
-
-    copyreg.pickle(MetaAbstractArray, _pickle_array_annotation)
-
-    return MetaAbstractArray
+copyreg.pickle(_MetaAbstractArray, _pickle_array_annotation)
 
 
 def _check_scalar(dtype, dtypes, dims):
@@ -617,15 +601,10 @@ def _make_array(x, dim_str, dtype):
 
     if type(out) is tuple:
         array_type, name, dtypes, dims, index_variadic, dim_str = out
-        metaclass = (
-            _make_metaclass(type)
-            if array_type is Any
-            else _make_metaclass(type(array_type))
-        )
 
-        out = metaclass(
+        out = _MetaAbstractArray(
             name,
-            (AbstractArray,) if array_type is Any else (array_type, AbstractArray),
+            (AbstractArray,),
             dict(
                 dtype=dtype,
                 array_type=array_type,
