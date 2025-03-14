@@ -17,6 +17,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+from collections.abc import Callable
 from typing import NamedTuple, Tuple, Union
 
 import equinox as eqx
@@ -24,6 +25,7 @@ import jax
 import jax.numpy as jnp
 import jax.random as jr
 import pytest
+import wadler_lindig as wl
 
 import jaxtyping
 from jaxtyping import AnnotationError, Array, Float, PyTree
@@ -341,3 +343,53 @@ def test_treepath_dependence_multiple_structure_annotation(jaxtyp, typecheck, ge
     x1 = jr.normal(getkey(), (2,))
     with pytest.raises(AnnotationError, match="ambiguous which PyTree"):
         f(x1)
+
+
+def test_name():
+    assert PyTree.__name__ == "PyTree"
+    assert PyTree[int].__name__ == "PyTree[int]"
+    assert PyTree[int, "foo"].__name__ == "PyTree[int, 'foo']"
+    assert PyTree[PyTree[str], "foo"].__name__ == "PyTree[PyTree[str], 'foo']"
+    assert (
+        PyTree[PyTree[str, "bar"], "foo"].__name__
+        == "PyTree[PyTree[str, 'bar'], 'foo']"
+    )
+    assert PyTree[PyTree[str, "bar"]].__name__ == "PyTree[PyTree[str, 'bar']]"
+    assert (
+        PyTree[None | Callable[[PyTree[int, " T"]], str]].__name__
+        == "PyTree[None | Callable[[PyTree[int, 'T']], str]]"
+    )
+
+
+def test_pdoc():
+    assert wl.pformat(PyTree) == "PyTree"
+    assert wl.pformat(PyTree[int]) == "PyTree[int]"
+    assert wl.pformat(PyTree[int, "foo"]) == "PyTree[int, 'foo']"
+    assert wl.pformat(PyTree[PyTree[str], "foo"]) == "PyTree[PyTree[str], 'foo']"
+    assert (
+        wl.pformat(PyTree[PyTree[str, "bar"], "foo"])
+        == "PyTree[PyTree[str, 'bar'], 'foo']"
+    )
+    assert wl.pformat(PyTree[PyTree[str, "bar"]]) == "PyTree[PyTree[str, 'bar']]"
+    assert (
+        wl.pformat(PyTree[None | Callable[[PyTree[int, " T"]], str]])
+        == "PyTree[None | Callable[[PyTree[int, 'T']], str]]"
+    )
+    expected = """
+PyTree[
+  None
+  | Callable[
+    [
+      PyTree[
+        int,
+        'T'
+      ]
+    ],
+    str
+  ]
+]
+    """.strip()
+    assert (
+        wl.pformat(PyTree[None | Callable[[PyTree[int, " T"]], str]], width=2).strip()
+        == expected
+    )

@@ -22,6 +22,7 @@ import typing
 from typing import Any, Generic, TypeVar
 
 import jax.tree_util as jtu
+import wadler_lindig as wl
 
 from ._errors import AnnotationError
 from ._storage import (
@@ -35,15 +36,25 @@ from ._storage import (
 
 
 _T = TypeVar("_T")
+_S = TypeVar("_S")
 
 
-class _FakePyTree(Generic[_T]):
+class _FakePyTree1(Generic[_T]):
     pass
 
 
-_FakePyTree.__name__ = "PyTree"
-_FakePyTree.__qualname__ = "PyTree"
-_FakePyTree.__module__ = "builtins"
+_FakePyTree1.__name__ = "PyTree"
+_FakePyTree1.__qualname__ = "PyTree"
+_FakePyTree1.__module__ = "builtins"
+
+
+class _FakePyTree2(Generic[_T, _S]):
+    pass
+
+
+_FakePyTree2.__name__ = "PyTree"
+_FakePyTree2.__qualname__ = "PyTree"
+_FakePyTree2.__module__ = "builtins"
 
 
 class _MetaPyTree(type):
@@ -226,7 +237,15 @@ class _MetaPyTree(type):
                             "regular Python, i.e. a valid variable name.)\n"
                             f"Got piece '{piece}' in overall structure '{X.structure}'."
                         )
-                name = str(_FakePyTree[item[0]])[:-1] + ', "' + item[1].strip() + '"]'
+
+                class Y:
+                    pass
+
+                Y.__module__ = "builtins"
+                Y.__name__ = repr(X.structure)
+                Y.__qualname__ = repr(X.structure)
+                name = wl.pformat(_FakePyTree2[X.leaftype, Y], width=9999)
+                del Y
             else:
                 raise ValueError(
                     "The subscript `foo` in `jaxtyping.PyTree[foo]` must either be a "
@@ -235,7 +254,7 @@ class _MetaPyTree(type):
                     f"{len(item)}."
                 )
         else:
-            name = str(_FakePyTree[item])
+            name = wl.pformat(_FakePyTree1[item], width=9999)
 
             class X(PyTree):
                 leaftype = item
@@ -248,6 +267,22 @@ class _MetaPyTree(type):
         else:
             X.__module__ = "jaxtyping"
         return X
+
+    def __pdoc__(self, **kwargs):
+        if self is PyTree:
+            return wl.TextDoc("PyTree")
+        else:
+            indent = kwargs["indent"]
+            docs = [wl.pdoc(self.leaftype, **kwargs)]
+            if self.structure is not None:
+                docs.append(wl.pdoc(self.structure, **kwargs))
+            return wl.bracketed(
+                begin=wl.TextDoc("PyTree["),
+                docs=docs,
+                sep=wl.comma,
+                end=wl.TextDoc("]"),
+                indent=indent,
+            )
 
 
 # Can't do `class PyTree(Generic[_T]): ...` because we need to override the
