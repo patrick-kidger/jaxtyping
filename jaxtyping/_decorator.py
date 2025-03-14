@@ -225,15 +225,12 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
     """
 
     global _tb_flag
-    if (
-        _tb_flag
-        and importlib.util.find_spec("jax") is not None
-        and importlib.util.find_spec("jaxlib") is not None
-        and importlib.util.find_spec("jax._src.traceback_util") is not None
-    ):
-        import jax._src.traceback_util as traceback_util
-
-        traceback_util.register_exclusion(__file__)
+    if _tb_flag:
+        try:
+            import jax._src.traceback_util as traceback_util
+            traceback_util.register_exclusion(__file__)
+        except:
+            pass
         _tb_flag = False
 
     # First handle the `jaxtyped("context")` usage, which is a special case.
