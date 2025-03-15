@@ -36,8 +36,8 @@ site_description: The documentation for the jaxtyping software library.
 site_author: Patrick Kidger
 site_url: https://docs.kidger.site/jaxtyping
 
-repo_url: https://github.com/google/jaxtyping
-repo_name: google/jaxtyping
+repo_url: https://github.com/patrick-kidger/jaxtyping
+repo_name: patrick-kidger/jaxtyping
 edit_uri: ""  # No edit button, as some of our pages are in /docs and some in /examples via symlink, so it's impossible for them all to be accurate
 
 strict: true  # Don't allow warnings during the build process
@@ -70,25 +70,28 @@ plugins:
             - ".htaccess"
         exclude:
             - "_overrides"
-    - mknotebooks  # Jupyter notebooks
+    - ipynb
+    - hippogriffe:
+        # Our docs are generated pretty much independently of the runtime code, these links aren't useful.
+        show_source_links: none
+        extra_public_modules:
+            - numpy
     - mkdocstrings:
         handlers:
             python:
-                setup_commands:
-                    - import pytkdocs_tweaks, typing
-                    - pytkdocs_tweaks.main()
-                    - typing.GENERATING_DOCUMENTATION = False
-
-                selection:
-                    inherited_members: true  # Allow looking up inherited methods
-                rendering:
-                    show_root_heading: true  # actually display anything at all...
-                    show_root_full_path: true  # display "diffrax.asdf" not just "asdf"
-                    show_if_no_docstring: true
-                    show_signature_annotations: true
-                    show_source: false  # don't include source code
-                    members_order: source  # order methods according to their order of definition in the source code, not alphabetical order
+                options:
+                    force_inspection: true
                     heading_level: 4
+                    inherited_members: true
+                    members_order: source
+                    show_bases: false
+                    show_if_no_docstring: true
+                    show_overloads: false
+                    show_root_heading: true
+                    show_signature_annotations: true
+                    show_source: false
+                    show_symbol_type_heading: true
+                    show_symbol_type_toc: true
 
 nav:
     - 'index.md'

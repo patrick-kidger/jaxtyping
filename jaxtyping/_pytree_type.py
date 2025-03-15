@@ -262,10 +262,10 @@ class _MetaPyTree(type):
 
         X.__name__ = name
         X.__qualname__ = name
-        if getattr(typing, "GENERATING_DOCUMENTATION", False):
-            X.__module__ = "builtins"
-        else:
+        if getattr(typing, "GENERATING_DOCUMENTATION", "") in {"", "jaxtyping"}:
             X.__module__ = "jaxtyping"
+        else:
+            X.__module__ = "builtins"
         return X
 
     def __pdoc__(self, **kwargs):
@@ -289,10 +289,10 @@ class _MetaPyTree(type):
 # instancecheck for PyTree[foo], but subclassing
 # `type(Generic[int])`, i.e. `typing._GenericAlias` is disallowed.
 PyTree = _MetaPyTree("PyTree", (), {})
-if getattr(typing, "GENERATING_DOCUMENTATION", False):
-    PyTree.__module__ = "builtins"
-else:
+if getattr(typing, "GENERATING_DOCUMENTATION", "") in {"", "jaxtyping"}:
     PyTree.__module__ = "jaxtyping"
+else:
+    PyTree.__module__ = "builtins"
 PyTree.__doc__ = """Represents a PyTree.
 
 Annotations of the following sorts are supported:
