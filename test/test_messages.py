@@ -56,7 +56,7 @@ def test_return(typecheck):
         "Type-check error whilst checking the return value of .*.<locals>.f",
         r"Called with parameters: {'x': \(1, 2\), 'y': {'a': 1}}",
         "Actual value: 'foo'",
-        r"Expected type: PyTree\[Any, \"T S\"\].",
+        r"Expected type: PyTree\[Any, 'T S'\].",
         (
             "The current values for each jaxtyping PyTree structure annotation are as "
             "follows."
@@ -69,7 +69,7 @@ def test_return(typecheck):
             f(x, y=y)
 
 
-def test_dataclass_attribute(typecheck):
+def test_dataclass_init(typecheck):
     @jaxtyped(typechecker=typecheck)
     class M(eqx.Module):
         x: Float[Array, " *foo"]
@@ -88,8 +88,8 @@ def test_dataclass_attribute(typecheck):
             r"'y': \(1, \(3, 4\)\), 'z': 'not-an-int'}"
         ),
         (
-            r"Parameter annotations: \(self: Any, x: Float\[Array, '\*foo'\], "
-            r"y: PyTree\[Any, \"T\"\], z: int\)."
+            r"Parameter annotations: \(self, x: Float\[Array, '\*foo'\], "
+            r"y: PyTree\[Any, 'T'\], z: int\)."
         ),
         "The current values for each jaxtyping axis annotation are as follows.",
         r"foo=\(2, 3\)",

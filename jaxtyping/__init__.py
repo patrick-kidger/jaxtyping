@@ -148,99 +148,80 @@ else:
     # But crucially, does not actually import jax at all. We do that dynamically in
     # __getattr__ if required. See #178.
     if importlib.util.find_spec("jax") is not None:
+        if hasattr(typing, "GENERATING_DOCUMENTATION"):
 
-        @ft.cache
-        def __getattr__(item):
-            if item == "Array":
-                if getattr(typing, "GENERATING_DOCUMENTATION", False):
+            class Array:
+                pass
 
-                    class Array:
-                        pass
+            Array.__module__ = "builtins"
+            Array.__qualname__ = "Array"
 
-                    Array.__module__ = "builtins"
-                    Array.__qualname__ = "Array"
-                    return Array
-                else:
+            class ArrayLike:
+                pass
+
+            ArrayLike.__module__ = "builtins"
+            ArrayLike.__qualname__ = "ArrayLike"
+
+            class PRNGKeyArray:
+                pass
+
+            PRNGKeyArray.__module__ = "builtins"
+            PRNGKeyArray.__qualname__ = "PRNGKeyArray"
+
+            from ._pytree_type import PyTree as PyTree
+
+            class PyTreeDef:
+                """Alias for `jax.tree_util.PyTreeDef`, which is the type of the
+                return from `jax.tree_util.tree_structure(...)`.
+                """
+
+            if typing.GENERATING_DOCUMENTATION != "jaxtyping":
+                # Equinox etc. docs get just `PyTreeDef`.
+                # jaxtyping docs get `jaxtyping.PyTreeDef`.
+                PyTreeDef.__qualname__ = "PyTreeDef"
+                PyTreeDef.__module__ = "builtins"
+
+        else:
+
+            @ft.cache
+            def __getattr__(item):
+                if item == "Array":
                     import jax
 
                     return jax.Array
-            elif item == "ArrayLike":
-                if getattr(typing, "GENERATING_DOCUMENTATION", False):
-
-                    class ArrayLike:
-                        pass
-
-                    ArrayLike.__module__ = "builtins"
-                    ArrayLike.__qualname__ = "ArrayLike"
-                    return ArrayLike
-                else:
+                elif item == "ArrayLike":
                     import jax.typing
 
                     return jax.typing.ArrayLike
-            elif item == "PRNGKeyArray":
-                if getattr(typing, "GENERATING_DOCUMENTATION", False):
-
-                    class PRNGKeyArray:
-                        pass
-
-                    PRNGKeyArray.__module__ = "builtins"
-                    PRNGKeyArray.__qualname__ = "PRNGKeyArray"
-                    return PRNGKeyArray
-                else:
+                elif item == "PRNGKeyArray":
                     # New-style `jax.random.key` have scalar shape and dtype `key<foo>`.
                     # Old-style `jax.random.PRNGKey` have shape `(2,)` and dtype
                     # `uint32`.
                     import jax
 
                     return Union[Key[jax.Array, ""], UInt32[jax.Array, "2"]]
-            elif item == "DTypeLike":
-                import jax.typing
+                elif item == "DTypeLike":
+                    import jax.typing
 
-                return jax.typing.DTypeLike
-            elif item == "Scalar":
-                import jax
+                    return jax.typing.DTypeLike
+                elif item == "Scalar":
+                    import jax
 
-                return Shaped[jax.Array, ""]
-            elif item == "ScalarLike":
-                from . import ArrayLike
+                    return Shaped[jax.Array, ""]
+                elif item == "ScalarLike":
+                    from . import ArrayLike
 
-                return Shaped[ArrayLike, ""]
-            elif item == "PyTree":
-                from ._pytree_type import PyTree
+                    return Shaped[ArrayLike, ""]
+                elif item == "PyTree":
+                    from ._pytree_type import PyTree
 
-                return PyTree
-            elif item == "PyTreeDef":
-                if hasattr(typing, "GENERATING_DOCUMENTATION"):
-                    # Most parts of the Equinox ecosystem have
-                    # `typing.GENERATING_DOCUMENTATION = True` when generating
-                    # documentation, to add whatever shims are necessary to get pretty
-                    # docs. E.g. to have type annotations appear as just `PyTree`, not
-                    # `jaxtyping.PyTree`.
-                    #
-                    # As jaxtyping actually wants things to appear as e.g.
-                    # `jaxtyping.PyTree`, rather than just `PyTree`, then it sets
-                    # `typing.GENERATING_DOCUMENTATION = False`, to disable these shims.
-                    #
-                    # Here we do only a `hasattr` check, as we want to get this version
-                    # of `PyTreeDef` in both the jaxtyping and the Equinox(/etc.) docs.
-
-                    class PyTreeDef:
-                        """Alias for `jax.tree_util.PyTreeDef`, which is the type of the
-                        return from `jax.tree_util.tree_structure(...)`.
-                        """
-
-                    if typing.GENERATING_DOCUMENTATION:
-                        # Equinox etc. docs get just `PyTreeDef`.
-                        # jaxtyping docs get `jaxtyping.PyTreeDef`.
-                        PyTreeDef.__qualname__ = "PyTreeDef"
-                        PyTreeDef.__module__ = "builtins"
-                    return PyTreeDef
-                else:
+                    return PyTree
+                elif item == "PyTreeDef":
                     import jax.tree_util
 
                     return jax.tree_util.PyTreeDef
-            else:
-                raise AttributeError(f"module jaxtyping has no attribute {item!r}")
+                else:
+                    raise AttributeError(f"module jaxtyping has no attribute {item!r}")
 
 
 check_equinox_version = True  # easy-to-replace line with copybara

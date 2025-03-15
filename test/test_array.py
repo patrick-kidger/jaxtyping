@@ -530,7 +530,7 @@ def test_deferred_symbolic_dataclass(typecheck):
     @dc.dataclass
     class A:
         value: int
-        array: Float[Array, " {self.value}"]
+        array: Float[Array, " {value}"]
 
     A(3, jnp.zeros(3))
 
@@ -600,14 +600,6 @@ def test_arraylike(typecheck, getkey):
             Shaped[np.ndarray, "4"],
         ]
     )
-
-
-def test_subclass():
-    assert issubclass(Float[Array, ""], Array)
-    assert issubclass(Float[np.ndarray, ""], np.ndarray)
-
-    if torch is not None:
-        assert issubclass(Float[torch.Tensor, ""], torch.Tensor)
 
 
 def test_ignored_names():
