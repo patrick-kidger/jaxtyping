@@ -2,10 +2,8 @@
 
 jaxtyping is a library providing type annotations **and runtime type-checking** for:
 
-1. shape and dtype of [JAX](https://github.com/google/jax) arrays;
+1. shape and dtype of [JAX](https://github.com/google/jax) arrays; *(Now also supports PyTorch, NumPy, MLX, and TensorFlow!)*
 2. [PyTrees](https://jax.readthedocs.io/en/latest/pytrees.html).
-
- *(Now also supports PyTorch, NumPy, and TensorFlow!)*
 
 ## Installation
 
@@ -25,6 +23,7 @@ The annotations provided by jaxtyping are compatible with runtime type-checking 
 from jaxtyping import Array, Float, PyTree
 
 # Accepts floating-point 2D arrays with matching axes
+# You can replace `Array` with `torch.Tensor` etc.
 def matrix_multiply(x: Float[Array, "dim1 dim2"],
                     y: Float[Array, "dim2 dim3"]
                   ) -> Float[Array, "dim1 dim3"]:

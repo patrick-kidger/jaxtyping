@@ -8,3 +8,4 @@ pytest
 pytest-asyncio
 tensorflow
 typeguard<3
+mlx
