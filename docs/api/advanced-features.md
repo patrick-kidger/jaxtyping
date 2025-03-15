@@ -3,9 +3,8 @@
 ## Creating your own dtypes
 
 ::: jaxtyping.AbstractDtype
-    selection:
-        members:
-            false
+    options:
+        members: []
 
 ::: jaxtyping.make_numpy_struct_dtype
 

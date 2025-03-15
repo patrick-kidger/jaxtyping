@@ -614,10 +614,10 @@ def _make_array(x, dim_str, dtype):
                 index_variadic=index_variadic,
             ),
         )
-        if getattr(typing, "GENERATING_DOCUMENTATION", False):
-            out.__module__ = "builtins"
-        else:
+        if getattr(typing, "GENERATING_DOCUMENTATION", "") in {"", "jaxtyping"}:
             out.__module__ = "jaxtyping"
+        else:
+            out.__module__ = "builtins"
 
     return out
 
@@ -746,10 +746,10 @@ def _make_dtype(_dtypes, name):
 
     _Cls.__name__ = name
     _Cls.__qualname__ = name
-    if getattr(typing, "GENERATING_DOCUMENTATION", False):
-        _Cls.__module__ = "builtins"
-    else:
+    if getattr(typing, "GENERATING_DOCUMENTATION", "") in {"", "jaxtyping"}:
         _Cls.__module__ = "jaxtyping"
+    else:
+        _Cls.__module__ = "builtins"
     return _Cls
 
 

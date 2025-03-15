@@ -1,13 +1,14 @@
 # PyTree annotations
 
 :::jaxtyping.PyTree
-    selection:
-        members:
-            false
+    options:
+        members: []
 
 ---
 
 :::jaxtyping.PyTreeDef
+    options:
+        members: []
 
 ---
 
