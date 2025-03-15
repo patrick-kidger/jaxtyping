@@ -29,7 +29,6 @@ from collections.abc import Callable
 from typing import (
     Any,
     get_args,
-    get_origin,
     get_type_hints,
     NoReturn,
     overload,
@@ -90,7 +89,8 @@ def jaxtyped(
 
 def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
     """Decorate a function with this to perform runtime type-checking of its arguments
-    and return value. Decorate a dataclass to perform type-checking of its attributes.
+    and return value. Decorate a dataclass to perform type-checking of its `__init__`
+    method.
 
     !!! Example
 
@@ -288,34 +288,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
         return ft.partial(jaxtyped, typechecker=typechecker)
     elif inspect.isclass(fn):
         if dataclasses.is_dataclass(fn) and typechecker is not None:
-            # This does not check that the arguments passed to `__init__` match the
-            # type annotations. There may be a custom user `__init__`, or a
-            # dataclass-generated `__init__` used alongside
-            # `equinox.field(converter=...)`
-
-            init = fn.__init__
-
-            @ft.wraps(init)
-            def __init__(self, *args, **kwargs):
-                __tracebackhide__ = True
-                init(self, *args, **kwargs)
-                # `fn.__init__` is late-binding to the `__init__` function that
-                # we're in now. (Or to someone else's monkey-patch.) Either way,
-                # this checks that we're in the "top-level" `__init__`, and not one
-                # that is being called via `super()`. We don't want to trigger too
-                # early, before all fields have been assigned.
-                #
-                # We're not checking `if self.__class__ is fn` because Equinox
-                # replaces the with a defrozen version of itself during `__init__`,
-                # so the check wouldn't trigger.
-                #
-                # We're not doing this check by adding it to the end of the
-                # metaclass `__call__`, because Python doesn't allow you
-                # monkey-patch metaclasses.
-                if self.__class__.__init__ is fn.__init__:
-                    _check_dataclass_annotations(self, typechecker)
-
-            fn.__init__ = __init__
+            fn.__init__ = jaxtyped(fn.__init__, typechecker=typechecker)
         return fn
     # It'd be lovely if we could handle arbitrary descriptors, and not just the builtin
     # ones. Unfortunately that means returning a class instance with a __get__ method,
@@ -571,54 +544,6 @@ class _JaxtypingContext:
 
     def __exit__(self, exc_type, exc_value, exc_tb):
         pop_shape_memo()
-
-
-def _check_dataclass_annotations(self, typechecker):
-    """Creates and calls a function that checks the attributes of `self`
-
-    `self` should be a dataclass instance. `typechecker` should be e.g.
-    `beartype.beartype` or `typeguard.typechecked`.
-    """
-    parameters = [inspect.Parameter("self", inspect.Parameter.POSITIONAL_OR_KEYWORD)]
-    values = {}
-    for field in dataclasses.fields(self):
-        annotation = field.type
-        if isinstance(annotation, str):
-            # Don't check stringified annotations. These are basically impossible to
-            # resolve correctly, so just skip them.
-            continue
-        if get_origin(annotation) is type:
-            args = get_args(annotation)
-            if len(args) == 1 and isinstance(args[0], str):
-                # We also special-case this one kind of partially-stringified type
-                # annotation, so as to support Equinox <v0.11.1.
-                # This was fixed in Equinox in
-                # https://github.com/patrick-kidger/equinox/pull/543
-                continue
-        try:
-            value = getattr(self, field.name)  # noqa: F841
-        except AttributeError:
-            continue  # allow uninitialised fields, which are allowed on dataclasses
-
-        parameters.append(
-            inspect.Parameter(
-                field.name,
-                inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                annotation=field.type,
-            )
-        )
-        values[field.name] = value
-
-    signature = inspect.Signature(parameters)
-    f = _make_fn_with_signature(
-        self.__class__.__name__,
-        self.__class__.__qualname__,
-        self.__class__.__module__,
-        signature,
-        output=False,
-    )
-    f = jaxtyped(f, typechecker=typechecker)
-    f(self, **values)
 
 
 def _make_fn_with_signature(

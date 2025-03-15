@@ -3,6 +3,7 @@ import dataclasses
 import sys
 from typing import no_type_check
 
+import equinox as eqx
 import jax.numpy as jnp
 import jax.random as jr
 import pytest
@@ -254,3 +255,16 @@ def test_no_garbage_frame_capture_typecheck():
             x: int
 
         _Obj(x=5)
+
+
+def test_equinox_converter(typecheck):
+    def _typed_str(x: int) -> str:
+        return str(x)
+
+    @jaxtyped(typechecker=typecheck)
+    class X(eqx.Module):
+        x: str = eqx.field(converter=_typed_str)
+
+    X(1)
+    with pytest.raises(ParamError):
+        X("1")
