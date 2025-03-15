@@ -268,3 +268,23 @@ def test_equinox_converter(typecheck):
     X(1)
     with pytest.raises(ParamError):
         X("1")
+
+
+def test_mlx(jaxtyp, typecheck):
+    import mlx.core as mx
+    import numpy as np
+
+    @jaxtyp(typecheck)
+    def hello(x: Float[mx.array, "8 16"]):
+        pass
+
+    hello(mx.zeros((8, 16), dtype=mx.float32))
+
+    with pytest.raises(ParamError):
+        hello(mx.zeros((8, 14), dtype=mx.float32))
+
+    with pytest.raises(ParamError):
+        hello(np.zeros((8, 16), dtype=np.float32))
+
+    with pytest.raises(ParamError):
+        hello(mx.zeros((8, 16), dtype=mx.int32))

@@ -90,8 +90,9 @@ jaxtyping.Array / jax.Array / jax.numpy.ndarray  # these are all aliases of one 
 np.ndarray
 torch.Tensor
 tf.Tensor
+mx.array
 ```
-That is -- despite the now-historical name! -- jaxtyping also supports NumPy + PyTorch + TensorFlow.
+That is -- despite the now-historical name! -- jaxtyping also supports NumPy + PyTorch + TensorFlow + MLX.
 
 Some other types are also supported here:
 
