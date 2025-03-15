@@ -530,7 +530,7 @@ def test_deferred_symbolic_dataclass(typecheck):
     @dc.dataclass
     class A:
         value: int
-        array: Float[Array, " {self.value}"]
+        array: Float[Array, " {value}"]
 
     A(3, jnp.zeros(3))
 
