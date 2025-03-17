@@ -19,7 +19,6 @@
 
 import dataclasses
 import functools as ft
-import importlib.util
 import inspect
 import itertools as it
 import sys
@@ -228,9 +227,10 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
     if _tb_flag:
         try:
             import jax._src.traceback_util as traceback_util
-            traceback_util.register_exclusion(__file__)
-        except:
+        except Exception:
             pass
+        else:
+            traceback_util.register_exclusion(__file__)
         _tb_flag = False
 
     # First handle the `jaxtyped("context")` usage, which is a special case.
