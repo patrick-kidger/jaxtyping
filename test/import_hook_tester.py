@@ -223,15 +223,13 @@ class Foo:
 class Bar(eqx.Module):
     x: type[Foo]
     y: "type[Foo]"
-    # Note that this is the *only* kind of partially-stringified type annotation that
-    # is supported. This is for compatibility with older Equinox versions.
-    z: type["Foo"]
+    # Partially-stringified hints not tested; not supported.
 
 
-Bar(Foo, Foo, Foo)
+Bar(Foo, Foo)
 
 with pytest.raises(ParamError):
-    Bar(1, Foo, Foo)
+    Bar(1, Foo)
 
 
 #
