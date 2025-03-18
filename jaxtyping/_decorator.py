@@ -429,11 +429,13 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
             module = getattr(fn, "__module__", "<generated_by_jaxtyping>")
 
             # Use the same name so that typeguard warnings look correct.
+            # Set the line number so that typeguard v4 finds us.
+            lineno = getattr(getattr(fn, "__code__", None), "co_firstlineno", 1)
             full_fn, output_name = _make_fn_with_signature(
-                name, qualname, module, full_signature, output=True
+                name, qualname, module, full_signature, output=True, lineno=lineno
             )
             param_fn = _make_fn_with_signature(
-                name, qualname, module, param_signature, output=False
+                name, qualname, module, param_signature, output=False, lineno=lineno
             )
             full_fn = _apply_typechecker(typechecker, full_fn)
             param_fn = _apply_typechecker(typechecker, param_fn)
@@ -616,13 +618,19 @@ def _check_dataclass_annotations(self, typechecker):
         self.__class__.__module__,
         signature,
         output=False,
+        lineno=1,
     )
     f = jaxtyped(f, typechecker=typechecker)
     f(self, **values)
 
 
 def _make_fn_with_signature(
-    name: str, qualname: str, module: str, signature: inspect.Signature, output: bool
+    name: str,
+    qualname: str,
+    module: str,
+    signature: inspect.Signature,
+    output: bool,
+    lineno: int,
 ):
     """Dynamically creates a function `fn` with name `name` and signature `signature`.
 
@@ -740,7 +748,8 @@ def _make_fn_with_signature(
     else:
         retstr = f"-> {name_to_annotation['return']}"
 
-    fnstr = f"def {name}({argstr}){retstr}:\n    {outstr}"
+    newlines = "\n" * (lineno - 1)
+    fnstr = f"{newlines}def {name}({argstr}){retstr}:\n    {outstr}"
     exec(fnstr, scope)
     fn = scope[name]
     del scope[name]  # Avoids introducing a reference cycle.
@@ -802,7 +811,12 @@ def _get_problem_arg(
         assert keep_annotation is not sentinel
         new_signature = inspect.Signature(new_parameters)
         fn = _make_fn_with_signature(
-            "check_single_arg", "check_single_arg", module, new_signature, output=False
+            "check_single_arg",
+            "check_single_arg",
+            module,
+            new_signature,
+            output=False,
+            lineno=1,
         )
         fn = _apply_typechecker(
             typechecker, fn

@@ -20,6 +20,7 @@
 import copyreg
 import enum
 import functools as ft
+import importlib.metadata
 import importlib.util
 import re
 import sys
@@ -761,6 +762,28 @@ _complex64 = "complex64"
 _complex128 = "complex128"
 
 
+# Workaround a longstanding bug in typeguard v4, by monkeypatching their internals.
+# https://stackoverflow.com/questions/79201839/hello-world-for-jaxtyping/79205145#79205145
+# https://github.com/patrick-kidger/jaxtyping/issues/80
+# https://github.com/agronholm/typeguard/issues/353
+# This is as robust as I can make it to future changes in typeguard, I think.
+typeguard_v4_compat = False
+try:
+    typeguard_distribution = importlib.metadata.distribution("typeguard")
+except importlib.metadata.PackageNotFoundError:
+    pass
+else:
+    if typeguard_distribution.version.split(".", 1)[0] == "4":
+        if importlib.util.find_spec("typeguard._transformer") is not None:
+            import typeguard._transformer
+
+            if hasattr(typeguard._transformer, "annotated_names"):
+                annotated_names = typeguard._transformer.annotated_names
+                if type(annotated_names) is tuple:
+                    if all(type(x) is str for x in annotated_names):
+                        typeguard_v4_compat = True
+
+
 def _make_dtype(_dtypes, name):
     class _Cls(AbstractDtype):
         dtypes = _dtypes
@@ -771,6 +794,10 @@ def _make_dtype(_dtypes, name):
         _Cls.__module__ = "builtins"
     else:
         _Cls.__module__ = "jaxtyping"
+    if typeguard_v4_compat:
+        typeguard._transformer.annotated_names = (
+            typeguard._transformer.annotated_names + (f"jaxtyping.{name}",)
+        )
     return _Cls
 
 
