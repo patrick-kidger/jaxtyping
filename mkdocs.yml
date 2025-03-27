@@ -74,8 +74,8 @@ plugins:
     - hippogriffe:
         # Our docs are generated pretty much independently of the runtime code, these links aren't useful.
         show_source_links: none
-        extra_public_modules:
-            - numpy
+        extra_public_objects:
+            - numpy.dtype
     - mkdocstrings:
         handlers:
             python:
