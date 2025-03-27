@@ -63,7 +63,8 @@ markdown_extensions:
         toc_depth: 4
 
 plugins:
-    - search  # default search plugin; needs manually re-enabling when using any other plugins
+    - search:
+        separator: '[\s\-,:!=\[\]()"/]+|(?!\b)(?=[A-Z][a-z])|\.(?!\d)|&[lg]t;'
     - autorefs  # Cross-links to headings
     - include_exclude_files:
         include:
