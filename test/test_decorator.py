@@ -288,3 +288,20 @@ def test_mlx(jaxtyp, typecheck):
 
     with pytest.raises(ParamError):
         hello(mx.zeros((8, 16), dtype=mx.int32))
+
+
+# In particular the below scenario occurs during the import hook when we have an
+# explicit `__init__`.
+def test_no_rewrapping_of_dataclass_init(typecheck):
+    @jaxtyped(typechecker=typecheck)
+    @dataclasses.dataclass
+    class Foo:
+        x: int
+
+        @jaxtyped(typechecker=typecheck)
+        def __init__(self, x: int):
+            self.x = x
+
+    wrapped = Foo.__init__.__wrapped__
+    with pytest.raises(AttributeError):
+        wrapped.__wrapped__
