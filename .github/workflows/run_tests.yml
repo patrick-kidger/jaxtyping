@@ -46,7 +46,7 @@ jobs:
           python -m pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
 
       - name: Checks with pre-commit
-        uses: pre-commit/action@v2.0.3
+        uses: pre-commit/action@v3.0.1
 
       - name: Test with pytest
         run: |
