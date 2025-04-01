@@ -288,6 +288,13 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
         return ft.partial(jaxtyped, typechecker=typechecker)
     elif inspect.isclass(fn):
         if dataclasses.is_dataclass(fn) and typechecker is not None:
+            try:
+                already_wrapped = fn.__init__.__globals__["__name__"] == __name__
+            except (AttributeError, KeyError):
+                pass
+            else:
+                if already_wrapped:
+                    return fn
             fn.__init__ = jaxtyped(fn.__init__, typechecker=typechecker)
         return fn
     # It'd be lovely if we could handle arbitrary descriptors, and not just the builtin
