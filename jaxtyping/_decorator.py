@@ -25,9 +25,9 @@ import sys
 import warnings
 import weakref
 from collections.abc import Callable
+from contextlib import AbstractContextManager
 from typing import (
     Any,
-    ContextManager,
     get_args,
     get_type_hints,
     Literal,
@@ -89,7 +89,7 @@ def jaxtyped(
 
 
 @overload
-def jaxtyped(fn: Literal["context"]) -> ContextManager[None]: ...
+def jaxtyped(fn: Literal["context"]) -> AbstractContextManager[None]: ...
 
 
 def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
