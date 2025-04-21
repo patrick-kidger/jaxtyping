@@ -27,8 +27,10 @@ import weakref
 from collections.abc import Callable
 from typing import (
     Any,
+    ContextManager,
     get_args,
     get_type_hints,
+    Literal,
     NoReturn,
     overload,
     ParamSpec,
@@ -84,6 +86,12 @@ def jaxtyped(fn: type[_T], *, typechecker=_sentinel) -> type[_T]: ...
 def jaxtyped(
     fn: Callable[_Params, _Return], *, typechecker=_sentinel
 ) -> Callable[_Params, _Return]: ...
+
+@overload
+def jaxtyped(
+    fn: Literal["context"],
+    *
+) -> ContextManager[None]: ...
 
 
 def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
