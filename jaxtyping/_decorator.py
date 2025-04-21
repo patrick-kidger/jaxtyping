@@ -87,6 +87,7 @@ def jaxtyped(
     fn: Callable[_Params, _Return], *, typechecker=_sentinel
 ) -> Callable[_Params, _Return]: ...
 
+
 @overload
 def jaxtyped(fn: Literal["context"]) -> ContextManager[None]: ...
 
