@@ -305,3 +305,11 @@ def test_no_rewrapping_of_dataclass_init(typecheck):
     wrapped = Foo.__init__.__wrapped__
     with pytest.raises(AttributeError):
         wrapped.__wrapped__
+
+
+def test_stringified_multiple_varaidic(typecheck):
+    @jaxtyped(typechecker=typecheck)
+    def foo() -> 'Float[Array, "*foo *bar"]':
+        return jnp.arange(3)
+
+    foo()
