@@ -393,8 +393,12 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
             full_signature = inspect.signature(fn)
             try:
                 destring_annotations = get_type_hints(fn, include_extras=True)
-            except NameError:
+            except Exception:
                 # Best-effort attempt to destringify annotations.
+                # Not just `NameError` but also e.g. `ValueError` in case we have e.g.
+                # 'Float[Foo, "*foo *bar"]' and raise  from having multiple variadic
+                # arguments. Sometimes this can still be useful to use for human
+                # documentation purposes.
                 pass
             else:
                 new_params = []
