@@ -22,6 +22,7 @@ import importlib.metadata
 import typing
 import warnings
 from typing import TypeAlias, Union
+import re
 
 from ._array_types import (
     AbstractArray as AbstractArray,
@@ -225,7 +226,7 @@ if check_equinox_version:
     except importlib.metadata.PackageNotFoundError:
         pass
     else:
-        major, minor, patch = eqx_version.split(".")
+        major, minor, patch, _ = re.split(r'[.+]', eqx_version)
         equinox_version = (int(major), int(minor), int(patch))
         if equinox_version < (0, 11, 0):
             warnings.warn(
