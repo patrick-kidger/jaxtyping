@@ -20,7 +20,6 @@
 import functools as ft
 import importlib.metadata
 import typing
-import warnings
 from typing import TypeAlias, Union
 
 from ._array_types import (
@@ -216,22 +215,6 @@ else:
             return jax.tree_util.PyTreeDef
         else:
             raise AttributeError(f"module jaxtyping has no attribute {item!r}")
-
-
-check_equinox_version = True  # easy-to-replace line with copybara
-if check_equinox_version:
-    try:
-        eqx_version = importlib.metadata.version("equinox")
-    except importlib.metadata.PackageNotFoundError:
-        pass
-    else:
-        major, minor, patch = eqx_version.split(".")
-        equinox_version = (int(major), int(minor), int(patch))
-        if equinox_version < (0, 11, 0):
-            warnings.warn(
-                "jaxtyping version >=0.2.23 should be used with Equinox version "
-                ">=0.11.1"
-            )
 
 
 __version__ = importlib.metadata.version("jaxtyping")
