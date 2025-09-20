@@ -37,6 +37,22 @@ docs = [
   "pymdown-extensions==10.14.3",
 ]
 
+[dependency-groups]
+tests = [
+    "beartype>=0.21.0",
+    "cloudpickle>=3.1.1",
+    "equinox>=0.13.1",
+    "ipython>=8.37.0",
+    "jax>=0.5.3",
+    "mlx>=0.29.1",
+    "numpy<2",
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
+    "tensorflow>=2.18.1",
+    "typeguard<3",
+]
+
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

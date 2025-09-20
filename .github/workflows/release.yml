@@ -33,7 +33,7 @@ jobs:
         with:
             python-version: "3.11"
             test-script: |
-                python -m pip install -r ${{ github.workspace }}/test/requirements.txt
+                python -m pip install --group tests
                 python -m pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
                 cp -r ${{ github.workspace }}/test ./test
                 pytest
