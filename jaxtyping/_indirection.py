@@ -66,4 +66,5 @@ from jax import (
     Array as PRNGKeyArray,  # noqa: F401
     Array as Scalar,  # noqa: F401
 )
-from jax.typing import ArrayLike as ScalarLike  # noqa: F401
+
+from ._compat import ArrayLike as ScalarLike  # noqa: F401

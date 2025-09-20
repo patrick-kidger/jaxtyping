@@ -183,9 +183,9 @@ else:
 
             return jax.Array
         elif item == "ArrayLike":
-            import jax.typing
+            from ._compat import ArrayLike
 
-            return jax.typing.ArrayLike
+            return ArrayLike
         elif item == "PRNGKeyArray":
             # New-style `jax.random.key` have scalar shape and dtype `key<foo>`.
             # Old-style `jax.random.PRNGKey` have shape `(2,)` and dtype
