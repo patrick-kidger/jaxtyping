@@ -296,6 +296,11 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
             # dataclass-generated `__init__` used alongside
             # `equinox.field(converter=...)`
 
+            dataclass_checker, fields = _make_dataclass_checker(fn, typechecker)
+
+            if len(fields) == 0:
+                return fn
+
             init = fn.__init__
 
             @ft.wraps(init)
@@ -316,7 +321,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                 # metaclass `__call__`, because Python doesn't allow you
                 # monkey-patch metaclasses.
                 if self.__class__.__init__ is fn.__init__:
-                    _check_dataclass_annotations(self, typechecker)
+                    _check_dataclass_annotations(self, dataclass_checker, fields)
 
             fn.__init__ = __init__
         return fn
@@ -576,15 +581,15 @@ class _JaxtypingContext:
         pop_shape_memo()
 
 
-def _check_dataclass_annotations(self, typechecker):
-    """Creates and calls a function that checks the attributes of `self`
+def _make_dataclass_checker(klass, typechecker):
+    """Creates a function that checks the attributes of `self`
 
     `self` should be a dataclass instance. `typechecker` should be e.g.
     `beartype.beartype` or `typeguard.typechecked`.
     """
     parameters = [inspect.Parameter("self", inspect.Parameter.POSITIONAL_OR_KEYWORD)]
-    values = {}
-    for field in dataclasses.fields(self):
+    fields = []
+    for field in dataclasses.fields(klass):
         annotation = field.type
         if isinstance(annotation, str):
             # Don't check stringified annotations. These are basically impossible to
@@ -598,11 +603,6 @@ def _check_dataclass_annotations(self, typechecker):
                 # This was fixed in Equinox in
                 # https://github.com/patrick-kidger/equinox/pull/543
                 continue
-        try:
-            value = getattr(self, field.name)  # noqa: F841
-        except AttributeError:
-            continue  # allow uninitialised fields, which are allowed on dataclasses
-
         parameters.append(
             inspect.Parameter(
                 field.name,
@@ -610,18 +610,30 @@ def _check_dataclass_annotations(self, typechecker):
                 annotation=field.type,
             )
         )
-        values[field.name] = value
+        fields.append(field.name)
 
     signature = inspect.Signature(parameters)
     f = _make_fn_with_signature(
-        self.__class__.__name__,
-        self.__class__.__qualname__,
-        self.__class__.__module__,
+        klass.__name__,
+        klass.__qualname__,
+        klass.__module__,
         signature,
         output=False,
     )
-    f = jaxtyped(f, typechecker=typechecker)
-    f(self, **values)
+    return jaxtyped(f, typechecker=typechecker), fields
+
+
+def _check_dataclass_annotations(self, checker, fields):
+    """Checks the attributes of 'self', using a  _make_dataclass_checker checker
+    """
+    values = {}
+    for field in fields:
+        try:
+            value = getattr(self, field)  # noqa: F841
+        except AttributeError:
+            continue  # allow uninitialised fields, which are allowed on dataclasses
+        values[field] = value
+    checker(self, **values)
 
 
 def _make_fn_with_signature(
