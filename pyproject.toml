@@ -27,6 +27,9 @@ dependencies = ["wadler_lindig>=0.1.3"]
 entry-points = {pytest11 = {jaxtyping = "jaxtyping._pytest_plugin"}}
 
 [project.optional-dependencies]
+dev = [
+  "pre-commit>=4.3.0",
+]
 docs = [
   "hippogriffe==0.2.0",
   "mkdocs==1.6.1",
@@ -36,6 +39,20 @@ docs = [
   "mkdocstrings[python]==0.28.3",
   "pymdown-extensions==10.14.3",
 ]
+tests = [
+    "beartype>=0.21.0",
+    "cloudpickle>=3.1.1",
+    "equinox>=0.13.1",
+    "ipython>=8.37.0",
+    "jax>=0.5.3",
+    "mlx[cpu]>=0.29.1",
+    "numpy<2",
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
+    "tensorflow>=2.18.1",
+    "typeguard<3",
+]
+
 
 [build-system]
 requires = ["hatchling"]

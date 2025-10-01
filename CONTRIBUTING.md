@@ -28,7 +28,7 @@ Now make your changes. Make sure to include additional tests if necessary.
 Next verify the tests all pass:
 
 ```bash
-pip install -r test/requirements.txt
+pip install -e .[tests]
 pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
 pytest
 ```
