@@ -42,13 +42,17 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install .[tests]
+          python -m pip install '.[dev,docs,tests]'
           python -m pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
 
       - name: Checks with pre-commit
-        uses: pre-commit/action@v3.0.1
+        run: |
+          pre-commit run --all-files
 
       - name: Test with pytest
         run: |
-          python -m pip install .
-          python -m pytest --durations=0
+          pytest
+
+      - name: Check that documentation can be built.
+        run: |
+          mkdocs build

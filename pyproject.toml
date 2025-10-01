@@ -31,12 +31,14 @@ dev = [
   "pre-commit>=4.3.0",
 ]
 docs = [
-  "hippogriffe==0.2.0",
+  "hippogriffe==0.2.1",
+  "griffe==1.7.3",
   "mkdocs==1.6.1",
   "mkdocs-include-exclude-files==0.1.0",
-  "mkdocs-ipynb==0.1.0",
+  "mkdocs-ipynb==0.1.1",
   "mkdocs-material==9.6.7",
-  "mkdocstrings[python]==0.28.3",
+  "mkdocstrings==0.28.3",
+  "mkdocstrings-python==1.16.8",
   "pymdown-extensions==10.14.3",
 ]
 tests = [
@@ -50,7 +52,7 @@ tests = [
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",
     "tensorflow>=2.18.1",
-    "typeguard<3",
+    "typeguard==2.13.3",
 ]
 
 
