@@ -7,6 +7,7 @@ import equinox as eqx
 import jax.numpy as jnp
 import jax.random as jr
 import pytest
+import typeguard
 
 from jaxtyping import Array, Float, jaxtyped, print_bindings
 
@@ -313,3 +314,19 @@ def test_stringified_multiple_varaidic(typecheck):
         return jnp.arange(3)
 
     foo()
+
+
+class _GlobalBar:
+    @jaxtyped(typechecker=typeguard.typechecked)
+    def returns_self(self) -> "_GlobalBar":
+        return self
+
+    @jaxtyped(typechecker=typeguard.typechecked)
+    def returns_tuple(self) -> tuple["_GlobalBar", int]:
+        return self, 1
+
+
+def test_stringified_forward_annotation():
+    bar = _GlobalBar()
+    bar.returns_self()
+    bar.returns_tuple()
