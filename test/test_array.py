@@ -883,3 +883,14 @@ def test_numpy_arraylike_work_around_pep484_badness():
     assert isinstance(1, Int[np.typing.ArrayLike, "*foo"])
     assert isinstance(1.0, Float[np.typing.ArrayLike, "*foo"])
     assert isinstance(1 + 1j, Complex[np.typing.ArrayLike, "*foo"])
+
+
+def test_uniontype(typeguard_or_skip):
+    # https://github.com/patrick-kidger/jaxtyping/issues/349
+
+    @typeguard_or_skip.typechecked
+    def f(x: Float[np.ndarray, ""] | None):
+        pass
+
+    with pytest.raises(ParamError):
+        f(np.array([1, 2]))

@@ -19,6 +19,7 @@
 
 import functools as ft
 import importlib.metadata
+import importlib.util
 import typing
 from typing import TypeAlias, Union
 
@@ -215,6 +216,52 @@ else:
             return jax.tree_util.PyTreeDef
         else:
             raise AttributeError(f"module jaxtyping has no attribute {item!r}")
+
+
+# Monkey-patch typeguard==2.13.3 to fix
+# https://github.com/patrick-kidger/jaxtyping/issues/349
+if importlib.util.find_spec("typeguard") is not None:
+    if importlib.metadata.version("typeguard") == "2.13.3":
+        import inspect
+        import types
+
+        import typeguard
+
+        check_type_orig = typeguard.check_type
+        check_union_orig = typeguard.check_union
+        check_type_sig = inspect.signature(check_type_orig)
+        assert list(check_type_sig.parameters.keys()) == [
+            "argname",
+            "value",
+            "expected_type",
+            "memo",
+            "globals",
+            "locals",
+        ]
+        check_union_sig = inspect.signature(check_union_orig)
+        assert list(check_union_sig.parameters.keys()) == [
+            "argname",
+            "value",
+            "expected_type",
+            "memo",
+        ]
+
+        @ft.wraps(typeguard.check_type)
+        def check_type(*args, **kwargs):
+            bound = check_type_sig.bind(*args, **kwargs)
+            bound.apply_defaults()
+            arguments = bound.arguments
+            if type(arguments["expected_type"]) is types.UnionType:
+                check_union_orig(
+                    arguments["argname"],
+                    arguments["value"],
+                    arguments["expected_type"],
+                    arguments["memo"],
+                )
+            else:
+                check_type_orig(*args, **kwargs)
+
+        typeguard.check_type = check_type
 
 
 __version__ = importlib.metadata.version("jaxtyping")
