@@ -48,6 +48,7 @@ from typing import (
 # don't want to have to keep that up-to-date with changes in the Python typing spec...
 if importlib.util.find_spec("numpy") is not None:
     import numpy as np
+    import numpy.typing as npt
 
 from ._errors import AnnotationError
 from ._storage import (
@@ -649,6 +650,10 @@ class _MetaAbstractDtype(type):
                     array_type = Union[constraints]
             else:
                 array_type = bound
+        if "npt" in globals().keys() and array_type is npt.ArrayLike:
+            # Work around https://github.com/numpy/numpy/commit/1041f940f91660c91770679c60f6e63539581c72
+            # which removes `bool`/`int`/`float` from the union.
+            array_type = Union[(*get_args(array_type), bool, int, float, complex)]
         del item
         if get_origin(array_type) in _union_types:
             out = [_make_array(x, dim_str, cls) for x in get_args(array_type)]

@@ -39,8 +39,10 @@ from jaxtyping import (
     Array,
     ArrayLike,
     Bool,
+    Complex,
     Float,
     Float32,
+    Int,
     jaxtyped,
     Key,
     PRNGKeyArray,
@@ -854,3 +856,30 @@ def test_any(array_type, jaxtyp, typecheck):
 def test_non_instantiation():
     with pytest.raises(RuntimeError, match="cannot be instantiated"):
         Float[Array, ""]()  # pyright: ignore[reportCallIssue]
+
+
+def test_numpy_arraylike_work_around_pep484_badness():
+    # PEP484 makes the terrible decision to treat `float = int | float` and
+    # `complex = int | float| complex`.
+    # In practice neither beartype nor jaxtyping respect this at runtime.
+    #
+    # Unfortunately somewhere between `numpy==2.0.2` and `numpy==2.3.3`, then
+    # `np.typing.ArrayLike` uses this (mis)feature by including  `complex` and nothing
+    # else.
+    # https://github.com/numpy/numpy/commit/1041f940f91660c91770679c60f6e63539581c72
+    #
+    # We special-case this to make it work.
+    assert isinstance(True, Bool[np.typing.ArrayLike, ""])
+    assert isinstance(1, Int[np.typing.ArrayLike, ""])
+    assert isinstance(1.0, Float[np.typing.ArrayLike, ""])
+    assert isinstance(1 + 1j, Complex[np.typing.ArrayLike, ""])
+
+    assert isinstance(True, Bool[np.typing.ArrayLike, "..."])
+    assert isinstance(1, Int[np.typing.ArrayLike, "..."])
+    assert isinstance(1.0, Float[np.typing.ArrayLike, "..."])
+    assert isinstance(1 + 1j, Complex[np.typing.ArrayLike, "..."])
+
+    assert isinstance(True, Bool[np.typing.ArrayLike, "*foo"])
+    assert isinstance(1, Int[np.typing.ArrayLike, "*foo"])
+    assert isinstance(1.0, Float[np.typing.ArrayLike, "*foo"])
+    assert isinstance(1 + 1j, Complex[np.typing.ArrayLike, "*foo"])
