@@ -186,7 +186,11 @@ else:
         elif item == "ArrayLike":
             import jax.typing
 
-            return jax.typing.ArrayLike
+            if jax.__version__ == "0.7.2":
+                # Fix for https://github.com/jax-ml/jax/issues/31989
+                return jax.typing.ArrayLike | jax._src.literals.LiteralArray
+            else:
+                return jax.typing.ArrayLike
         elif item == "PRNGKeyArray":
             # New-style `jax.random.key` have scalar shape and dtype `key<foo>`.
             # Old-style `jax.random.PRNGKey` have shape `(2,)` and dtype
