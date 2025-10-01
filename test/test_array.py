@@ -17,10 +17,12 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import contextlib
 import dataclasses as dc
 import sys
 from typing import Any, get_args, get_origin, TypeVar, Union
 
+import jax
 import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
@@ -554,6 +556,16 @@ def test_arraylike(typecheck, getkey):
     floatlike2 = Float[ArrayLike, ""]
     floatlike3 = Float32[ArrayLike, "4"]
 
+    def _literal(dtype, dimstr):
+        out = []
+        with contextlib.suppress(Exception):
+            # JAX ==0.7.2
+            out.append(dtype[jax._src.literals.LiteralArray, dimstr])
+        with contextlib.suppress(Exception):
+            # JAX > 0.7.2
+            out.append(dtype[jax._src.literals.TypedNdArray, dimstr])
+        return out
+
     assert get_origin(floatlike1) is Union
     assert get_origin(floatlike2) is Union
     assert get_origin(floatlike3) is Union
@@ -564,6 +576,7 @@ def test_arraylike(typecheck, getkey):
             Float32[np.number, ""],
             float,
         ]
+        + _literal(Float32, "")
     )
     assert _to_set(get_args(floatlike2)) == _to_set(
         [
@@ -572,12 +585,14 @@ def test_arraylike(typecheck, getkey):
             Float[np.number, ""],
             float,
         ]
+        + _literal(Float, "")
     )
     assert _to_set(get_args(floatlike3)) == _to_set(
         [
             Float32[Array, "4"],
             Float32[np.ndarray, "4"],
         ]
+        + _literal(Float32, "4")
     )
 
     shaped1 = Shaped[ArrayLike, ""]
@@ -595,12 +610,14 @@ def test_arraylike(typecheck, getkey):
             float,
             complex,
         ]
+        + _literal(Shaped, "")
     )
     assert _to_set(get_args(shaped2)) == _to_set(
         [
             Shaped[Array, "4"],
             Shaped[np.ndarray, "4"],
         ]
+        + _literal(Shaped, "4")
     )
 
 
