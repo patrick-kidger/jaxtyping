@@ -398,8 +398,7 @@ def _make_array_cached(array_type, dim_str, dtypes, name):
         if "..." in elem:
             if elem != "...":
                 raise ValueError(
-                    "Anonymous multiple axes '...' must be used on its own; "
-                    f"got {elem}"
+                    f"Anonymous multiple axes '...' must be used on its own; got {elem}"
                 )
             broadcastable = False
             variadic = True
@@ -467,8 +466,7 @@ def _make_array_cached(array_type, dim_str, dtypes, name):
         if variadic:
             if index_variadic is not None:
                 raise ValueError(
-                    "Cannot use variadic specifiers (`*name` or `...`) "
-                    "more than once."
+                    "Cannot use variadic specifiers (`*name` or `...`) more than once."
                 )
             index_variadic = index
 
@@ -513,8 +511,7 @@ def _make_array_cached(array_type, dim_str, dtypes, name):
                 )
             if variadic:
                 raise ValueError(
-                    "Cannot have symbolic multiple-axes, e.g. "
-                    "`*foo+bar` is not allowed"
+                    "Cannot have symbolic multiple-axes, e.g. `*foo+bar` is not allowed"
                 )
             if treepath:
                 raise ValueError(
