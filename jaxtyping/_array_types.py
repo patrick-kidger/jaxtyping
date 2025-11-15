@@ -398,8 +398,7 @@ def _make_array_cached(array_type, dim_str, dtypes, name):
         if "..." in elem:
             if elem != "...":
                 raise ValueError(
-                    "Anonymous multiple axes '...' must be used on its own; "
-                    f"got {elem}"
+                    f"Anonymous multiple axes '...' must be used on its own; got {elem}"
                 )
             broadcastable = False
             variadic = True
@@ -467,8 +466,7 @@ def _make_array_cached(array_type, dim_str, dtypes, name):
         if variadic:
             if index_variadic is not None:
                 raise ValueError(
-                    "Cannot use variadic specifiers (`*name` or `...`) "
-                    "more than once."
+                    "Cannot use variadic specifiers (`*name` or `...`) more than once."
                 )
             index_variadic = index
 
@@ -513,8 +511,7 @@ def _make_array_cached(array_type, dim_str, dtypes, name):
                 )
             if variadic:
                 raise ValueError(
-                    "Cannot have symbolic multiple-axes, e.g. "
-                    "`*foo+bar` is not allowed"
+                    "Cannot have symbolic multiple-axes, e.g. `*foo+bar` is not allowed"
                 )
             if treepath:
                 raise ValueError(
@@ -731,6 +728,8 @@ _int8 = "int8"
 _int16 = "int16"
 _int32 = "int32"
 _int64 = "int64"
+# fp4 types exposed in Jax, see https://github.com/jax-ml/jax/blob/main/jax/_src/dtypes.py#L111-L114
+_float4_e2m1fn = "float4_e2m1fn"
 # fp8 types exposed in Jax, see https://github.com/jax-ml/jax/blob/main/jax/_src/dtypes.py#L92-L97
 _float8_e4m3b11fnuz = "float8_e4m3b11fnuz"
 _float8_e4m3fn = "float8_e4m3fn"
@@ -770,6 +769,7 @@ Int8 = _make_dtype(_int8, "Int8")
 Int16 = _make_dtype(_int16, "Int16")
 Int32 = _make_dtype(_int32, "Int32")
 Int64 = _make_dtype(_int64, "Int64")
+Float4e2m1fn = _make_dtype(_float4_e2m1fn, "Float4e2m1fn")
 Float8e4m3b11fnuz = _make_dtype(_float8_e4m3b11fnuz, "Float8e4m3b11fnuz")
 Float8e4m3fn = _make_dtype(_float8_e4m3fn, "Float8e4m3fn")
 Float8e4m3fnuz = _make_dtype(_float8_e4m3fnuz, "Float8e4m3fnuz")
@@ -792,7 +792,7 @@ float8 = [
     _float8_e5m2,
     _float8_e5m2fnuz,
 ]
-floats = float8 + [_bfloat16, _float16, _float32, _float64]
+floats = [_float4_e2m1fn] + float8 + [_bfloat16, _float16, _float32, _float64]
 complexes = [_complex64, _complex128]
 
 # We match NumPy's type hierarachy in what types to provide. See the diagram at
