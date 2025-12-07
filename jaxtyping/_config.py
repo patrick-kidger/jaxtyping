@@ -23,6 +23,10 @@ class _JaxtypingConfig:
             "jaxtyping_remove_typechecker_stack",
             os.environ.get("JAXTYPING_REMOVE_TYPECHECKER_STACK", "0"),
         )
+        # some expectations:
+        # 10 -> very frequently (will check ~half in first 1M), 3 - very rare.
+        # number of checks in asymptotics is reduced logarithmically
+        self.check_frequency: int = 7
 
     def update(self, item: str, value):
         if item.lower() == "jaxtyping_disable":
