@@ -23,6 +23,8 @@ import jax.random as jr
 import pytest
 import typeguard
 
+from jaxtyping import config
+
 
 try:
     import beartype
@@ -34,6 +36,8 @@ except ImportError:
     typecheck_params = [typeguard.typechecked, skip]
 else:
     typecheck_params = [typeguard.typechecked, beartype.beartype]
+
+config.check_frequency = 20  # during tests turn on all checks
 
 
 @pytest.fixture(params=typecheck_params)
