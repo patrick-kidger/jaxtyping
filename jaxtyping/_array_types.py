@@ -37,6 +37,14 @@ from typing import (
     Union,
 )
 
+from ._errors import AnnotationError
+from ._storage import (
+    get_shape_memo,
+    get_treeflatten_memo,
+    get_treepath_memo,
+    set_shape_memo,
+)
+
 
 # Bit of a hack, but jaxtyping provides nicer error messages than typeguard. This means
 # we sometimes want to use it as our runtime type checker everywhere, even in non-array
@@ -46,17 +54,10 @@ from typing import (
 # messages and (c) the import hook that places the checker on the bottom of the
 # decorator stack.) And resist the urge to write our own runtime type-checker, I really
 # don't want to have to keep that up-to-date with changes in the Python typing spec...
-if importlib.util.find_spec("numpy") is not None:
+IS_NUMPY_INSTALLED = importlib.util.find_spec("numpy") is not None
+if IS_NUMPY_INSTALLED:
     import numpy as np
     import numpy.typing as npt
-
-from ._errors import AnnotationError
-from ._storage import (
-    get_shape_memo,
-    get_treeflatten_memo,
-    get_treepath_memo,
-    set_shape_memo,
-)
 
 
 _array_name_format = "dtype_and_shape"
@@ -170,7 +171,11 @@ def _check_dims(
 
 
 def _dtype_is_numpy_struct_array(dtype):
-    return dtype.type.__name__ == "void" and dtype is not np.dtype(np.void)
+    return (
+        IS_NUMPY_INSTALLED
+        and (dtype.type.__name__ == "void")
+        and (dtype is not np.dtype(np.void))
+    )
 
 
 class _MetaAbstractArray(type):
@@ -548,12 +553,12 @@ def _make_array_cached(array_type, dim_str, dtypes, name):
             return array_type
         else:
             return _not_made
-    elif array_type is np.bool_:
+    elif IS_NUMPY_INSTALLED and array_type is np.bool_:
         if _check_scalar("bool", dtypes, dims):
             return array_type
         else:
             return _not_made
-    elif array_type is np.generic or array_type is np.number:
+    elif IS_NUMPY_INSTALLED and (array_type is np.generic or array_type is np.number):
         if _check_scalar("", dtypes, dims):
             return array_type
         else:
@@ -647,7 +652,7 @@ class _MetaAbstractDtype(type):
                     array_type = Union[constraints]
             else:
                 array_type = bound
-        if "npt" in globals().keys() and array_type is npt.ArrayLike:
+        if IS_NUMPY_INSTALLED and array_type is npt.ArrayLike:
             # Work around https://github.com/numpy/numpy/commit/1041f940f91660c91770679c60f6e63539581c72
             # which removes `bool`/`int`/`float` from the union.
             array_type = Union[(*get_args(array_type), bool, int, float, complex)]
@@ -840,6 +845,10 @@ def make_numpy_struct_dtype(dtype: "np.dtype", name: str):
     A type annotation with classname `name` that matches exactly `dtype` when used like
     any other [`jaxtyping.AbstractDtype`][].
     """
-    if not (isinstance(dtype, np.dtype) and _dtype_is_numpy_struct_array(dtype)):
+    if not (
+        IS_NUMPY_INSTALLED
+        and isinstance(dtype, np.dtype)
+        and _dtype_is_numpy_struct_array(dtype)
+    ):
         raise ValueError(f"Expecting a numpy structured array dtype, not {dtype}")
     return _make_dtype(str(dtype), name)
