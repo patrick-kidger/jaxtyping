@@ -37,6 +37,14 @@ from typing import (
     Union,
 )
 
+from ._errors import AnnotationError
+from ._storage import (
+    get_shape_memo,
+    get_treeflatten_memo,
+    get_treepath_memo,
+    set_shape_memo,
+)
+
 
 # Bit of a hack, but jaxtyping provides nicer error messages than typeguard. This means
 # we sometimes want to use it as our runtime type checker everywhere, even in non-array
@@ -50,14 +58,6 @@ IS_NUMPY_INSTALLED = importlib.util.find_spec("numpy") is not None
 if IS_NUMPY_INSTALLED:
     import numpy as np
     import numpy.typing as npt
-
-from ._errors import AnnotationError
-from ._storage import (
-    get_shape_memo,
-    get_treeflatten_memo,
-    get_treepath_memo,
-    set_shape_memo,
-)
 
 
 _array_name_format = "dtype_and_shape"
@@ -845,6 +845,10 @@ def make_numpy_struct_dtype(dtype: "np.dtype", name: str):
     A type annotation with classname `name` that matches exactly `dtype` when used like
     any other [`jaxtyping.AbstractDtype`][].
     """
-    if not (IS_NUMPY_INSTALLED and isinstance(dtype, np.dtype) and _dtype_is_numpy_struct_array(dtype)):
+    if not (
+        IS_NUMPY_INSTALLED
+        and isinstance(dtype, np.dtype)
+        and _dtype_is_numpy_struct_array(dtype)
+    ):
         raise ValueError(f"Expecting a numpy structured array dtype, not {dtype}")
     return _make_dtype(str(dtype), name)
