@@ -3,7 +3,7 @@ from collections.abc import AsyncIterator, Iterator
 import jax.numpy as jnp
 import pytest
 
-from jaxtyping import Array, Float, Shaped
+from jaxtyping import Array, Float, jaxtyped, Shaped
 
 from .helpers import ParamError
 
@@ -14,12 +14,12 @@ except ImportError:
     torch = None
 
 
-def test_generators_simple(jaxtyp, typecheck):
-    @jaxtyp(typecheck)
+def test_generators_simple(typecheck):
+    @jaxtyped(typechecker=typecheck)
     def gen(x: Float[Array, "*"]) -> Iterator[Float[Array, "*"]]:
         yield x
 
-    @jaxtyp(typecheck)
+    @jaxtyped(typechecker=typecheck)
     def foo() -> None:
         next(gen(jnp.zeros(2)))
         next(gen(jnp.zeros((3, 4))))
@@ -27,12 +27,12 @@ def test_generators_simple(jaxtyp, typecheck):
     foo()
 
 
-def test_generators_return_no_annotations(jaxtyp, typecheck):
-    @jaxtyp(typecheck)
+def test_generators_return_no_annotations(typecheck):
+    @jaxtyped(typechecker=typecheck)
     def gen(x: Float[Array, "*"]):
         yield x
 
-    @jaxtyp(typecheck)
+    @jaxtyped(typechecker=typecheck)
     def foo():
         next(gen(jnp.zeros(2)))
         next(gen(jnp.zeros((3, 4))))
@@ -71,16 +71,16 @@ def test_generators_dont_modify_same_annotations(jaxtyp, typecheck):
         m(jnp.zeros(2))
 
 
-def test_generators_original_issue(jaxtyp, typecheck):
+def test_generators_original_issue(typecheck):
     # Effectively the same as https://github.com/patrick-kidger/jaxtyping/issues/91
     if torch is None:
         pytest.skip("torch is not available")
 
-    @jaxtyp(typecheck)
+    @jaxtyped(typechecker=typecheck)
     def g(x: Shaped[torch.Tensor, "*"]) -> Iterator[Shaped[torch.Tensor, "*"]]:
         yield x
 
-    @jaxtyp(typecheck)
+    @jaxtyped(typechecker=typecheck)
     def f() -> None:
         next(g(torch.zeros(1)))
         next(g(torch.zeros(2)))
