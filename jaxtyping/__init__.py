@@ -164,7 +164,8 @@ else:
         PRNGKeyArray.__module__ = "builtins"
         PRNGKeyArray.__qualname__ = "PRNGKeyArray"
 
-        from ._pytree_type import PyTree as PyTree
+        if importlib.util.find_spec("jax") is not None:
+            from ._pytree_type import PyTree as PyTree
 
         class PyTreeDef:
             """Alias for `jax.tree_util.PyTreeDef`, which is the type of the
