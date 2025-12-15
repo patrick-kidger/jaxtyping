@@ -28,7 +28,7 @@ name = "jaxtyping"
 readme = "README.md"
 requires-python = ">=3.10"
 urls = {repository = "https://github.com/google/jaxtyping"}
-version = "0.3.3"
+version = "0.3.4"
 
 [project.optional-dependencies]
 dev = [
