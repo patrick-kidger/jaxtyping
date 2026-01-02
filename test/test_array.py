@@ -911,3 +911,21 @@ def test_uniontype(typeguard_or_skip):
 
     with pytest.raises(ParamError):
         f(np.array([1, 2]))
+
+
+@pytest.mark.skipif(sys.version_info < (3, 12), reason="requires Python 3.12")
+def test_typealiastype():
+    from typing import TypeAliasType
+
+    x = Bool[TypeAliasType("Foo", bool | np.ndarray), ""]
+    assert get_origin(x) is Union
+    assert _to_set(get_args(x)) == _to_set([bool, Bool[np.ndarray, ""]])
+
+    x = Float[TypeAliasType("Foo", bool | np.ndarray), ""]
+    assert _to_set([x]) == _to_set([Float[np.ndarray, ""]])
+
+    x = Bool[TypeAliasType("Foo", bool | np.ndarray), "3"]
+    assert _to_set([x]) == _to_set([Bool[np.ndarray, "3"]])
+
+    x = Float[TypeAliasType("Foo", bool | np.ndarray), "3"]
+    assert _to_set([x]) == _to_set([Float[np.ndarray, "3"]])
