@@ -60,6 +60,14 @@ if IS_NUMPY_INSTALLED:
     import numpy.typing as npt
 
 
+if sys.version_info >= (3, 12):
+    from typing import TypeAliasType
+else:
+    # Dummy
+    class TypeAliasType:
+        pass
+
+
 _array_name_format = "dtype_and_shape"
 
 
@@ -652,7 +660,9 @@ class _MetaAbstractDtype(type):
                     array_type = Union[constraints]
             else:
                 array_type = bound
-        if IS_NUMPY_INSTALLED and array_type is npt.ArrayLike:
+        if isinstance(array_type, TypeAliasType):
+            array_type = array_type.__value__
+        if IS_NUMPY_INSTALLED and item[0] is npt.ArrayLike:
             # Work around https://github.com/numpy/numpy/commit/1041f940f91660c91770679c60f6e63539581c72
             # which removes `bool`/`int`/`float` from the union.
             array_type = Union[(*get_args(array_type), bool, int, float, complex)]
