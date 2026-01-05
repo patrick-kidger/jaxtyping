@@ -1,5 +1,7 @@
 # PyTree annotations
 
+This is a JAX-specific feature, and is only available if JAX is installed.
+
 :::jaxtyping.PyTree
     options:
         members: []
@@ -17,8 +19,8 @@
 The prefix `?` may be used to indicate that the axis size can depend on which leaf of a PyTree the array is at. For example:
 ```python
 def f(
-    x: PyTree[Shaped[Array, "?foo"], "T"],
-    y: PyTree[Shaped[Array, "?foo"], "T"],
+    x: PyTree[Shaped[jax.Array, "?foo"], "T"],
+    y: PyTree[Shaped[jax.Array, "?foo"], "T"],
 ):
     pass
 ```
@@ -42,6 +44,3 @@ f((x1, x1), (y0, y1))  # x1 does not have a size matching y0!
 
 Internally, all that is happening is that `foo` is replaced with `0foo` for the first leaf, `1foo` for the next leaf, etc., so that each leaf gets a unique version of the name.
 
----
-
-Note that `jaxtyping.{PyTree, PyTreeDef}` are only available if JAX has been installed.

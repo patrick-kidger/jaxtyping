@@ -347,9 +347,10 @@ def install_import_hook(modules: Union[str, Sequence[str]], typechecker: Optiona
             import main
 
         ### main.py
-        from jaxtyping import Array, Float32
+        from torch import Tensor
+        from jaxtyping import Float32
 
-        def f(x: Float32[Array, "batch channels"]):
+        def f(x: Float32[Tensor, "batch channels"]):
             ...
         ```
 

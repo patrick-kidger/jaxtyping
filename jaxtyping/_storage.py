@@ -116,12 +116,12 @@ def print_bindings():
 
     ```python
     @jaxtyped(typechecker=...)
-    def f(x: Float[Array, "foo bar"]):
+    def f(x: Float[jax.Array, "foo bar"]):
         print_bindings()
         ...
     ```
 
-    noting that these values are bounding during runtime typechecking, so that the
+    noting that these values are bound during runtime typechecking, so that the
     [`jaxtyping.jaxtyped`][] decorator is required.
 
     **Arguments:**

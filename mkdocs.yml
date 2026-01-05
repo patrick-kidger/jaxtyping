@@ -98,7 +98,7 @@ nav:
     - 'index.md'
     - API:
         - 'api/array.md'
-        - 'api/pytree.md'
         - 'api/runtime-type-checking.md'
         - 'api/advanced-features.md'
+        - 'api/pytree.md'
     - 'faq.md'

@@ -357,10 +357,7 @@ def _check_scalar(dtype, dtypes, dims):
 
 class AbstractArray(metaclass=_MetaAbstractArray):
     """This is the base class of all shape-and-dtype-specified arrays, e.g. it's a base
-    class for `Float32[Array, "foo"]`.
-
-    This might be useful if you're trying to inspect type annotations yourself, e.g.
-    you can check `issubclass(annotation, jaxtyping.AbstractArray)`.
+    class for `Float32[jax.Array, "foo"]`.
     """
 
     # This is what it was defined with.
@@ -461,7 +458,7 @@ def _make_array_cached(array_type, dim_str, dtypes, name):
                     treepath = True
                     elem = elem[1:]
                 # Allow e.g. `foo=4` as an alternate syntax for just `4`, so that one
-                # can write e.g. `Float[Array, "rows=3 cols=4"]`
+                # can write e.g. `Float[jax.Array, "rows=3 cols=4"]`
                 elif elem.count("=") == 1:
                     _, elem = elem.split("=")
                 else:
@@ -579,8 +576,8 @@ def _make_array_cached(array_type, dim_str, dtypes, name):
             if len(dtypes) == 0:
                 raise ValueError(
                     "A jaxtyping annotation cannot be extended with no overlapping "
-                    "dtypes. For example, `Bool[Float[Array, 'dim1'], 'dim2']` is an "
-                    "error. You probably want to make the outer wrapper be `Shaped`."
+                    "dtypes. For example, `Bool[Float[jax.Array, 'dim1'], 'dim2']` is "
+                    "an error. You probably want to make the outer wrapper be `Shaped`."
                 )
         if array_type.index_variadic is not None:
             if index_variadic is None:
@@ -645,8 +642,8 @@ class _MetaAbstractDtype(type):
         if not isinstance(item, tuple) or len(item) != 2:
             raise ValueError(
                 "As of jaxtyping v0.2.0, type annotations must now include both an "
-                "array type and a shape. For example `Float[Array, 'foo bar']`.\n"
-                "Ellipsis can be used to accept any shape: `Float[Array, '...']`."
+                "array type and a shape. For example `Float[jax.Array, 'foo bar']`.\n"
+                "Ellipsis can be used to accept any shape: `Float[jax.Array, '...']`."
             )
         array_type, dim_str = item
         dim_str = dim_str.strip()
@@ -701,11 +698,11 @@ class AbstractDtype(metaclass=_MetaAbstractDtype):
         class UInt8or16(AbstractDtype):
             dtypes = ["uint8", "uint16"]
 
-        UInt8or16[Array, "shape"]
+        UInt8or16[jax.Array, "shape"]
         ```
         which is essentially equivalent to
         ```python
-        Union[UInt8[Array, "shape"], UInt16[Array, "shape"]]
+        UInt8[jax.Array, "shape"] | UInt16[jax.Array, "shape"]
         ```
     """
 
@@ -714,7 +711,7 @@ class AbstractDtype(metaclass=_MetaAbstractDtype):
     def __init__(self, *args, **kwargs):
         raise RuntimeError(
             "AbstractDtype cannot be instantiated. Perhaps you wrote e.g. "
-            '`Float32("shape")` when you mean `Float32[jnp.ndarray, "shape"]`?'
+            '`Float32("shape")` when you mean `Float32[jax.Array, "shape"]`?'
         )
 
     def __init_subclass__(cls, **kwargs):

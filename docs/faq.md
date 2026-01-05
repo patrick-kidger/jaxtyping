@@ -18,7 +18,7 @@ In type annotations, strings are used for two different things. Sometimes they'r
 
 Some tooling in the Python ecosystem assumes that only the latter is true, and will throw spurious errors if you try to use a string just as a string (like we do).
 
-In the case of `flake8`, or Ruff, this can be resolved. Multi-dimensional arrays (e.g. `Float32[Array, "b c"]`) will throw a very unusual error (F722, syntax error in forward annotation), so you can safely just disable this particular error globally. Uni-dimensional arrays (e.g. `Float32[Array, "x"]`) will throw an error that's actually useful (F821, undefined name), so instead of disabling this globally, you should instead prepend a space to the start of your shape, e.g. `Float32[Array, " x"]`. `jaxtyping` will treat this in the same way, whilst `flake8` will now throw an F722 error that you can disable as before.
+In the case of `flake8`, or Ruff, this can be resolved. Multi-dimensional arrays (e.g. `Float32[jax.Array, "b c"]`) will throw a very unusual error (F722, syntax error in forward annotation), so you can safely just disable this particular error globally. Uni-dimensional arrays (e.g. `Float32[jax.Array, "x"]`) will throw an error that's actually useful (F821, undefined name), so instead of disabling this globally, you should instead prepend a space to the start of your shape, e.g. `Float32[jax.Array, " x"]`. `jaxtyping` will treat this in the same way, whilst `flake8` will now throw an F722 error that you can disable as before.
 
 ## Dataclass annotations aren't being checked properly.
 

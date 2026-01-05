@@ -2,11 +2,9 @@
 
 (See the [FAQ](../faq.md) for details on static type checking.)
 
-Runtime type checking **synergises beautifully with `jax.jit`!** All shape checks will be performed only whilst tracing, and will not impact runtime performance.
-
 There are two approaches: either use [`jaxtyping.jaxtyped`][] to typecheck a single function, or [`jaxtyping.install_import_hook`][] to typecheck a whole codebase.
 
-In either case, the actual business of checking types is performed with the help of a runtime type-checking library. The two most popular are [beartype](https://github.com/beartype/beartype) and [typeguard](https://github.com/agronholm/typeguard). (If using typeguard, then specifically the version `2.*` series should be used. Later versions -- `3` and `4` -- have some known issues.)
+In either case, the actual business of checking types is performed with the help of a runtime type-checking library. The two most popular are [beartype](https://github.com/beartype/beartype) and [typeguard](https://github.com/agronholm/typeguard). (If using typeguard, then specifically the version `2.*` series should be used. Later versions – `3` and `4` – have some known issues.)
 
 !!! warning
 
@@ -48,7 +46,11 @@ import jaxtyping
 %load_ext jaxtyping
 %jaxtyping.typechecker beartype.beartype  # or any other runtime type checker
 ```
-Place this at the start of your notebook -- everything that is directly defined in the notebook, after this magic is run, will be hook'd.
+Place this at the start of your notebook – everything that is directly defined in the notebook, after this magic is run, will be hook'd.
+
+#### Interaction with `jax.jit`
+
+Runtime type checking **synergises beautifully with `jax.jit`!** All shape checks will be performed only whilst tracing, and will not impact runtime performance.
 
 #### Other runtime type-checking libraries
 
