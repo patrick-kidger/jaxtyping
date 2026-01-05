@@ -100,18 +100,17 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
     !!! Example
 
         ```python
-        # Import both the annotation and the `jaxtyped` decorator from `jaxtyping`
-        from jaxtyping import Array, Float, jaxtyped
-
+        from torch import Tensor
+        from jaxtyping import Float, jaxtyped
         # Use your favourite typechecker: usually one of the two lines below.
         from typeguard import typechecked as typechecker
         from beartype import beartype as typechecker
 
         # Type-check a function
         @jaxtyped(typechecker=typechecker)
-        def batch_outer_product(x: Float[Array, "b c1"],
-                                y: Float[Array, "b c2"]
-                              ) -> Float[Array, "b c1 c2"]:
+        def batch_outer_product(x: Float[Tensor, "b c1"],
+                                y: Float[Tensor, "b c2"]
+                              ) -> Float[Tensor, "b c1 c2"]:
             return x[:, :, None] * y[:, None, :]
 
         # Type-check a dataclass
@@ -121,7 +120,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
         @dataclass
         class MyDataclass:
             x: int
-            y: Float[Array, "b c"]
+            y: Float[Tensor, "b c"]
         ```
 
     **Arguments:**
@@ -155,7 +154,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
         ```python
         @jaxtyped(typechecker=None)
         def f(x):
-            assert isinstance(x, Float[Array, "batch channel"])
+            assert isinstance(x, Float[Tensor, "batch channel"])
         ```
 
     **Returns:**
@@ -166,7 +165,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
     If `fn` is a dataclass, then `fn` is returned directly, and additionally its
     `__init__` method is wrapped and modified in-place.
 
-    !!! Info "Old syntax"
+    ??? Info "Old syntax"
 
         jaxtyping previously (before v0.2.24) recommended using this double-decorator
         syntax:
@@ -184,7 +183,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
 
         **Dynamic contexts:**
 
-        Put precisely, the axis names in e.g. `Float[Array, "batch channels"]` and the
+        Put precisely, the axis names in e.g. `Float[Tensor, "batch channels"]` and the
         structure names in e.g. `PyTree[int, "T"]` are all scoped to the thread-local
         dynamic context of a `jaxtyped`-wrapped function. If from within that function
         we then call another `jaxtyped`-wrapped function, then a new context is pushed
@@ -196,7 +195,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
         **isinstance:**
 
         Binding of a value against a name is done with an `isinstance` check, for
-        example `isinstance(jnp.zeros((3, 4)), Float[Array, "dim1 dim2"])` will bind
+        example `isinstance(jnp.zeros((3, 4)), Float[Tensor, "dim1 dim2"])` will bind
         `dim1=3` and `dim2=4`. In practice these `isinstance` checks are usually done by
         the run-time typechecker `typechecker` that is supplied as an argument.
 
@@ -208,7 +207,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
 
         Only `isinstance` checks that pass will contribute to the store of values; those
         that fail will not. As such it is safe to write e.g.
-        `assert not isinstance(x, Float32[Array, "foo"])`.
+        `assert not isinstance(x, Float32[Tensor, "foo"])`.
 
         **Decoupling contexts from function calls:**
 
@@ -222,7 +221,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
         supports being used as a context manager, by passing it the string `"context"`:
         ```python
         with jaxtyped("context"):
-            assert isinstance(x, Float[Array, "batch channel"])
+            assert isinstance(x, Float[Tensor, "batch channel"])
         ```
         This is equivalent to placing this code inside a new function wrapped in
         `jaxtyped(typechecker=None)`. Usage like this is very rare; it's mostly only

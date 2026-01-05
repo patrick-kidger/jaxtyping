@@ -293,7 +293,7 @@ if getattr(typing, "GENERATING_DOCUMENTATION", "") in {"", "jaxtyping"}:
     PyTree.__module__ = "jaxtyping"
 else:
     PyTree.__module__ = "builtins"
-PyTree.__doc__ = """Represents a PyTree.
+PyTree.__doc__ = """Represents a JAX PyTree.
 
 Annotations of the following sorts are supported:
 ```python
@@ -312,7 +312,7 @@ a. A plain `PyTree` can be used an annotation, in which case `PyTree` is simply 
     ([By definition all types are PyTrees.](https://jax.readthedocs.io/en/latest/pytrees.html))
 
 b. `PyTree[LeafType]` denotes a PyTree all of whose leaves match `LeafType`. For
-    example, `PyTree[int]` or `PyTree[Union[str, Float32[Array, "b c"]]]`.
+    example, `PyTree[int]` or `PyTree[str | Float32[jax.Array, "b c"]]`.
 
 c. A structure name can also be passed. In this case
     `jax.tree_util.tree_structure(...)` will be called, and bound to the structure name.
