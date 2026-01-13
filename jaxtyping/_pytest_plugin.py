@@ -39,7 +39,13 @@ def pytest_configure(config):
     if not value:
         return
 
-    packages = [pkg.strip() for pkg in value.split(",")]
+    maxsplit = -1
+    # We avoid splitting on commas inside of the typechecker constructor
+    # (e.g. `beartype.beartype(option_a=..., option_b=...)`)
+    if index := value.find("(") != -1:
+        maxsplit = value[:index].count(",") + 1
+
+    packages = [pkg.strip() for pkg in value.split(",", maxsplit=maxsplit)]
     *packages, typechecker = packages
 
     already_imported_packages = sorted(
