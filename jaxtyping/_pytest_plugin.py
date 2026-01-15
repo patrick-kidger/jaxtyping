@@ -34,8 +34,12 @@ def pytest_addoption(parser):
     )
 
 
-def pytest_configure(config):
-    value = config.getoption("jaxtyping_packages")
+def pytest_load_initial_conftests(early_config, parser, args):
+    # We run this function before conftest.py files are loaded,
+    # so we can instrument imports before any code is run.
+    del early_config
+    options = parser.parse_known_args(args)
+    value = options.jaxtyping_packages
     if not value:
         return
 
