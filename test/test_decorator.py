@@ -207,8 +207,20 @@ def test_no_type_check(typecheck):
     def g(x: Float[Array, "foo bar"]):
         pass
 
+    @jaxtyped(typechecker=typecheck)
+    @no_type_check
+    class Foo(eqx.Module):
+        x: Float[Array, "foo bar"]
+
+    @no_type_check
+    @jaxtyped(typechecker=typecheck)
+    class Bar(eqx.Module):
+        x: Float[Array, "foo bar"]
+
     f("not an array")
     g("not an array")
+    Foo(x="not an array")
+    Bar(x="not an array")
 
 
 def test_no_garbage(typecheck):

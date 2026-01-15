@@ -292,7 +292,11 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
     if fn is _sentinel:
         return ft.partial(jaxtyped, typechecker=typechecker)
     elif inspect.isclass(fn):
-        if dataclasses.is_dataclass(fn) and typechecker is not None:
+        if (
+            dataclasses.is_dataclass(fn)
+            and typechecker is not None
+            and not getattr(fn, "__no_type_check__", False)
+        ):
             try:
                 already_wrapped = fn.__init__.__globals__["__name__"] == __name__
             except (AttributeError, KeyError):
