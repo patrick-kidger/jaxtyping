@@ -30,6 +30,7 @@ from ._array_types import (
     make_numpy_struct_dtype as make_numpy_struct_dtype,
     set_array_name_format as set_array_name_format,
 )
+from ._assertions import assert_jaxtype as assert_jaxtype
 from ._config import config as config
 from ._decorator import jaxtyped as jaxtyped
 from ._errors import (
