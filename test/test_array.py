@@ -929,3 +929,9 @@ def test_typealiastype():
 
     x = Float[TypeAliasType("Foo", bool | np.ndarray), "3"]
     assert _to_set([x]) == _to_set([Float[np.ndarray, "3"]])
+
+
+# https://github.com/patrick-kidger/jaxtyping/issues/374
+def test_union_of_arraylike():
+    Arrayish = Union[jax.Array, np.typing.ArrayLike]
+    Float[Arrayish, ""]

@@ -630,6 +630,29 @@ def _make_array(x, dim_str, dtype):
     return out
 
 
+def _normalize_array_type(array_type):
+    if IS_NUMPY_INSTALLED and array_type is npt.ArrayLike:
+        # Work around https://github.com/numpy/numpy/commit/1041f940f91660c91770679c60f6e63539581c72
+        # which removes `bool`/`int`/`float` from the union.
+        return Union[(*get_args(array_type), bool, int, float, complex)]
+    elif isinstance(array_type, TypeVar):
+        bound = array_type.__bound__
+        if bound is None:
+            constraints = array_type.__constraints__
+            if constraints == ():
+                return Any
+            else:
+                return _normalize_array_type(Union[constraints])
+        else:
+            return _normalize_array_type(bound)
+    elif isinstance(array_type, TypeAliasType):
+        return _normalize_array_type(array_type.__value__)
+    elif get_origin(array_type) in _union_types:
+        return Union[tuple(_normalize_array_type(x) for x in get_args(array_type))]
+    else:
+        return array_type
+
+
 class _MetaAbstractDtype(type):
     def __instancecheck__(cls, obj: Any) -> NoReturn:
         raise AnnotationError(
@@ -646,23 +669,8 @@ class _MetaAbstractDtype(type):
                 "Ellipsis can be used to accept any shape: `Float[jax.Array, '...']`."
             )
         array_type, dim_str = item
+        array_type = _normalize_array_type(array_type)
         dim_str = dim_str.strip()
-        if isinstance(array_type, TypeVar):
-            bound = array_type.__bound__
-            if bound is None:
-                constraints = array_type.__constraints__
-                if constraints == ():
-                    array_type = Any
-                else:
-                    array_type = Union[constraints]
-            else:
-                array_type = bound
-        if isinstance(array_type, TypeAliasType):
-            array_type = array_type.__value__
-        if IS_NUMPY_INSTALLED and item[0] is npt.ArrayLike:
-            # Work around https://github.com/numpy/numpy/commit/1041f940f91660c91770679c60f6e63539581c72
-            # which removes `bool`/`int`/`float` from the union.
-            array_type = Union[(*get_args(array_type), bool, int, float, complex)]
         del item
         if get_origin(array_type) in _union_types:
             out = [_make_array(x, dim_str, cls) for x in get_args(array_type)]
