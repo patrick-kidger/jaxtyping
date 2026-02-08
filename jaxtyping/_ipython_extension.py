@@ -61,11 +61,14 @@ def unload_ipython_extension(ipython):
     """
     Support `%unload_ext jaxtyping` to remove the jaxtyping AST transformer
     and unregister the `%jaxtyping.typechecker` magic.
+    Permissive; does not raise errors if, e.g., the magic is not found.
     """
+    # Names registered via @line_magic use the explicit string we provided.
+    extension_name = "jaxtyping.typechecker"
     if ipython is None:
         return
 
-    # Disable runtime typechecking globally (covers already-decorated functions).
+    # 0) Disable runtime typechecking globally (covers already-decorated functions).
     try:
         config.jaxtyping_disable = True
     except Exception:
@@ -74,26 +77,20 @@ def unload_ipython_extension(ipython):
     # 1) Remove any JaxtypingTransformer from the AST transformers.
     try:
         ipython.ast_transformers = [
-            t for t in getattr(ipython, "ast_transformers", [])
+            t for t in getattr(ipython, "ast_transformers", None)
             if not isinstance(t, JaxtypingTransformer)
         ]
     except Exception:
-        # Be permissive: if IPython internals change, don't hard-fail.
         pass
 
     # 2) Unregister the `%jaxtyping.typechecker` magic.
     try:
         mm = getattr(ipython, "magics_manager", None)
         if mm is not None:
-            for kind in ("line", "cell", "line_cell"):
-                d = mm.magics.get(kind, {})
-                # Names registered via @line_magic use the explicit string we provided.
-                for name in ("jaxtyping.typechecker",):
-                    if name in d:
-                        try:
-                            del d[name]
-                        except Exception:
-                            pass
+            magics = getattr(mm, "magics", None)
+            if isinstance(magics, dict):
+                for registry in magics.values():
+                    if isinstance(registry, dict):
+                        registry.pop(extension_name, None)
     except Exception:
-        # Also permissive here.
         pass
