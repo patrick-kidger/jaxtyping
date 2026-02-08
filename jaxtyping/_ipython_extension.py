@@ -61,36 +61,21 @@ def unload_ipython_extension(ipython):
     """
     Support `%unload_ext jaxtyping` to remove the jaxtyping AST transformer
     and unregister the `%jaxtyping.typechecker` magic.
-    Permissive; does not raise errors if, e.g., the magic is not found.
     """
     # Names registered via @line_magic use the explicit string we provided.
     extension_name = "jaxtyping.typechecker"
-    if ipython is None:
-        return
-
-    # 0) Disable runtime typechecking globally (covers already-decorated functions).
     try:
+        # 0) Disable runtime typechecking globally (covers already-decorated functions).
         config.jaxtyping_disable = True
-    except Exception:
-        pass
-
-    # 1) Remove any JaxtypingTransformer from the AST transformers.
-    try:
+        
+        # 1) Remove any JaxtypingTransformer from the AST transformers.
         ipython.ast_transformers = [
             t for t in getattr(ipython, "ast_transformers", None)
-            if not isinstance(t, JaxtypingTransformer)
-        ]
-    except Exception:
-        pass
+            if not isinstance(t, JaxtypingTransformer)]
 
-    # 2) Unregister the `%jaxtyping.typechecker` magic.
-    try:
+        # 2) Unregister the `%jaxtyping.typechecker` magic.
         mm = getattr(ipython, "magics_manager", None)
-        if mm is not None:
-            magics = getattr(mm, "magics", None)
-            if isinstance(magics, dict):
-                for registry in magics.values():
-                    if isinstance(registry, dict):
-                        registry.pop(extension_name, None)
-    except Exception:
-        pass
+        magics = getattr(mm, "magics", None)
+        magics["line"].pop(extension_name)
+    except Exception as e:
+        RuntimeError("Failed to unload jaxtyping.typechecker magic")
