@@ -26,7 +26,7 @@ keywords = ["jax", "neural-networks", "deep-learning", "equinox", "typing"]
 license = {file = "LICENSE"}
 name = "jaxtyping"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 urls = {repository = "https://github.com/patrick-kidger/jaxtyping"}
 version = "0.3.7"
 
@@ -50,12 +50,12 @@ tests = [
   "cloudpickle>=3.1.1",
   "equinox>=0.13.1",
   "ipython>=8.37.0",
-  "jax>=0.5.3",
+  "jax>=0.9.0.1",
   "mlx[cpu]>=0.29.1",
-  "numpy<2",
+  "numpy",
   "pytest>=8.4.2",
   "pytest-asyncio>=1.2.0",
-  "tensorflow>=2.18.1",
+  "tensorflow>=2.18.1; python_version <= '3.12'",
   "typeguard==2.13.3"
 ]
 
