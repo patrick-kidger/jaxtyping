@@ -632,9 +632,16 @@ def _make_array(x, dim_str, dtype):
 
 def _normalize_array_type(array_type):
     if IS_NUMPY_INSTALLED and array_type is npt.ArrayLike:
-        # Work around https://github.com/numpy/numpy/commit/1041f940f91660c91770679c60f6e63539581c72
+        # We special-case `numpy.typing.ArrayLike`. This is to work around
+        # https://github.com/numpy/numpy/commit/1041f940f91660c91770679c60f6e63539581c72
         # which removes `bool`/`int`/`float` from the union.
-        return Union[(*get_args(array_type), bool, int, float, complex)]
+        if hasattr(array_type, "__value__"):
+            # Sometimes this is a TypeAliasType...
+            unpacked = get_args(array_type.__value__)
+        else:
+            # ...sometimes this is a union.
+            unpacked = get_args(array_type)
+        return Union[(*unpacked, bool, int, float, complex)]
     elif isinstance(array_type, TypeVar):
         bound = array_type.__bound__
         if bound is None:

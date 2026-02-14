@@ -5,3 +5,4 @@ dist/
 site/
 .all_objects.cache
 uv.lock
+.python-version
