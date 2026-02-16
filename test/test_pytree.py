@@ -393,3 +393,15 @@ PyTree[
         wl.pformat(PyTree[None | Callable[[PyTree[int, " T"]], str]], width=2).strip()
         == expected
     )
+
+
+# https://github.com/patrick-kidger/jaxtyping/issues/73#issuecomment-3888576066
+def test_new_union():
+    from jaxtyping._typeguard import typechecked
+
+    @typechecked
+    def f(x: int | bool):
+        pass
+
+    with pytest.raises(TypeError):
+        f(object())
