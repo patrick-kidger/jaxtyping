@@ -14,7 +14,7 @@ from functools import partial, wraps
 from inspect import Parameter, isclass, isfunction, isgeneratorfunction
 from io import BufferedIOBase, IOBase, RawIOBase, TextIOBase
 from traceback import extract_stack, print_stack
-from types import CodeType, FunctionType
+from types import CodeType, FunctionType, UnionType
 from typing import (
     IO, TYPE_CHECKING, AbstractSet, Any, AsyncIterable, AsyncIterator, BinaryIO, Callable, Dict,
     Generator, Iterable, Iterator, List, NewType, Optional, Sequence, Set, TextIO, Tuple, Type,
@@ -752,6 +752,10 @@ def check_type(argname: str, value, expected_type, memo: Optional[_TypeCheckMemo
 
     expected_type = resolve_forwardref(expected_type, memo)
     origin_type = getattr(expected_type, '__origin__', None)
+    # jaxtyping fix to typeguard, see https://github.com/patrick-kidger/jaxtyping/issues/73#issuecomment-3888576066
+    if isinstance(expected_type, UnionType):
+        origin_type = Union
+    # ~fix
     if origin_type is not None:
         checker_func = origin_type_checkers.get(origin_type)
         if checker_func:
