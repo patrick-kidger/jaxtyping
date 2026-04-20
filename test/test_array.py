@@ -557,13 +557,20 @@ def test_arraylike(typecheck, getkey):
     floatlike3 = Float32[ArrayLike, "4"]
 
     def _literal(dtype, dimstr):
+        import typing as _typing
+
+        from jax.typing import ArrayLike as _ArrayLike
+
+        _arraylike_args = _typing.get_args(_ArrayLike)
         out = []
         with contextlib.suppress(Exception):
             # JAX ==0.7.2
-            out.append(dtype[jax._src.literals.LiteralArray, dimstr])
+            if jax._src.literals.LiteralArray in _arraylike_args:
+                out.append(dtype[jax._src.literals.LiteralArray, dimstr])
         with contextlib.suppress(Exception):
             # JAX > 0.7.2
-            out.append(dtype[jax._src.literals.TypedNdArray, dimstr])
+            if jax._src.literals.TypedNdArray in _arraylike_args:
+                out.append(dtype[jax._src.literals.TypedNdArray, dimstr])
         return out
 
     assert get_origin(floatlike1) is Union
