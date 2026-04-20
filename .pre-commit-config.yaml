@@ -1,53 +1,46 @@
-# Copyright (c) 2022 Google LLC
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy of
-# this software and associated documentation files (the "Software"), to deal in
-# the Software without restriction, including without limitation the rights to
-# use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-# the Software, and to permit persons to whom the Software is furnished to do so,
-# subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-# FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-# COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-# IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-# CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-
+fail_fast: true
 repos:
+  - repo: meta
+    hooks:
+    - id: check-hooks-apply
+    - id: check-useless-excludes
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+    - id: trailing-whitespace
+      exclude: \.md$
+    - id: check-toml
+    - id: mixed-line-ending
   - repo: local
     hooks:
-      - id: sort_pyproject
-        name: sort_pyproject
-        entry: toml-sort -i --sort-table-keys --sort-inline-tables
-        language: python
+      - id: sort-pyproject
+        name: sort pyproject
         files: ^pyproject\.toml$
-        additional_dependencies: ["toml-sort==0.23.1"]
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.13.0
-    hooks:
-      - id: ruff-format # formatter
+        language: system
+        entry: uv run -- toml-sort -i --sort-table-keys --sort-inline-tables
+      - id: ruff-format
+        name: ruff format
         types_or: [python, pyi, jupyter, toml]
-      - id: ruff # linter
+        language: system
+        entry: uv run -- ruff format --
+        require_serial: true
+      - id: ruff-lint
+        name: ruff lint
         types_or: [python, pyi, jupyter, toml]
-        args: [--fix]
-  - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.391
-    hooks:
-    - id: pyright
-      files: ^test/types/
-      additional_dependencies:
-          [beartype, numpy<2]
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.14.1  
-    hooks:
-      - id: mypy
+        language: system
+        entry: uv run -- ruff check --fix --
+        require_serial: true
+      - id: pyright
+        name: pyright
         files: ^test/types/
-        additional_dependencies:
-          [beartype, numpy<2]
-        args: ["--ignore-missing-imports", "--follow-imports=skip"]
-
+        types_or: [python]
+        language: system
+        entry: uv run -- pyright
+        require_serial: true
+      - id: mypy
+        name: mypy
+        files: ^test/types/
+        types_or: [python]
+        language: system
+        entry: uv run -- mypy --ignore-missing-imports --follow-imports=skip
+        require_serial: true
