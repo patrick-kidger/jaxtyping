@@ -2,6 +2,41 @@
 build-backend = "hatchling.build"
 requires = ["hatchling"]
 
+[dependency-groups]
+dev = [
+  "mypy==1.14.1",
+  "prek==0.3.9",
+  "pyright==1.1.391",
+  "ruff==0.13.0",
+  "toml-sort==0.23.1"
+]
+docs = [
+  "hippogriffe==0.2.2",
+  "griffe==1.7.3",
+  "jax[cpu]",
+  "mkdocs==1.6.1",
+  "mkdocs-include-exclude-files==0.1.0",
+  "mkdocs-ipynb==0.1.1",
+  "mkdocs-material==9.6.7",
+  "mkdocstrings==0.28.3",
+  "mkdocstrings-python==1.16.8",
+  "pygments==2.20.0",
+  "pymdown-extensions==10.21.2"
+]
+tests = [
+  "beartype>=0.21.0",
+  "cloudpickle>=3.1.1",
+  "equinox>=0.13.1",
+  "ipython>=8.37.0",
+  "jax>=0.9.0.1",
+  "mlx[cpu]>=0.29.1",
+  "numpy",
+  "pytest>=8.4.2",
+  "pytest-asyncio>=1.2.0",
+  "tensorflow>=2.18.1; python_version <= '3.12'",
+  "typeguard==2.13.3"
+]
+
 [project]
 authors = [
   {email = "contact@kidger.site", name = "Patrick Kidger"}
@@ -30,36 +65,6 @@ requires-python = ">=3.11"
 urls = {repository = "https://github.com/patrick-kidger/jaxtyping"}
 version = "0.3.9"
 
-[project.optional-dependencies]
-dev = [
-  "pre-commit>=4.3.0"
-]
-docs = [
-  "hippogriffe==0.2.2",
-  "griffe==1.7.3",
-  "mkdocs==1.6.1",
-  "mkdocs-include-exclude-files==0.1.0",
-  "mkdocs-ipynb==0.1.1",
-  "mkdocs-material==9.6.7",
-  "mkdocstrings==0.28.3",
-  "mkdocstrings-python==1.16.8",
-  "pygments==2.20.0",
-  "pymdown-extensions==10.21.2"
-]
-tests = [
-  "beartype>=0.21.0",
-  "cloudpickle>=3.1.1",
-  "equinox>=0.13.1",
-  "ipython>=8.37.0",
-  "jax>=0.9.0.1",
-  "mlx[cpu]>=0.29.1",
-  "numpy",
-  "pytest>=8.4.2",
-  "pytest-asyncio>=1.2.0",
-  "tensorflow>=2.18.1; python_version <= '3.12'",
-  "typeguard==2.13.3"
-]
-
 [tool.hatch.build]
 include = ["jaxtyping/*"]
 
@@ -80,3 +85,6 @@ order-by-type = false
 
 [tool.ruff.lint.per-file-ignores]
 "jaxtyping/_typeguard/__init__.py" = ["E", "F", "I001"]
+
+[tool.uv]
+default-groups = ["dev", "docs", "tests"]
