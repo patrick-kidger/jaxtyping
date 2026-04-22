@@ -44,3 +44,10 @@ repos:
         language: system
         entry: uv run -- mypy --ignore-missing-imports --follow-imports=skip
         require_serial: true
+      - id: pyrefly
+        name: pyrefly
+        files: ^test/types/
+        types_or: [python]
+        language: system
+        entry: uv run -- pyrefly check
+        require_serial: true

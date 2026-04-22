@@ -6,6 +6,7 @@ requires = ["hatchling"]
 dev = [
   "mypy==1.14.1",
   "prek==0.3.9",
+  "pyrefly==0.62.0",
   "pyright==1.1.391",
   "ruff==0.13.0",
   "toml-sort==0.23.1"
