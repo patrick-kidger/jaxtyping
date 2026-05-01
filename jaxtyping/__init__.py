@@ -198,7 +198,7 @@ else:
             # `uint32`.
             import jax
 
-            return Union[Key[jax.Array, ""], UInt32[jax.Array, "2"]]
+            return Union[Key[jax.Array, ""], UInt32[jax.Array, "2"], UInt32[jax.Array, "4"]]
         elif item == "DTypeLike":
             import jax.typing
 
