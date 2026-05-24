@@ -33,6 +33,7 @@ from typing import (
     Literal,
     NoReturn,
     Optional,
+    Self,
     TypeVar,
     Union,
 )
@@ -80,10 +81,60 @@ def set_array_name_format(value):
     _array_name_format = value
 
 
-_any_dtype = object()
+# These three module-level sentinels are stored on persisted jaxtyping types
+# (`cls.dtypes`, `cls.dims`), so they must survive a pickle round-trip with their
+# identity intact: downstream code uses `is`-checks against them. A bare
+# `object()` does not. E.g., `cloudpickle` serialises an unrelated instance by value
+# on the receiving side, breaking the `is`-check. Each sentinel is therefore a
+# `__reduce__`-backed singleton class with one live instance per process.
 
-_anonymous_dim = object()
-_anonymous_variadic_dim = object()
+
+class _AnyDtype:
+    """Picklable singleton sentinel for the "any dtype" marker."""
+
+    _instance: Self | None = None
+
+    def __new__(cls) -> Self:
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __reduce__(self) -> tuple[type["_AnyDtype"], tuple[()]]:
+        return (_AnyDtype, ())
+
+
+class _AnonymousDim:
+    """Picklable singleton sentinel for the anonymous `_` axis marker."""
+
+    _instance: Self | None = None
+
+    def __new__(cls) -> Self:
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __reduce__(self) -> tuple[type["_AnonymousDim"], tuple[()]]:
+        return (_AnonymousDim, ())
+
+
+class _AnonymousVariadicDim:
+    """Picklable singleton sentinel for the variadic `"..."` axis marker."""
+
+    _instance: Self | None = None
+
+    def __new__(cls) -> Self:
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __reduce__(self) -> tuple[type["_AnonymousVariadicDim"], tuple[()]]:
+        return (_AnonymousVariadicDim, ())
+
+
+_any_dtype = _AnyDtype()
+
+_anonymous_dim = _AnonymousDim()
+_anonymous_variadic_dim = _AnonymousVariadicDim()
 
 
 class _DimType(enum.Enum):
