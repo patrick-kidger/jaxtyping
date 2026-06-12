@@ -82,8 +82,9 @@ def _optimized_cache_from_source(typechecker_hash, /, path, debug_override=None)
     #    double-decorators.
     # Version 9: Now reporting the correct source code lines. (Important when used with
     #    a debugger.)
+    # Version 10: Now respecting `@no_type_check` in the import hook.
     return cache_from_source(
-        path, debug_override, optimization=f"jaxtyping9{typechecker_hash}"
+        path, debug_override, optimization=f"jaxtyping10{typechecker_hash}"
     )
 
 
@@ -134,10 +135,21 @@ class Typechecker:
         )
 
 
+def _is_no_type_check(node: ast.AST) -> bool:
+    if isinstance(node, ast.Name):
+        return node.id == "no_type_check"
+    elif isinstance(node, ast.Attribute):
+        return node.attr == "no_type_check"
+    elif isinstance(node, ast.Call):
+        return _is_no_type_check(node.func)
+    return False
+
+
 class JaxtypingTransformer(ast.NodeVisitor):
     def __init__(self, *, typechecker: Typechecker) -> None:
         self._parents: list[ast.AST] = []
         self._typechecker = typechecker
+        self._no_type_check_level = 0
 
     def visit_Module(self, node: ast.Module):
         # Insert "import jaxtyping" after any "from __future__ ..." imports
@@ -156,14 +168,23 @@ class JaxtypingTransformer(ast.NodeVisitor):
         return node
 
     def visit_ClassDef(self, node: ast.ClassDef):
-        # Place at the start of the decorator list, so that `@dataclass` decorators get
-        # called first.
-        decorator = self._typechecker.get_ast()
-        ast.copy_location(decorator, node)
-        node.decorator_list.insert(0, decorator)
+        has_no_type_check = any(_is_no_type_check(d) for d in node.decorator_list)
+        if has_no_type_check:
+            self._no_type_check_level += 1
+
+        if self._no_type_check_level == 0:
+            # Place at the start of the decorator list, so that `@dataclass` decorators
+            # get called first.
+            decorator = self._typechecker.get_ast()
+            ast.copy_location(decorator, node)
+            node.decorator_list.insert(0, decorator)
+
         self._parents.append(node)
         self.generic_visit(node)
         self._parents.pop()
+
+        if has_no_type_check:
+            self._no_type_check_level -= 1
         return node
 
     def visit_FunctionDef(self, node: ast.FunctionDef):
@@ -174,27 +195,35 @@ class JaxtypingTransformer(ast.NodeVisitor):
         # had type annotations in the body of the function (or
         # `assert isinstance(..., SomeType)`).
 
-        decorator = self._typechecker.get_ast()
-        ast.copy_location(decorator, node)
-        # Place at the end of the decorator list, because:
-        # - as otherwise we wrap e.g. `jax.custom_{jvp,vjp}` and lose the ability
-        #     to `defjvp` etc.
-        # - decorators frequently remove annotations from functions, and we'd like
-        #     to use those annotations.
-        # - typeguard in particular wants to be at the end of the decorator list, as
-        #     it works by recompling the wrapped function.
-        #
-        # Note that the counter-argument here is that we'd like to place this
-        # at the start of the decorator list, in case a typechecking annotation
-        # has been manually applied, and we'd need to be above that. In this
-        # case we're just going to have to need to ask the user to remove their
-        # typechecking annotation (and let this decorator do it instead).
-        # It's more important we be compatible with normal JAX code.
-        node.decorator_list.append(decorator)
+        has_no_type_check = any(_is_no_type_check(d) for d in node.decorator_list)
+        if has_no_type_check:
+            self._no_type_check_level += 1
+
+        if self._no_type_check_level == 0:
+            decorator = self._typechecker.get_ast()
+            ast.copy_location(decorator, node)
+            # Place at the end of the decorator list, because:
+            # - as otherwise we wrap e.g. `jax.custom_{jvp,vjp}` and lose the ability
+            #     to `defjvp` etc.
+            # - decorators frequently remove annotations from functions, and we'd like
+            #     to use those annotations.
+            # - typeguard in particular wants to be at the end of the decorator list, as
+            #     it works by recompling the wrapped function.
+            #
+            # Note that the counter-argument here is that we'd like to place this
+            # at the start of the decorator list, in case a typechecking annotation
+            # has been manually applied, and we'd need to be above that. In this
+            # case we're just going to have to need to ask the user to remove their
+            # typechecking annotation (and let this decorator do it instead).
+            # It's more important we be compatible with normal JAX code.
+            node.decorator_list.append(decorator)
 
         self._parents.append(node)
         self.generic_visit(node)
         self._parents.pop()
+
+        if has_no_type_check:
+            self._no_type_check_level -= 1
         return node
 
 

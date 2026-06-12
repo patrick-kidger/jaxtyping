@@ -18,6 +18,7 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import dataclasses
+from functools import wraps
 from typing import no_type_check
 
 import equinox as eqx
@@ -252,6 +253,83 @@ def f(_: Float32[jnp.ndarray, "foo bar"]):
 
 
 f("not an array")
+
+
+# The following classes simulate type hints like `wp.array[wp.vec3]` from the `warp
+#  library. `CustomType[int]` evaluates at runtime to an instance of `CustomGeneric`
+#  via `__class_getitem__`. According to PEP 484 and standard typing rules, raw
+# instances of classes (unless wrapped in typing constructs like `Literal` or
+# `Annotated`) are not PEP-compliant type hints. Under the import hook, if
+# `@no_type_check` is not respected, decorators like `@jaxtyped` would try to apply
+# typecheckers (e.g. `beartype` or `typeguard`) to functions annotated with these
+# PEP-noncompliant instances, causing typecheckers to crash at decoration time.
+class CustomGeneric:
+    def __init__(self, arg):
+        self.arg = arg
+
+    def __repr__(self):
+        return f"CustomGeneric({self.arg})"
+
+
+class CustomType:
+    def __class_getitem__(cls, item):
+        return CustomGeneric(item)
+
+
+@no_type_check
+def invalid_hint_func(x: CustomType[int]):
+    pass
+
+
+invalid_hint_func(None)
+
+
+@no_type_check
+class InvalidHintClass:
+    def method(self, x: CustomType[int]):
+        pass
+
+
+InvalidHintClass().method(None)
+
+
+def dummy_decorator(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
+@dummy_decorator
+@no_type_check
+@dummy_decorator
+def decorated_func(x: CustomType[int]):
+    pass
+
+
+decorated_func(None)
+
+
+@no_type_check
+def outer_func():
+    def inner_func(x: CustomType[int]):
+        pass
+
+    inner_func(None)
+
+
+outer_func()
+
+
+@no_type_check
+class OuterClass:
+    class InnerClass:
+        def method(self, x: CustomType[int]):
+            pass
+
+
+OuterClass.InnerClass().method(None)
 
 
 # Record that we've finished our checks successfully
