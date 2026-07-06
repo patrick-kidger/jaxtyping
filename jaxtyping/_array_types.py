@@ -131,10 +131,25 @@ class _AnonymousVariadicDim:
         return (_AnonymousVariadicDim, ())
 
 
+class _AnonymousNonemptyVariadicDim:
+    """Picklable singleton sentinel for the non-empty variadic `"+_"` axis marker."""
+
+    _instance: Self | None = None
+
+    def __new__(cls) -> Self:
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __reduce__(self) -> tuple[type["_AnonymousNonemptyVariadicDim"], tuple[()]]:
+        return (_AnonymousNonemptyVariadicDim, ())
+
+
 _any_dtype = _AnyDtype()
 
 _anonymous_dim = _AnonymousDim()
 _anonymous_variadic_dim = _AnonymousVariadicDim()
+_anonymous_nonempty_variadic_dim = _AnonymousNonemptyVariadicDim()
 
 
 class _DimType(enum.Enum):
@@ -158,6 +173,13 @@ class _NamedVariadicDim:
 
 
 @dataclass(frozen=True)
+class _NamedNonemptyVariadicDim:
+    name: str
+    broadcastable: bool
+    treepath: Any
+
+
+@dataclass(frozen=True)
 class _FixedDim:
     size: int
     broadcastable: bool
@@ -172,8 +194,10 @@ class _SymbolicDim:
 _AbstractDimOrVariadicDim = Union[
     Literal[_anonymous_dim],
     Literal[_anonymous_variadic_dim],
+    Literal[_anonymous_nonempty_variadic_dim],
     _NamedDim,
     _NamedVariadicDim,
+    _NamedNonemptyVariadicDim,
     _FixedDim,
     _SymbolicDim,
 ]
@@ -324,9 +348,15 @@ class _MetaAbstractArray(type):
                 return f"this array has {len(obj.shape)} dimensions, not the {len(cls.dims)} expected by the type hint"  # noqa: E501
             return _check_dims(cls.dims, obj.shape, single_memo, arg_memo)
         else:
-            if len(obj.shape) < len(cls.dims) - 1:
-                return f"this array has {len(obj.shape)} dimensions, which is fewer than {len(cls.dims) - 1} that is the minimum expected by the type hint"  # noqa: E501
             i = cls.index_variadic
+            variadic_dim = cls.dims[i]
+            is_nonempty = (
+                type(variadic_dim) is _NamedNonemptyVariadicDim
+                or variadic_dim is _anonymous_nonempty_variadic_dim
+            )
+            min_len = len(cls.dims) - 1 + (1 if is_nonempty else 0)
+            if len(obj.shape) < min_len:
+                return f"this array has {len(obj.shape)} dimensions, which is fewer than {min_len} that is the minimum expected by the type hint"  # noqa: E501
             j = -(len(cls.dims) - i - 1)
             if j == 0:
                 j = None
@@ -341,11 +371,16 @@ class _MetaAbstractArray(type):
                 )
                 if suffix_check != "":
                     return suffix_check
-            variadic_dim = cls.dims[i]
-            if variadic_dim is _anonymous_variadic_dim:
+            if (
+                variadic_dim is _anonymous_variadic_dim
+                or variadic_dim is _anonymous_nonempty_variadic_dim
+            ):
                 return ""
             else:
-                assert type(variadic_dim) is _NamedVariadicDim
+                assert type(variadic_dim) in (
+                    _NamedVariadicDim,
+                    _NamedNonemptyVariadicDim,
+                )
                 if variadic_dim.treepath:
                     name = get_treepath_memo() + variadic_dim.name
                 else:
@@ -463,12 +498,14 @@ def _make_array_cached(array_type, dim_str, dtypes, name):
                 )
             broadcastable = False
             variadic = True
+            nonempty = False
             anonymous = True
             treepath = False
             dim_type = _DimType.named
         else:
             broadcastable = False
             variadic = False
+            nonempty = False
             anonymous = False
             treepath = False
             while True:
@@ -490,7 +527,23 @@ def _make_array_cached(array_type, dim_str, dtypes, name):
                             "Do not use * twice to denote accepting multiple "
                             "axes, e.g. `**foo` is not allowed"
                         )
+                    if nonempty:
+                        raise ValueError(
+                            "Cannot use both * and + for a variadic dimension"
+                        )
                     variadic = True
+                    elem = elem[1:]
+                elif first_char == "+":
+                    if nonempty:
+                        raise ValueError(
+                            "Do not use + twice to denote accepting one or more "
+                            "axes, e.g. `++foo` is not allowed"
+                        )
+                    if variadic:
+                        raise ValueError(
+                            "Cannot use both * and + for a variadic dimension"
+                        )
+                    nonempty = True
                     elem = elem[1:]
                 elif first_char == "_":
                     if anonymous:
@@ -524,18 +577,21 @@ def _make_array_cached(array_type, dim_str, dtypes, name):
                 else:
                     dim_type = _DimType.fixed
 
-        if variadic:
+        is_variadic = variadic or nonempty
+
+        if is_variadic:
             if index_variadic is not None:
                 raise ValueError(
-                    "Cannot use variadic specifiers (`*name` or `...`) more than once."
+                    "Cannot use variadic specifiers (`*name`, `+name`, or `...`) more "
+                    "than once."
                 )
             index_variadic = index
 
         if dim_type is _DimType.fixed:
-            if variadic:
+            if is_variadic:
                 raise ValueError(
                     "Cannot have a fixed axis bind to multiple axes, e.g. "
-                    "`*4` is not allowed."
+                    "`*4` or `+4` is not allowed."
                 )
             if anonymous:
                 raise ValueError(
@@ -556,11 +612,15 @@ def _make_array_cached(array_type, dim_str, dtypes, name):
                     )
                 if variadic:
                     elem = _anonymous_variadic_dim
+                elif nonempty:
+                    elem = _anonymous_nonempty_variadic_dim
                 else:
                     elem = _anonymous_dim
             else:
                 if variadic:
                     elem = _NamedVariadicDim(elem, broadcastable, treepath)
+                elif nonempty:
+                    elem = _NamedNonemptyVariadicDim(elem, broadcastable, treepath)
                 else:
                     elem = _NamedDim(elem, broadcastable, treepath)
         else:
@@ -570,9 +630,10 @@ def _make_array_cached(array_type, dim_str, dtypes, name):
                     "Cannot have a symbolic axis be anonymous, e.g. "
                     "`_foo+bar` is not allowed"
                 )
-            if variadic:
+            if is_variadic:
                 raise ValueError(
-                    "Cannot have symbolic multiple-axes, e.g. `*foo+bar` is not allowed"
+                    "Cannot have symbolic multiple-axes, e.g. `*foo+bar` or `+foo+bar` "
+                    "is not allowed"
                 )
             if treepath:
                 raise ValueError(
@@ -635,7 +696,7 @@ def _make_array_cached(array_type, dim_str, dtypes, name):
                 index_variadic = array_type.index_variadic + len(dims)
             else:
                 raise ValueError(
-                    "Cannot use variadic specifiers (`*name` or `...`) "
+                    "Cannot use variadic specifiers (`*name`, `+name`, or `...`) "
                     "in both the original array and the extended array"
                 )
         dims = dims + array_type.dims
