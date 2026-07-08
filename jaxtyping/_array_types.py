@@ -873,7 +873,7 @@ float8 = [
 floats = [_float4_e2m1fn] + float8 + [_bfloat16, _float16, _float32, _float64]
 complexes = [_complex64, _complex128]
 
-# We match NumPy's type hierarachy in what types to provide. See the diagram at
+# We match NumPy's type hierarchy in what types to provide. See the diagram at
 # https://numpy.org/doc/stable/reference/arrays.scalars.html#scalars
 
 Bool = _make_dtype(bools, "Bool")

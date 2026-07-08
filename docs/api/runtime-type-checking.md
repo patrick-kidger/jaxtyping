@@ -54,4 +54,4 @@ Runtime type checking **synergises beautifully with `jax.jit`!** All shape check
 
 #### Other runtime type-checking libraries
 
-Beartype and typeguard happen to be the two most popular runtime type-checking libraries (at least at time of writing), but jaxtyping should be compatible with all runtime type checkers out-of-the-box. The runtime type-checking library just needs to provide a type-checking decorator (analgous to `beartype.beartype` or `typeguard.typechecked`), and perform `isinstance` checks against jaxtyping's types.
+Beartype and typeguard happen to be the two most popular runtime type-checking libraries (at least at time of writing), but jaxtyping should be compatible with all runtime type checkers out-of-the-box. The runtime type-checking library just needs to provide a type-checking decorator (analogous to `beartype.beartype` or `typeguard.typechecked`), and perform `isinstance` checks against jaxtyping's types.
