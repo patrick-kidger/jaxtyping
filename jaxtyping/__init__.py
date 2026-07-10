@@ -38,6 +38,7 @@ from ._errors import (
 )
 from ._import_hook import install_import_hook as install_import_hook
 from ._ipython_extension import load_ipython_extension as load_ipython_extension
+from ._ipython_extension import unload_ipython_extension as unload_ipython_extension
 from ._storage import print_bindings as print_bindings
 
 

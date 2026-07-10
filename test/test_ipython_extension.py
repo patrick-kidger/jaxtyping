@@ -74,6 +74,23 @@ def test_function_jaxtyped(ip):
         ip.run_cell(raw_cell='g("string")').raise_error()
 
 
+def test_unload_extension_disables_typechecking(ip):
+    ip.run_cell(
+        raw_cell="""
+    from jaxtyping import Float, Array
+    import jax
+
+    def g(x: Float[Array, "1"]):
+        return x + 1
+
+    int_arr = jax.numpy.array([1])
+                """
+    ).raise_error()
+
+    ip.run_cell(raw_cell="%unload_ext jaxtyping").raise_error()
+    ip.run_cell(raw_cell="g(int_arr)").raise_error()
+
+
 def test_function_jaxtyped_and_jitted(ip):
     ip.run_cell(
         raw_cell="""
