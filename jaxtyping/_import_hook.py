@@ -72,7 +72,7 @@ def _optimized_cache_from_source(typechecker_hash, /, path, debug_override=None)
     #     different name to avoid hitting old __pycache__.
     # Version 3: now also annotating classes.
     # Version 4: I'm honestly not sure, but bumping this fixed some kind of odd error.
-    #     Maybe I changed something with hte classes part way through version 3?
+    #     Maybe I changed something with the classes part way through version 3?
     # Version 5: Added support for string-based `typechecker` argument.
     # Version 6: optimization tag now depends on `typechecker` argument, so that
     #    changing the typechecker will hit a different cache.
