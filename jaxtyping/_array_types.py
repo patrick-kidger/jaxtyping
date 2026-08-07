@@ -814,6 +814,7 @@ _float8_e4m3fn = "float8_e4m3fn"
 _float8_e4m3fnuz = "float8_e4m3fnuz"
 _float8_e5m2 = "float8_e5m2"
 _float8_e5m2fnuz = "float8_e5m2fnuz"
+_float8_e8m0fnu = "float8_e8m0fnu"
 _bfloat16 = "bfloat16"
 _float16 = "float16"
 _float32 = "float32"
@@ -853,6 +854,7 @@ Float8e4m3fn = _make_dtype(_float8_e4m3fn, "Float8e4m3fn")
 Float8e4m3fnuz = _make_dtype(_float8_e4m3fnuz, "Float8e4m3fnuz")
 Float8e5m2 = _make_dtype(_float8_e5m2, "Float8e5m2")
 Float8e5m2fnuz = _make_dtype(_float8_e5m2fnuz, "Float8e5m2fnuz")
+Float8e8m0fnu = _make_dtype(_float8_e8m0fnu, "Float8e8m0fnu")
 BFloat16 = _make_dtype(_bfloat16, "BFloat16")
 Float16 = _make_dtype(_float16, "Float16")
 Float32 = _make_dtype(_float32, "Float32")
@@ -869,6 +871,7 @@ float8 = [
     _float8_e4m3fnuz,
     _float8_e5m2,
     _float8_e5m2fnuz,
+    _float8_e8m0fnu,
 ]
 floats = [_float4_e2m1fn] + float8 + [_bfloat16, _float16, _float32, _float64]
 complexes = [_complex64, _complex128]
