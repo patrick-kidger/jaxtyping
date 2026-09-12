@@ -137,6 +137,6 @@ As `jaxtyping` originally got its start as a JAX-specific library, then we provi
 - `jaxtyping.Scalar`: alias for `jaxtyping.Shaped[jax.Array, ""]`
 - `jaxtyping.ScalarLike`: alias for `jaxtyping.Shaped[jax.typing.ArrayLike, ""]`
 - `jaxtyping.Key`, which is the dtype of `jax.random.key`s. For example `jax.random.key(...)` produces a `jaxtyping.Key[jax.Array, ""]`.
-- `jaxtyping.PRNGKeyArray`: alias for `jaxtyping.Key[jax.Array, ""] | jaxtyping.UInt32[jax.Array, "2"]` (Left: new-style typed keys; right: old-style keys. See [JEP 9263](https://docs.jax.dev/en/latest/jep/9263-typed-keys.html).)
+- `jaxtyping.PRNGKeyArray`: alias for `jaxtyping.Key[jax.Array, ""] | jaxtyping.UInt32[jax.Array, "2"] | jaxtyping.UInt32[jax.Array, "4"]` (Left: new-style typed keys; right: old-style raw keys, which have four `uint32`s for the `rbg`/`unsafe_rbg` implementations and two otherwise. See [JEP 9263](https://docs.jax.dev/en/latest/jep/9263-typed-keys.html).)
 
 Recalling that shape-and-dtype specified jaxtyping arrays can be nested, this means that e.g. you can annotate the output of `jax.random.split` with `Shaped[PRNGKeyArray, "2"]`.

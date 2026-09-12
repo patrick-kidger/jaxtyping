@@ -21,7 +21,7 @@ def matrix_multiply(x: Float[Tensor, "dim1 dim2"],
 pip install jaxtyping
 ```
 
-Requires Python 3.10+.
+Requires Python 3.11+.
 
 The annotations provided by jaxtyping are compatible with runtime type-checking packages, so it is common to also install one of these. The two most popular are [typeguard](https://github.com/agronholm/typeguard) (which exhaustively checks every argument) and [beartype](https://github.com/beartype/beartype) (which checks random pieces of arguments).
 
