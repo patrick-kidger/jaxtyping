@@ -692,7 +692,7 @@ def _normalize_array_type(array_type):
         else:
             # ...sometimes this is a union.
             unpacked = get_args(array_type)
-        return Union[(*unpacked, bool, int, float, complex)]
+        return _normalize_array_type(Union[(*unpacked, bool, int, float, complex)])
     elif isinstance(array_type, TypeVar):
         bound = array_type.__bound__
         if bound is None:
@@ -705,6 +705,12 @@ def _normalize_array_type(array_type):
             return _normalize_array_type(bound)
     elif isinstance(array_type, TypeAliasType):
         return _normalize_array_type(array_type.__value__)
+    elif isinstance(get_origin(array_type), TypeAliasType):
+        # A subscripted generic type alias. For example as of numpy 2.5 then
+        # `numpy.typing.ArrayLike` is
+        # `Buffer | _DualArrayLike[np.dtype, complex | bytes | str]`.
+        alias = get_origin(array_type)
+        return _normalize_array_type(alias.__value__[get_args(array_type)])
     elif get_origin(array_type) in _union_types:
         return Union[tuple(_normalize_array_type(x) for x in get_args(array_type))]
     else:
