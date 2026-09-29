@@ -628,6 +628,28 @@ def test_arraylike(typecheck, getkey):
     )
 
 
+# NumPy 2.5 puts a subscripted generic alias inside `numpy.typing.ArrayLike`. This
+# builds one directly so the branch is covered whatever numpy version is installed.
+@pytest.mark.skipif(sys.version_info < (3, 12), reason="requires Python 3.12")
+def test_generic_typealiastype():
+    from typing import TypeAliasType
+
+    T = TypeVar("T")
+    Foo = TypeAliasType("Foo", T | np.ndarray, type_params=(T,))
+
+    x = Bool[Foo[bool], ""]
+    assert get_origin(x) is Union
+    assert _to_set(get_args(x)) == _to_set([bool, Bool[np.ndarray, ""]])
+
+    x = Float[Foo[bool], "3"]
+    assert _to_set([x]) == _to_set([Float[np.ndarray, "3"]])
+
+    x = Bool[Union[jax.Array, Foo[bool]], ""]
+    assert _to_set(get_args(x)) == _to_set(
+        [bool, Bool[jax.Array, ""], Bool[np.ndarray, ""]]
+    )
+
+
 def test_ignored_names():
     x = Float[np.ndarray, "foo=4"]
 
