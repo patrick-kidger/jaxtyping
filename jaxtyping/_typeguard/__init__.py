@@ -1021,9 +1021,11 @@ def typechecked(func=None, *, always=False, _localns: Optional[Dict[str, Any]] =
         warn('no type annotations present -- not typechecking {}'.format(function_name(func)))
         return func
 
-    # Find the frame in which the function was declared, for resolving forward references later
+    # Find the frame in which the function was declared, for resolving forward references later.
+    # Copy into a dict: on Python 3.13+ (PEP 667) `f_locals` is a proxy that strongly references
+    # the frame, which would create a reference cycle and fill up the memory.
     if _localns is None:
-        _localns = sys._getframe(1).f_locals
+        _localns = dict(sys._getframe(1).f_locals)
 
     # Find either the first Python wrapper or the actual function
     python_func = inspect.unwrap(func, stop=lambda f: hasattr(f, '__code__'))

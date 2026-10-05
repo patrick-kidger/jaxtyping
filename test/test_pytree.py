@@ -17,6 +17,8 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import gc
+import weakref
 from collections.abc import Callable
 from typing import NamedTuple, Tuple, Union
 
@@ -405,3 +407,21 @@ def test_new_union():
 
     with pytest.raises(TypeError):
         f(object())
+
+
+def test_isinstance_does_not_keep_caller_frames_alive():
+    class _Marker:
+        pass
+
+    def caller():
+        marker = _Marker()
+        assert isinstance([1, 2], PyTree[int])
+        return weakref.ref(marker)
+
+    gc.collect()
+    gc.disable()
+    try:
+        marker_ref = caller()
+        assert marker_ref() is None
+    finally:
+        gc.enable()
