@@ -1,7 +1,9 @@
 import pickle
+import typing
 
 import cloudpickle
 import numpy as np
+import pytest
 
 
 try:
@@ -9,7 +11,7 @@ try:
 except ImportError:
     torch = None
 
-from jaxtyping import AbstractArray, Array, Float, Shaped
+from jaxtyping import AbstractArray, Array, Float, jaxtyped, Shaped, TypeCheckError
 
 
 def test_pickle():
@@ -57,3 +59,24 @@ def test_pickle_anonymous_variadic_dim():
     for p in (pickle, cloudpickle):
         loaded = p.loads(p.dumps(Float[np.ndarray, "..."]))
         assert isinstance(np.zeros((2, 3)), loaded)
+
+
+def test_cloudpickle_jaxtyped_function(typecheck):
+    @jaxtyped(typechecker=typecheck)
+    def f(x: Float[np.ndarray, " d"]) -> float:
+        return np.sum(x).item()
+
+    g = cloudpickle.loads(cloudpickle.dumps(f))
+    assert g(np.array([1.0, 2.0])) == 3.0
+    with pytest.raises(TypeCheckError):
+        g(np.zeros((2, 2)))
+
+
+def test_cloudpickle_jaxtyped_no_type_check(typecheck):
+    @typing.no_type_check
+    @jaxtyped(typechecker=typecheck)
+    def f(x: Float[np.ndarray, " d"]) -> float:
+        return np.sum(x).item()
+
+    g = cloudpickle.loads(cloudpickle.dumps(f))
+    assert g(np.zeros((2, 2))) == 0.0

@@ -23,7 +23,6 @@ import inspect
 import itertools as it
 import sys
 import warnings
-import weakref
 from collections.abc import Callable
 from contextlib import AbstractContextManager
 from typing import (
@@ -516,8 +515,6 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
 
                 return out
 
-            wrapped_fn_holder = []  # Avoids introducing a reference cycle.
-
             @ft.wraps(fn)
             def wrapped_fn(*args, **kwargs):
                 __tracebackhide__ = True
@@ -525,7 +522,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                 if (
                     config.jaxtyping_disable
                     or getattr(fn, "__no_type_check__", False)
-                    or getattr(wrapped_fn_holder[0](), "__no_type_check__", False)
+                    or wrapped_fn_dict.get("__no_type_check__", False)
                 ):
                     return fn(*args, **kwargs)
 
@@ -542,7 +539,11 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                 finally:
                     pop_shape_memo()
 
-            wrapped_fn_holder.append(weakref.ref(wrapped_fn))
+            # `typing.no_type_check` sets an attribute on `wrapped_fn`, so we look it
+            # up in its `__dict__`. Holding the dict rather than `wrapped_fn` itself
+            # avoids a reference cycle, and unlike a weakref it can be pickled (e.g.
+            # by cloudpickle).
+            wrapped_fn_dict = wrapped_fn.__dict__
 
         return wrapped_fn
 
