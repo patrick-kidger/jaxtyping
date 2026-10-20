@@ -250,32 +250,50 @@ class _MetaAbstractArray(type):
         if cls._skip_instancecheck:
             return ""
         if cls.array_type is Any:
-            if not (hasattr(obj, "shape") and hasattr(obj, "dtype")):
-                return "this value does not have both `shape` and `dtype` attributes."
+            if cls.dtypes is _any_dtype:
+                if not hasattr(obj, "shape"):
+                    return "this value does not have a `shape` attribute."
+            else:
+                if not (
+                    hasattr(obj, "shape")
+                    and (hasattr(obj, "dtype") or hasattr(obj, "__jaxtyping_dtype__"))
+                ):
+                    return (
+                        "this value does not have both `shape` and `dtype` attributes."
+                    )
         else:
             if not isinstance(obj, cls.array_type):
                 return f"this value is not an instance of the underlying array type {cls.array_type}"  # noqa: E501
         if get_treeflatten_memo():
             return ""
-
-        if hasattr(obj.dtype, "type") and hasattr(obj.dtype.type, "__name__"):
-            # JAX, numpy
-            dtype = obj.dtype.type.__name__
-            # numpy structured array is strictly a subtype of np.void
-            if _dtype_is_numpy_struct_array(obj.dtype):
-                dtype = str(obj.dtype)
-        elif hasattr(obj.dtype, "as_numpy_dtype"):
-            # TensorFlow
-            dtype = obj.dtype.as_numpy_dtype.__name__
-        else:
-            # Everyone else, including PyTorch.
-            # This offers an escape hatch for anyone looking to use jaxtyping for their
-            # own array-like types.
-            dtype = obj.dtype
-            if not isinstance(dtype, str):
-                *_, dtype = repr(obj.dtype).rsplit(".", 1)
+        if not hasattr(obj, "shape"):
+            return "this value does not have a `shape` attribute."
 
         if cls.dtypes is not _any_dtype:
+            if hasattr(obj, "__jaxtyping_dtype__"):
+                obj_dtype = obj.__jaxtyping_dtype__
+            elif hasattr(obj, "dtype"):
+                obj_dtype = obj.dtype
+            else:
+                return "this value does not have a `dtype` attribute."
+
+            if hasattr(obj_dtype, "type") and hasattr(obj_dtype.type, "__name__"):
+                # JAX, numpy
+                dtype = obj_dtype.type.__name__
+                # numpy structured array is strictly a subtype of np.void
+                if _dtype_is_numpy_struct_array(obj_dtype):
+                    dtype = str(obj_dtype)
+            elif hasattr(obj_dtype, "as_numpy_dtype"):
+                # TensorFlow
+                dtype = obj_dtype.as_numpy_dtype.__name__
+            else:
+                # Everyone else, including PyTorch.
+                # This offers an escape hatch for anyone looking to use jaxtyping for
+                # their own array-like types.
+                dtype = obj_dtype
+                if not isinstance(dtype, str):
+                    *_, dtype = repr(obj_dtype).rsplit(".", 1)
+
             in_dtypes = False
             for cls_dtype in cls.dtypes:
                 if type(cls_dtype) is str:

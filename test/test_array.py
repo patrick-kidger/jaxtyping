@@ -942,3 +942,156 @@ def test_typealiastype():
 def test_union_of_arraylike():
     Arrayish = Union[jax.Array, np.typing.ArrayLike]
     Float[Arrayish, ""]
+
+
+def test_shaped_without_dtype(jaxtyp, typecheck):
+    import jax.experimental.hijax as hijax
+
+    @dc.dataclass(frozen=True)
+    class ArrayPair:
+        x0: Array
+        x1: Array
+
+        @property
+        def shape(self):
+            return self.x0.shape
+
+    @dc.dataclass(frozen=True)
+    class ArrayPairTy(hijax.HiType):
+        x0: jax.core.ShapedArray
+        x1: jax.core.ShapedArray
+
+        @property
+        def shape(self):
+            return self.x0.shape
+
+        def lo_ty(self):
+            return [self.x0, self.x1]
+
+        def lower_val(self, hi_val: ArrayPair):
+            return [hi_val.x0, hi_val.x1]
+
+        def raise_val(self, x0, x1) -> ArrayPair:
+            return ArrayPair(x0, x1)
+
+    hijax.register_hitype(
+        ArrayPair, lambda p: ArrayPairTy(jax.typeof(p.x0), jax.typeof(p.x1))
+    )
+
+    @jaxtyp(typecheck)
+    def f(x: Shaped[ArrayPair, "a b"], y: Shaped[Any, "b c"]):
+        pass
+
+    pair_3_4 = ArrayPair(
+        jnp.zeros((3, 4), dtype=jnp.float32),
+        jnp.zeros((3, 4), dtype=jnp.int32),
+    )
+    pair_4_5 = ArrayPair(
+        jnp.zeros((4, 5), dtype=jnp.float32),
+        jnp.zeros((4, 5), dtype=jnp.int32),
+    )
+    pair_3_5 = ArrayPair(
+        jnp.zeros((3, 5), dtype=jnp.float32),
+        jnp.zeros((3, 5), dtype=jnp.int32),
+    )
+    pair_3 = ArrayPair(
+        jnp.zeros((3,), dtype=jnp.float32),
+        jnp.zeros((3,), dtype=jnp.int32),
+    )
+
+    f(pair_3_4, pair_4_5)
+    f(pair_3_4, jax.new_ref(pair_4_5))
+    with pytest.raises(ParamError):
+        f(pair_3_4, pair_3_5)
+    with pytest.raises(ParamError):
+        f(pair_3, pair_4_5)
+    with pytest.raises(ParamError):
+        f(pair_3_4, jax.new_ref(pair_3_5))
+
+    @jaxtyp(typecheck)
+    def g(x: Float[ArrayPair, "a b"]):
+        pass
+
+    with pytest.raises(ParamError):
+        g(pair_3_4)
+
+    @jaxtyp(typecheck)
+    def h(x: Float[Any, "a b"]):
+        pass
+
+    with pytest.raises(ParamError):
+        h(pair_3_4)
+    with pytest.raises(ParamError):
+        h(jax.new_ref(pair_3_4))
+
+
+def test_jaxtyping_dtype_dunder(jaxtyp, typecheck):
+    import jax.experimental.hijax as hijax
+
+    @dc.dataclass(frozen=True)
+    class MaskedArray:
+        values: Array
+        mask: Array
+
+        @property
+        def shape(self):
+            return self.values.shape
+
+        @property
+        def __jaxtyping_dtype__(self):
+            return self.values.dtype
+
+    @dc.dataclass(frozen=True)
+    class MaskedArrayTy(hijax.HiType):
+        values: jax.core.ShapedArray
+        mask: jax.core.ShapedArray
+
+        @property
+        def shape(self):
+            return self.values.shape
+
+        def lo_ty(self):
+            return [self.values, self.mask]
+
+        def lower_val(self, hi_val: MaskedArray):
+            return [hi_val.values, hi_val.mask]
+
+        def raise_val(self, values, mask) -> MaskedArray:
+            return MaskedArray(values, mask)
+
+    hijax.register_hitype(
+        MaskedArray, lambda m: MaskedArrayTy(jax.typeof(m.values), jax.typeof(m.mask))
+    )
+
+    @jaxtyp(typecheck)
+    def f(
+        x: Float[Array | MaskedArray, "a b"],
+        y: Float[Any, "b c"],
+    ):
+        pass
+
+    masked_f32_3_4 = MaskedArray(
+        jnp.zeros((3, 4), dtype=jnp.float32),
+        jnp.ones((3, 4), dtype=jnp.bool_),
+    )
+    masked_f16_4_5 = MaskedArray(
+        jnp.zeros((4, 5), dtype=jnp.float16),
+        jnp.ones((4, 5), dtype=jnp.bool_),
+    )
+    masked_i32_3_4 = MaskedArray(
+        jnp.zeros((3, 4), dtype=jnp.int32),
+        jnp.ones((3, 4), dtype=jnp.bool_),
+    )
+    masked_f32_3_5 = MaskedArray(
+        jnp.zeros((3, 5), dtype=jnp.float32),
+        jnp.ones((3, 5), dtype=jnp.bool_),
+    )
+
+    f(masked_f32_3_4, jnp.zeros((4, 5), dtype=jnp.float32))
+    f(jnp.zeros((3, 4), dtype=jnp.float32), masked_f16_4_5)
+    with pytest.raises(ParamError):
+        f(masked_i32_3_4, jnp.zeros((4, 5), dtype=jnp.float32))
+    with pytest.raises(ParamError):
+        f(jnp.zeros((3, 4), dtype=jnp.float32), masked_i32_3_4)
+    with pytest.raises(ParamError):
+        f(masked_f32_3_4, masked_f32_3_5)
