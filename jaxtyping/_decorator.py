@@ -67,7 +67,13 @@ def _apply_typechecker(typechecker, fn):
     This avoids reference cycles that can otherwise occur if `typechecker` grabs
     the calling frame's locals.
     """
-    return typechecker(fn)
+    # typeguard 2.13.3 captures `f_locals`, which is an unpicklable
+    # `FrameLocalsProxy` on Python 3.13+. Its private `_localns` argument lets us
+    # pass the equivalent snapshot explicitly.
+    if typechecker.__module__ == "typeguard" and typechecker.__name__ == "typechecked":
+        return typechecker(fn, _localns=dict(sys._getframe(1).f_locals))
+    else:
+        return typechecker(fn)
 
 
 @overload
