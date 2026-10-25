@@ -18,7 +18,7 @@ docs = [
   "mkdocs==1.6.1",
   "mkdocs-include-exclude-files==0.1.0",
   "mkdocs-ipynb==0.1.1",
-  "mkdocs-material==9.6.7",
+  "mkdocs-material==9.7.7",
   "mkdocstrings==0.28.3",
   "mkdocstrings-python==1.16.8",
   "pygments==2.20.0",
