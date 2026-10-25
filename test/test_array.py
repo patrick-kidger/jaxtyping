@@ -307,6 +307,74 @@ def test_anonymous_variadic(jaxtyp, typecheck, getkey):
         g(a3, c)
 
 
+def test_named_nonempty_variadic(jaxtyp, typecheck, getkey):
+    @jaxtyp(typecheck)
+    def g(
+        x: Float32[Array, "+batch foo"],
+        y: Float32[Array, " +batch"],
+        z: Float32[Array, " foo"],
+    ):
+        pass
+
+    c = jr.normal(getkey(), (5,))
+
+    a1 = jr.normal(getkey(), (5,))
+    b1 = jr.normal(getkey(), ())
+    with pytest.raises(ParamError):
+        g(a1, b1, c)
+
+    a2 = jr.normal(getkey(), (3, 5))
+    b2 = jr.normal(getkey(), (3,))
+    g(a2, b2, c)
+
+    a3 = jr.normal(getkey(), (3, 3, 5))
+    b3 = jr.normal(getkey(), (3, 3))
+    g(a3, b3, c)
+
+    with pytest.raises(ParamError):
+        g(a1, b2, c)
+
+    @jaxtyp(typecheck)
+    def h(x: Float32[Array, " foo +batch"], y: Float32[Array, " foo +batch bar"]):
+        pass
+
+    a = jr.normal(getkey(), (4,))
+    b = jr.normal(getkey(), (4, 3))
+    c = jr.normal(getkey(), (4, 3, 3, 3))
+    d = jr.normal(getkey(), (4, 3, 3))
+    h(d, c)
+
+    with pytest.raises(ParamError):
+        h(a, b)
+    with pytest.raises(ParamError):
+        h(b, c)
+
+
+def test_anonymous_nonempty_variadic(jaxtyp, typecheck, getkey):
+    @jaxtyp(typecheck)
+    def g(x: Float32[Array, "+_ foo"], y: Float32[Array, " foo"]):
+        pass
+
+    a1 = jr.normal(getkey(), (5,))
+    a2 = jr.normal(getkey(), (3, 5))
+    a3 = jr.normal(getkey(), (3, 4, 5))
+    a4 = jr.normal(getkey(), ())
+    b = jr.normal(getkey(), (5,))
+    c = jr.normal(getkey(), (1,))
+    g(a2, b)
+    g(a3, b)
+    with pytest.raises(ParamError):
+        g(a1, b)
+    with pytest.raises(ParamError):
+        g(a4, b)
+    with pytest.raises(ParamError):
+        g(a1, c)
+    with pytest.raises(ParamError):
+        g(a2, c)
+    with pytest.raises(ParamError):
+        g(a3, c)
+
+
 def test_broadcast_fixed(jaxtyp, typecheck, getkey):
     @jaxtyp(typecheck)
     def g(x: Float32[Array, "#4"]):
