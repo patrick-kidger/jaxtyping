@@ -241,7 +241,13 @@ class _MetaAbstractArray(type):
     _skip_instancecheck: bool = False
 
     def make_transparent(cls):
-        cls._skip_instancecheck = True
+        # A return annotation may also be reused for checked arguments elsewhere.
+        # Only the generator's copy should skip shape and dtype checks.
+        return type(cls)(
+            cls.__name__,
+            (cls,),
+            {"__module__": cls.__module__, "_skip_instancecheck": True},
+        )
 
     def __instancecheck__(cls, obj: Any) -> bool:
         return cls.__instancecheck_str__(obj) == ""

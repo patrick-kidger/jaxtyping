@@ -22,6 +22,7 @@ import functools as ft
 import inspect
 import itertools as it
 import sys
+import types
 import warnings
 import weakref
 from collections.abc import Callable
@@ -29,6 +30,7 @@ from contextlib import AbstractContextManager
 from typing import (
     Any,
     get_args,
+    get_origin,
     get_type_hints,
     Literal,
     NoReturn,
@@ -351,14 +353,26 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                 # visible as original ones for the typechecker
                 def modify_annotation(ann):
                     if inspect.isclass(ann) and issubclass(ann, AbstractArray):
-                        ann.make_transparent()
-
-                    for sub_ann in get_args(ann):
-                        modify_annotation(sub_ann)
+                        return ann.make_transparent()
+                    args = get_args(ann)
+                    if not args:
+                        return ann
+                    modified_args = tuple(modify_annotation(x) for x in args)
+                    if all(x is y for x, y in zip(args, modified_args)):
+                        return ann
+                    origin = get_origin(ann)
+                    if origin is types.UnionType:
+                        origin = Union
+                    # TypeGuard and Unpack require a scalar argument on Python 3.12.
+                    if len(modified_args) == 1:
+                        return origin[modified_args[0]]
+                    return origin[modified_args]
 
                 # just to make sure: check that fn has valid return annotations
                 if hasattr(fn, "__annotations__") and "return" in fn.__annotations__:
-                    modify_annotation(fn.__annotations__["return"])
+                    fn.__annotations__["return"] = modify_annotation(
+                        fn.__annotations__["return"]
+                    )
 
             signature = inspect.signature(fn)
 
