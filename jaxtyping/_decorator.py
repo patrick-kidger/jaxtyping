@@ -75,16 +75,22 @@ def _apply_typechecker(typechecker, fn):
 def jaxtyped(
     *,
     typechecker=_sentinel,
+    include_typechecker_message: bool = False,
 ) -> Callable[[_TypeOrCallable], _TypeOrCallable]: ...
 
 
 @overload
-def jaxtyped(fn: type[_T], *, typechecker=_sentinel) -> type[_T]: ...
+def jaxtyped(
+    fn: type[_T], *, typechecker=_sentinel, include_typechecker_message: bool = False
+) -> type[_T]: ...
 
 
 @overload
 def jaxtyped(
-    fn: Callable[_Params, _Return], *, typechecker=_sentinel
+    fn: Callable[_Params, _Return],
+    *,
+    typechecker=_sentinel,
+    include_typechecker_message: bool = False,
 ) -> Callable[_Params, _Return]: ...
 
 
@@ -92,7 +98,9 @@ def jaxtyped(
 def jaxtyped(fn: Literal["context"]) -> AbstractContextManager[None]: ...
 
 
-def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
+def jaxtyped(
+    fn=_sentinel, *, typechecker=_sentinel, include_typechecker_message: bool = False
+):
     """Decorate a function with this to perform runtime type-checking of its arguments
     and return value. Decorate a dataclass to perform type-checking of its `__init__`
     method.
@@ -156,6 +164,19 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
         def f(x):
             assert isinstance(x, Float[Tensor, "batch channel"])
         ```
+
+    - `include_typechecker_message`: Keyword-only argument, defaulting to `False`.
+        If `True`, append the underlying typechecker's exception message to parameter
+        and return-value `TypeCheckError` messages. For example:
+        ```python
+        @jaxtyped(typechecker=typechecker, include_typechecker_message=True)
+        def f(x: Float[Array, "3"]):
+            ...
+        ```
+        This can expose additional diagnostics provided by the typechecker, such as
+        explanations of shape mismatches. It requires an explicit, non-`None`
+        `typechecker` to have an effect. Exception chaining is unchanged, and the
+        message is included even when `jaxtyping_remove_typechecker_stack` is enabled.
 
     **Returns:**
 
@@ -290,7 +311,11 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
         typechecker = None
 
     if fn is _sentinel:
-        return ft.partial(jaxtyped, typechecker=typechecker)
+        return ft.partial(
+            jaxtyped,
+            typechecker=typechecker,
+            include_typechecker_message=include_typechecker_message,
+        )
     elif inspect.isclass(fn):
         if (
             dataclasses.is_dataclass(fn)
@@ -304,29 +329,57 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
             else:
                 if already_wrapped:
                     return fn
-            fn.__init__ = jaxtyped(fn.__init__, typechecker=typechecker)
+            fn.__init__ = jaxtyped(
+                fn.__init__,
+                typechecker=typechecker,
+                include_typechecker_message=include_typechecker_message,
+            )
         return fn
     # It'd be lovely if we could handle arbitrary descriptors, and not just the builtin
     # ones. Unfortunately that means returning a class instance with a __get__ method,
     # and that turns out to break loads of other things. See beartype issue #211 and
     # jaxtyping issue #71.
     elif isinstance(fn, classmethod):
-        return classmethod(jaxtyped(fn.__func__, typechecker=typechecker))
+        return classmethod(
+            jaxtyped(
+                fn.__func__,
+                typechecker=typechecker,
+                include_typechecker_message=include_typechecker_message,
+            )
+        )
     elif isinstance(fn, staticmethod):
-        return staticmethod(jaxtyped(fn.__func__, typechecker=typechecker))
+        return staticmethod(
+            jaxtyped(
+                fn.__func__,
+                typechecker=typechecker,
+                include_typechecker_message=include_typechecker_message,
+            )
+        )
     elif isinstance(fn, property):
         if fn.fget is None:
             fget = None
         else:
-            fget = jaxtyped(fn.fget, typechecker=typechecker)
+            fget = jaxtyped(
+                fn.fget,
+                typechecker=typechecker,
+                include_typechecker_message=include_typechecker_message,
+            )
         if fn.fset is None:
             fset = None
         else:
-            fset = jaxtyped(fn.fset, typechecker=typechecker)
+            fset = jaxtyped(
+                fn.fset,
+                typechecker=typechecker,
+                include_typechecker_message=include_typechecker_message,
+            )
         if fn.fdel is None:
             fdel = None
         else:
-            fdel = jaxtyped(fn.fdel, typechecker=typechecker)
+            fdel = jaxtyped(
+                fn.fdel,
+                typechecker=typechecker,
+                include_typechecker_message=include_typechecker_message,
+            )
         return property(fget=fget, fset=fset, fdel=fdel)
     else:
         if typechecker is None:
@@ -428,7 +481,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                     param_fn(*args, **kwargs)
                 except AnnotationError:
                     raise
-                except Exception:
+                except Exception as typechecker_error:
                     try:
                         argmsg = _get_problem_arg(
                             param_signature,
@@ -456,6 +509,8 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                             f"Parameter annotations: {param_hints}.\n"
                             + shape_str(memos)
                         )
+                        if include_typechecker_message:
+                            msg += f"\nTypechecker details:\n{typechecker_error}"
                         if config.jaxtyping_remove_typechecker_stack:
                             raise TypeCheckError(msg) from None
                         else:
@@ -509,6 +564,8 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                             f"Parameter annotations: {param_hints}.\n"
                             + shape_str(memos)
                         )
+                        if include_typechecker_message:
+                            msg += f"\nTypechecker details:\n{e}"
                         if config.jaxtyping_remove_typechecker_stack:
                             raise TypeCheckError(msg) from None
                         else:
