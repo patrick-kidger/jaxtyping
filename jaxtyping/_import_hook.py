@@ -83,8 +83,9 @@ def _optimized_cache_from_source(typechecker_hash, /, path, debug_override=None)
     # Version 9: Now reporting the correct source code lines. (Important when used with
     #    a debugger.)
     # Version 10: Now respecting `@no_type_check` in the import hook.
+    # Version 11: avoid caches written with the wrong transitive import scope.
     return cache_from_source(
-        path, debug_override, optimization=f"jaxtyping10{typechecker_hash}"
+        path, debug_override, optimization=f"jaxtyping11{typechecker_hash}"
     )
 
 
@@ -249,14 +250,14 @@ class _JaxtypingLoader(SourceFileLoader):
             compile, tree, path, "exec", dont_inherit=True, optimize=_optimize
         )
 
-    def exec_module(self, module):
-        # Use a custom optimization marker - the import lock should make this monkey
-        # patch safe
+    def get_code(self, fullname):
+        # Scope the custom cache marker to loading code, not executing it: execution
+        # may import dependencies that are outside this hook's scope.
         with patch(
             "importlib._bootstrap_external.cache_from_source",
             ft.partial(_optimized_cache_from_source, self._typechecker.get_hash()),
         ):
-            return super().exec_module(module)
+            return super().get_code(fullname)
 
 
 class _JaxtypingFinder(MetaPathFinder):
