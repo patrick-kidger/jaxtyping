@@ -119,3 +119,42 @@ def test_import_hook_transitive(importhook_tempdir, typeguard_or_skip):
     with jaxtyping.install_import_hook(transitive_name, "typeguard.typechecked"):
         importlib.import_module(transitive_name)
     assert counter + 1 == jaxtyping._test_import_hook_counter
+
+
+@pytest.mark.parametrize("typechecker", ["typeguard.typechecked", "beartype.beartype"])
+@pytest.mark.parametrize("first_scope", ["package", "left"])
+def test_import_hook_cache_scope(tmp_path, monkeypatch, typechecker, first_scope):
+    """Cached dependencies follow the current hook scope, not earlier imports."""
+    pytest.importorskip(typechecker.split(".")[0])
+    package_name = "jaxtyping_cache_scope_test"
+    package = tmp_path / package_name
+    package.mkdir()
+    (package / "__init__.py").write_text("")
+    (package / "left.py").write_text("from .right import function\n")
+    (package / "right.py").write_text(
+        "def function(value: int) -> int:\n    return value\n"
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+    monkeypatch.setattr(sys, "dont_write_bytecode", False)
+
+    scopes = (
+        first_scope,
+        "left" if first_scope == "package" else "package",
+        first_scope,
+    )
+    try:
+        for scope in scopes:
+            for name in (package_name + ".left", package_name + ".right", package_name):
+                sys.modules.pop(name, None)
+            target = package_name if scope == "package" else package_name + ".left"
+            with jaxtyping.install_import_hook(target, typechecker):
+                module = importlib.import_module(package_name + ".left")
+            assert module.function(1) == 1
+            if scope == "package":
+                with pytest.raises(jaxtyping.TypeCheckError):
+                    module.function("invalid")
+            else:
+                assert module.function("invalid") == "invalid"
+    finally:
+        for name in (package_name + ".left", package_name + ".right", package_name):
+            sys.modules.pop(name, None)
