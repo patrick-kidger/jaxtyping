@@ -615,10 +615,10 @@ def _make_array_cached(array_type, dim_str, dtypes, name):
         else:
             return _not_made
     elif IS_NUMPY_INSTALLED and (array_type is np.generic or array_type is np.number):
-        if _check_scalar("", dtypes, dims):
-            return array_type
-        else:
+        if not _check_scalar("", dtypes, dims):
             return _not_made
+        # NumPy scalars have `.dtype` and `.shape`, so check them like arrays below.
+        # (Returning `array_type` here would skip the dtype check.)
     if array_type is not Any and issubclass(array_type, AbstractArray):
         if dtypes is _any_dtype:
             dtypes = array_type.dtypes
