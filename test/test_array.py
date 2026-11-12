@@ -779,6 +779,30 @@ def test_scalar_dtype_mismatch():
         Float[bool, "..."]
 
 
+@pytest.mark.parametrize(
+    "hint, good, bad",
+    [
+        (Float32[np.number, ""], np.float32(1.0), np.int64(3)),
+        (Float[np.generic, ""], np.float64(2.5), np.int64(3)),
+        (Int[np.number, "*batch"], np.int64(3), np.float64(2.5)),
+        (Bool[np.generic, "..."], np.bool_(True), np.float32(1.0)),
+    ],
+)
+def test_numpy_scalar_dtype(hint, good, bad):
+    assert isinstance(good, hint)
+    assert not isinstance(bad, hint)
+
+
+def test_numpy_scalar_dtype_arraylike(jaxtyp, typecheck):
+    @jaxtyp(typecheck)
+    def f(x: Float[ArrayLike, ""]):
+        pass
+
+    f(np.float32(1.0))
+    with pytest.raises(ParamError):
+        f(np.int64(3))
+
+
 def test_custom_array(jaxtyp, typecheck):
     class MyArray1:
         @property
