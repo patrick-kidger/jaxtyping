@@ -40,9 +40,11 @@ from typing import (
 
 from ._errors import AnnotationError
 from ._storage import (
+    defer_symbolic_dim,
     get_shape_memo,
     get_treeflatten_memo,
     get_treepath_memo,
+    pop_deferred_symbolic_dims,
     set_shape_memo,
 )
 
@@ -180,6 +182,64 @@ _AbstractDimOrVariadicDim = Union[
 _AbstractDim = Union[Literal[_anonymous_dim], _NamedDim, _FixedDim, _SymbolicDim]
 
 
+def _unprocessed_symbolic_error(dim_str: str) -> AnnotationError:
+    return AnnotationError(
+        f"Cannot process symbolic axis '{dim_str}' as "
+        "some axis names have not been processed. "
+        "Have you applied the `jaxtyped` decorator? "
+        "In practice you should usually only use symbolic axes in "
+        "annotations for return types, referring only to axes "
+        "annotated for arguments."
+    )
+
+
+def check_deferred_symbolic_dims(allow_unbound: bool) -> str:
+    """Checks the symbolic axes whose evaluation was deferred, as their axis names had
+    not been bound at the time. (For example `x` in
+    `def f(x: Float[Array, "dim//2"], y: Float[Array, "dim"])`.)
+
+    This should be called once all the arguments of a `jaxtyped` function have been
+    checked, and again once its return value has been checked.
+
+    **Arguments:**
+
+    - `allow_unbound`: if `True`, then symbolic axes that still refer to unbound axis
+        names are silently dropped, rather than raising an error. This is used after
+        checking the arguments of a function with a return annotation, as these may
+        be bound by the return value. (In which case the arguments will be checked
+        again alongside the return value, deferring these axes once more.)
+
+    **Returns:**
+
+    An empty string if every deferred symbolic axis matches, else an error message.
+
+    **Raises:**
+
+    `AnnotationError` if `allow_unbound=False` and a symbolic axis refers to an axis
+    name that has not been bound.
+    """
+    deferred = pop_deferred_symbolic_dims()
+    if len(deferred) == 0:
+        return ""
+    single_memo, _, _, _ = get_shape_memo()
+    for dim_str, expression, obj_size in deferred:
+        try:
+            # Make a copy to avoid `__builtins__` getting added as a key.
+            eval_size = eval(expression, single_memo.copy())
+        except NameError as e:
+            if allow_unbound:
+                continue
+            raise AnnotationError(
+                f"Cannot process symbolic axis '{dim_str}' as some of its axis names "
+                "are not bound by any other annotation. Symbolic axes may only refer "
+                "to axis names that are bound by a non-symbolic axis somewhere in the "
+                "annotations of the arguments or the return value."
+            ) from e
+        if eval_size != obj_size:
+            return f"the dimension size {obj_size} does not equal the existing value of {dim_str}={eval_size}"  # noqa: E501
+    return ""
+
+
 def _check_dims(
     cls_dims: list[_AbstractDim],
     obj_shape: tuple[int, ...],
@@ -200,17 +260,19 @@ def _check_dims(
                 # Support f-string syntax.
                 # https://stackoverflow.com/a/53671539/22545467
                 elem = eval(f"f'{cls_dim.elem}'", arg_memo.copy())
+            except NameError as e:
+                raise _unprocessed_symbolic_error(cls_dim.elem) from e
+            try:
                 # Make a copy to avoid `__builtins__` getting added as a key.
                 eval_size = eval(elem, single_memo.copy())
             except NameError as e:
-                raise AnnotationError(
-                    f"Cannot process symbolic axis '{cls_dim.elem}' as "
-                    "some axis names have not been processed. "
-                    "Have you applied the `jaxtyped` decorator? "
-                    "In practice you should usually only use symbolic axes in "
-                    "annotations for return types, referring only to axes "
-                    "annotated for arguments."
-                ) from e
+                # Some axis name has not been bound yet. Inside a `jaxtyped` function
+                # we defer the check until every argument has been processed, so that
+                # e.g. `def f(x: Float[Array, "dim//2"], y: Float[Array, "dim"])`
+                # works regardless of the order of the arguments.
+                if defer_symbolic_dim(single_memo, cls_dim.elem, elem, obj_size):
+                    continue
+                raise _unprocessed_symbolic_error(cls_dim.elem) from e
             if eval_size != obj_size:
                 return f"the dimension size {obj_size} does not equal the existing value of {cls_dim.elem}={eval_size}"  # noqa: E501
         else:

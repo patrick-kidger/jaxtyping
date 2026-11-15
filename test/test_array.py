@@ -542,6 +542,122 @@ def test_deferred_symbolic_dataclass(typecheck):
         A(3, jnp.zeros(4))
 
 
+def test_symbolic_before_named_good(typecheck):
+    # The symbolic axis `dim//2` is used before `dim` is bound. It should be checked
+    # once all arguments have been processed.
+    @jaxtyped(typechecker=typecheck)
+    def f(x: Float[Array, " dim//2"], y: Float[Array, " dim"]):
+        pass
+
+    @jaxtyped(typechecker=typecheck)
+    def g(y: Float[Array, " dim"], x: Float[Array, " dim//2"]):
+        pass
+
+    @jaxtyped(typechecker=typecheck)
+    def h(x: Float[Array, "dim//32 length"], y: Float[Array, "k t dim"]):
+        pass
+
+    f(jnp.zeros(3), jnp.zeros(6))
+    f(jnp.zeros(3), jnp.zeros(7))
+    f(x=jnp.zeros(3), y=jnp.zeros(6))
+    g(jnp.zeros(6), jnp.zeros(3))
+    h(jnp.zeros((2, 5)), jnp.zeros((3, 4, 64)))
+
+
+def test_symbolic_before_named_bad(typecheck):
+    @jaxtyped(typechecker=typecheck)
+    def f(x: Float[Array, " dim//2"], y: Float[Array, " dim"]):
+        pass
+
+    @jaxtyped(typechecker=typecheck)
+    def g(y: Float[Array, " dim"], x: Float[Array, " dim//2"]):
+        pass
+
+    with pytest.raises(ParamError):
+        f(jnp.zeros(4), jnp.zeros(6))
+    with pytest.raises(ParamError):
+        g(jnp.zeros(6), jnp.zeros(4))
+
+
+def test_symbolic_before_named_same_annotation(typecheck):
+    @jaxtyped(typechecker=typecheck)
+    def f(x: Float[Array, "dim-1 dim"]):
+        pass
+
+    f(jnp.zeros((2, 3)))
+    with pytest.raises(ParamError):
+        f(jnp.zeros((3, 3)))
+
+
+def test_symbolic_before_named_union(typecheck):
+    # A deferred axis from a union member that fails to match must not leak.
+    @jaxtyped(typechecker=typecheck)
+    def f(x: Float[Array, "dim//2 3"] | Float[Array, "_ 4"], y: Float[Array, " dim"]):
+        pass
+
+    f(jnp.zeros((5, 4)), jnp.zeros(12))
+    f(jnp.zeros((5, 3)), jnp.zeros(10))
+    with pytest.raises(ParamError):
+        f(jnp.zeros((5, 3)), jnp.zeros(12))
+
+
+def test_symbolic_unbound(typecheck):
+    @jaxtyped(typechecker=typecheck)
+    def f(x: Float[Array, " dim//2"], y: Float[Array, " other"]):
+        pass
+
+    @jaxtyped(typechecker=typecheck)
+    def g(x: Float[Array, " dim//2"]) -> Float[Array, " other"]:
+        return jnp.zeros(3)
+
+    @jaxtyped(typechecker=typecheck)
+    def h(x: Float[Array, " dim//2"]) -> None:
+        pass
+
+    with pytest.raises(AnnotationError):
+        f(jnp.zeros(3), jnp.zeros(6))
+    with pytest.raises(AnnotationError):
+        g(jnp.zeros(3))
+    with pytest.raises(AnnotationError):
+        h(jnp.zeros(3))
+
+
+def test_symbolic_bound_by_return_good(typecheck):
+    # `dim` is only bound by the return value; the parameter's `dim//32` is then
+    # checked against it.
+    @jaxtyped(typechecker=typecheck)
+    def f(x: Float[Array, "dim//32 length"]) -> Float[Array, "s dim"]:
+        return jnp.zeros((2, 32 * x.shape[0] + 7))
+
+    @jaxtyped(typechecker=typecheck)
+    def g(x: Float[Array, " dim//2"]) -> tuple[Float[Array, " dim"], Float[Array, ""]]:
+        return jnp.zeros(2 * x.shape[0]), jnp.zeros(())
+
+    assert f(jnp.zeros((3, 5))).shape == (2, 103)
+    g(jnp.zeros(3))
+
+
+def test_symbolic_bound_by_return_bad(typecheck):
+    @jaxtyped(typechecker=typecheck)
+    def f(x: Float[Array, "dim//32 length"]) -> Float[Array, "s dim"]:
+        return jnp.zeros((2, 32 * x.shape[0] + 32))
+
+    called = []
+
+    @jaxtyped(typechecker=typecheck)
+    def g(x: Float[Array, " dim//2"], y: Float[Array, " dim"]) -> Float[Array, " dim"]:
+        called.append(True)
+        return y
+
+    with pytest.raises(ReturnError):
+        f(jnp.zeros((3, 5)))
+    # If `dim` is bound by a parameter, then a mismatch is still detected before the
+    # function is called.
+    with pytest.raises(ParamError):
+        g(jnp.zeros(4), jnp.zeros(6))
+    assert not called
+
+
 def _to_set(x) -> set[tuple]:
     return {
         (xi.index_variadic, xi.dims, xi.array_type, xi.dtypes, xi.dim_str)
