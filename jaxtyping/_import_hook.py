@@ -57,7 +57,7 @@ from collections.abc import Sequence
 from importlib.abc import MetaPathFinder
 from importlib.machinery import SourceFileLoader
 from importlib.util import cache_from_source, decode_source
-from inspect import isclass
+from inspect import isclass, signature
 from typing import Optional, Union
 from unittest.mock import patch
 
@@ -65,6 +65,12 @@ from unittest.mock import patch
 # The name of this function is magical
 def _call_with_frames_removed(f, *args, **kwargs):
     return f(*args, **kwargs)
+
+
+try:
+    _COMPILE_ACCEPTS_MODULE = "module" in signature(compile).parameters
+except (TypeError, ValueError):
+    _COMPILE_ACCEPTS_MODULE = False
 
 
 def _optimized_cache_from_source(typechecker_hash, /, path, debug_override=None):
@@ -83,9 +89,15 @@ def _optimized_cache_from_source(typechecker_hash, /, path, debug_override=None)
     # Version 9: Now reporting the correct source code lines. (Important when used with
     #    a debugger.)
     # Version 10: Now respecting `@no_type_check` in the import hook.
-    return cache_from_source(
-        path, debug_override, optimization=f"jaxtyping10{typechecker_hash}"
-    )
+    # Python 3.15 removed the positional `debug_override` parameter. importlib
+    # passes only the path, and `None` is the old default, so bytecode paths on
+    # older versions stay the same.
+    optimization = f"jaxtyping10{typechecker_hash}"
+    if "debug_override" in signature(cache_from_source).parameters:
+        return cache_from_source(
+            path, debug_override=debug_override, optimization=optimization
+        )
+    return cache_from_source(path, optimization=optimization)
 
 
 class Typechecker:
@@ -232,7 +244,12 @@ class _JaxtypingLoader(SourceFileLoader):
         super().__init__(*args, **kwargs)
         self._typechecker = typechecker
 
-    def source_to_code(self, data, path, *, _optimize=-1):
+    def source_to_code(self, data, path, fullname=None, *, _optimize=-1):
+        # Python 3.15's SourceFileLoader.get_code passes the module name here, and
+        # compile() records it when it accepts a `module` argument.
+        compile_kwargs = {"dont_inherit": True, "optimize": _optimize}
+        if _COMPILE_ACCEPTS_MODULE:
+            compile_kwargs["module"] = fullname
         source = decode_source(data)
         tree = _call_with_frames_removed(
             compile,
@@ -240,14 +257,11 @@ class _JaxtypingLoader(SourceFileLoader):
             path,
             "exec",
             ast.PyCF_ONLY_AST,
-            dont_inherit=True,
-            optimize=_optimize,
+            **compile_kwargs,
         )
         tree = JaxtypingTransformer(typechecker=self._typechecker).visit(tree)
         ast.fix_missing_locations(tree)
-        return _call_with_frames_removed(
-            compile, tree, path, "exec", dont_inherit=True, optimize=_optimize
-        )
+        return _call_with_frames_removed(compile, tree, path, "exec", **compile_kwargs)
 
     def exec_module(self, module):
         # Use a custom optimization marker - the import lock should make this monkey
