@@ -40,6 +40,7 @@ from typing import (
 
 from jaxtyping import AbstractArray
 
+from ._array_types import check_deferred_symbolic_dims
 from ._config import config
 from ._errors import AnnotationError, TypeCheckError
 from ._storage import pop_shape_memo, push_shape_memo, shape_str
@@ -422,10 +423,22 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
 
             def wrapped_fn_impl(args, kwargs, bound, memos):
                 __tracebackhide__ = True
+                has_return_annotation = (
+                    full_signature.return_annotation is not inspect.Signature.empty
+                )
                 # First type-check just the parameters before the function is
                 # called.
                 try:
                     param_fn(*args, **kwargs)
+                    # Now that every parameter has bound its axis names, check any
+                    # symbolic axes that referred to axis names that were not yet
+                    # bound. If there is a return annotation then axis names may
+                    # also be bound by the return value, so allow those for now.
+                    deferred_msg = check_deferred_symbolic_dims(
+                        allow_unbound=has_return_annotation
+                    )
+                    if deferred_msg != "":
+                        raise TypeCheckError(deferred_msg)
                 except AnnotationError:
                     raise
                 except Exception:
@@ -464,7 +477,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                 # Actually call the function.
                 out = fn(*args, **kwargs)
 
-                if full_signature.return_annotation is not inspect.Signature.empty:
+                if has_return_annotation:
                     # Now type-check the return value. We need to include the
                     # parameters in the type-checking here in case there are any
                     # type variables shared across the parameters and return.
@@ -482,6 +495,14 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                     kwargs[output_name] = out
                     try:
                         full_fn(*args, **kwargs)
+                        # Every axis name is now bound by either a parameter or the
+                        # return value, so check all remaining symbolic axes. This
+                        # includes axes of parameters that refer to axis names only
+                        # bound by the return value, e.g. `x: Float[Array, "dim//2"]`
+                        # with `-> Float[Array, "dim"]`.
+                        deferred_msg = check_deferred_symbolic_dims(allow_unbound=False)
+                        if deferred_msg != "":
+                            raise TypeCheckError(deferred_msg)
                     except AnnotationError:
                         raise
                     except Exception as e:
@@ -534,7 +555,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
                 bound = param_signature.bind(*args, **kwargs)
                 bound.apply_defaults()
 
-                memos = push_shape_memo(bound.arguments)
+                memos = push_shape_memo(bound.arguments, defer_symbolic=True)
                 try:
                     # Put this in a separate frame to make debugging easier, without
                     # just always ending up on the `pop_shape_memo` line below.

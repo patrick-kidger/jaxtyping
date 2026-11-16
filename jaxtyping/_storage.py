@@ -56,15 +56,50 @@ def set_shape_memo(single_memo, variadic_memo, pytree_memo, arg_memo) -> None:
         )
 
 
-def push_shape_memo(arguments: dict[str, Any]):
+# Key in `single_memo` under which symbolic axes are stored whose evaluation has been
+# deferred because they refer to axis names that are not yet bound. Its presence also
+# signals that deferral is enabled for the current memo. The value is an (immutable)
+# tuple of `(dim_str, expanded_expression, observed_size)` triples, so that the shallow
+# copies taken by `__instancecheck__` to restore the memo on failure also restore it.
+_deferred_key = "~~deferred~~"
+
+
+def push_shape_memo(arguments: dict[str, Any], defer_symbolic: bool = False):
     try:
         memo_stack = _shape_storage.memo_stack
     except AttributeError:
         # Can't be done when `_stack_storage` is created for reasons I forget.
         memo_stack = _shape_storage.memo_stack = []
-    memos = ({}, {}, {}, arguments.copy())
+    single_memo = {}
+    if defer_symbolic:
+        single_memo[_deferred_key] = ()
+    memos = (single_memo, {}, {}, arguments.copy())
     memo_stack.append(memos)
     return memos
+
+
+def defer_symbolic_dim(
+    single_memo: dict[str, Any], dim_str: str, expression: str, size: int
+) -> bool:
+    """Records a symbolic axis to be checked once all axis names have been bound.
+
+    Returns `False` (and records nothing) if deferral is not enabled for this memo.
+    """
+    try:
+        deferred = single_memo[_deferred_key]
+    except KeyError:
+        return False
+    single_memo[_deferred_key] = deferred + ((dim_str, expression, size),)
+    return True
+
+
+def pop_deferred_symbolic_dims() -> tuple[tuple[str, str, int], ...]:
+    """Returns, and clears, the symbolic axes deferred in the current memo."""
+    single_memo, _, _, _ = get_shape_memo()
+    deferred = single_memo.get(_deferred_key, ())
+    if _deferred_key in single_memo:
+        single_memo[_deferred_key] = ()
+    return deferred
 
 
 def pop_shape_memo() -> None:
@@ -83,7 +118,7 @@ def shape_str(memos) -> str:
     single_memo = {
         name: size
         for name, size in single_memo.items()
-        if not name.startswith("~~delete~~")
+        if not name.startswith("~~delete~~") and name != _deferred_key
     }
     variadic_memo = {
         name: shape
