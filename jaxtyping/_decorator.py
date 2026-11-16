@@ -22,6 +22,7 @@ import functools as ft
 import inspect
 import itertools as it
 import sys
+import types
 import warnings
 import weakref
 from collections.abc import Callable
@@ -29,9 +30,11 @@ from contextlib import AbstractContextManager
 from typing import (
     Any,
     get_args,
+    get_origin,
     get_type_hints,
     Literal,
     NoReturn,
+    Optional,
     overload,
     ParamSpec,
     TypeVar,
@@ -42,7 +45,12 @@ from jaxtyping import AbstractArray
 
 from ._config import config
 from ._errors import AnnotationError, TypeCheckError
-from ._storage import pop_shape_memo, push_shape_memo, shape_str
+from ._storage import get_shape_memo, pop_shape_memo, push_shape_memo, shape_str
+
+
+_union_types = [Union]
+if sys.version_info >= (3, 10):
+    _union_types.append(types.UnionType)
 
 
 _Params = ParamSpec("_Params")
@@ -393,35 +401,44 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
             # ```
             # in which case we can do a better job reporting errors.
 
-            full_signature = inspect.signature(fn)
-            new_params = []
-            for p_value in full_signature.parameters.values():
-                p_annotation = _destring_annotation(p_value.annotation, fn.__globals__)
-                p_value = p_value.replace(annotation=p_annotation)
-                new_params.append(p_value)
-            return_annotation = _destring_annotation(
-                full_signature.return_annotation, fn.__globals__
-            )
-            full_signature = full_signature.replace(
-                parameters=new_params, return_annotation=return_annotation
-            )
-            param_signature = full_signature.replace(return_annotation=Any)
             name = getattr(fn, "__name__", "<no name found>")
             qualname = getattr(fn, "__qualname__", "<no qualname found>")
             module = getattr(fn, "__module__", "<generated_by_jaxtyping>")
+            # Only used for binding arguments, so annotations do not matter here.
+            bind_signature = inspect.signature(fn).replace(return_annotation=Any)
 
-            # Use the same name so that typeguard warnings look correct.
-            full_fn, output_name = _make_fn_with_signature(
-                name, qualname, module, full_signature, output=True
-            )
-            param_fn = _make_fn_with_signature(
-                name, qualname, module, param_signature, output=False
-            )
-            full_fn = _apply_typechecker(typechecker, full_fn)
-            param_fn = _apply_typechecker(typechecker, param_fn)
+            def make_checkers(final: bool):
+                full_signature = _resolve_signature(fn, final)
+                if full_signature is None:
+                    return None
+                param_signature = full_signature.replace(return_annotation=Any)
+                # Use the same name so that typeguard warnings look correct.
+                full_fn, output_name = _make_fn_with_signature(
+                    name, qualname, module, full_signature, output=True
+                )
+                param_fn = _make_fn_with_signature(
+                    name, qualname, module, param_signature, output=False
+                )
+                full_fn = _apply_typechecker(typechecker, full_fn)
+                param_fn = _apply_typechecker(typechecker, param_fn)
+                return full_signature, param_signature, full_fn, param_fn, output_name
+
+            # If the annotations refer to names that are not yet defined (e.g. the
+            # class that a method is being defined in, or a class defined later in
+            # the module), then we try again when the function is first called.
+            checkers_holder = [make_checkers(final=False)]
+
+            def get_checkers():
+                checkers = checkers_holder[0]
+                if checkers is None:
+                    checkers = checkers_holder[0] = make_checkers(final=True)
+                return checkers
 
             def wrapped_fn_impl(args, kwargs, bound, memos):
                 __tracebackhide__ = True
+                full_signature, param_signature, full_fn, param_fn, output_name = (
+                    get_checkers()
+                )
                 # First type-check just the parameters before the function is
                 # called.
                 try:
@@ -531,7 +548,7 @@ def jaxtyped(fn=_sentinel, *, typechecker=_sentinel):
 
                 # Raise bind-time errors before we do any shape analysis. (I.e. skip
                 # the pointless jaxtyping information for a non-typechecking failure.)
-                bound = param_signature.bind(*args, **kwargs)
+                bound = bind_signature.bind(*args, **kwargs)
                 bound.apply_defaults()
 
                 memos = push_shape_memo(bound.arguments)
@@ -555,21 +572,145 @@ class _JaxtypingContext:
         pop_shape_memo()
 
 
+_self_annotations = []
+try:
+    from typing import Self as _typing_Self  # pyright: ignore
+except ImportError:  # Python <3.11
+    pass
+else:
+    _self_annotations.append(_typing_Self)
+try:
+    from typing_extensions import Self as _typing_extensions_Self
+except ImportError:
+    pass
+else:
+    if _typing_extensions_Self not in _self_annotations:
+        _self_annotations.append(_typing_extensions_Self)
+
+
+class _MetaSelf(type):
+    """Metaclass for `_Self`, which `typing.Self` annotations are replaced with.
+
+    The annotations of a `jaxtyped` function are moved onto a separately-created
+    function, so the typechecker no longer knows which class a method belongs to, and
+    cannot check `Self` itself. Instead we look up the first argument (`self` or `cls`)
+    of the current call from the shape memo.
+    """
+
+    def _self_type(cls):
+        *_, arguments = get_shape_memo()
+        for value in arguments.values():
+            return value if isinstance(value, type) else type(value)
+        return None
+
+    def __instancecheck__(cls, obj) -> bool:
+        self_type = cls._self_type()
+        return self_type is not None and isinstance(obj, self_type)
+
+    def __subclasscheck__(cls, subclass) -> bool:
+        self_type = cls._self_type()
+        return (
+            self_type is not None
+            and isinstance(subclass, type)
+            and issubclass(subclass, self_type)
+        )
+
+    def __repr__(cls):
+        return "Self"
+
+
+class _Self(metaclass=_MetaSelf):
+    pass
+
+
+# Match `__repr__` so PEP 604 unions format as `Self | ...`, which beartype checks for
+# repr consistency.
+_Self.__name__ = "Self"
+_Self.__qualname__ = "Self"
+_Self.__module__ = "builtins"
+
+
+def _substitute_self(annotation):
+    """Replaces every `Self` in `annotation` with `_Self`."""
+    if len(_self_annotations) == 0:
+        return annotation
+    if any(annotation is s for s in _self_annotations):
+        return _Self
+    if isinstance(annotation, list):  # E.g. the arguments of `Callable[[Self], int]`.
+        return [_substitute_self(a) for a in annotation]
+    args = get_args(annotation)
+    if len(args) == 0:
+        return annotation
+    new_args = tuple(_substitute_self(a) for a in args)
+    if all(a is b for a, b in zip(args, new_args)):
+        return annotation
+    origin = get_origin(annotation)
+    if origin in _union_types:
+        return Union[new_args]
+    try:
+        return origin[new_args]
+    except TypeError:
+        # Some annotation we don't know how to rebuild. Leave it unchanged.
+        return annotation
+
+
 def _destring_annotation(ann, ns):
     # Best-effort attempt to destringify annotations.
     def fn(value: ann):
         del value
 
+    return get_type_hints(fn, ns, include_extras=True)["value"]
+
+
+def _resolve_signature(fn, final: bool) -> Optional[inspect.Signature]:
+    """Returns the signature of `fn`, with stringified annotations evaluated and `Self`
+    replaced with `_Self`.
+
+    If some annotation cannot be evaluated (e.g. it refers to a class that has not been
+    defined yet) then this returns `None` if `final=False`, so that the caller can try
+    again later. If `final=True` then it instead evaluates as many annotations as it
+    can, and warns about the rest, which will not be checked.
+    """
+    signature = inspect.signature(fn)
     try:
-        hints = get_type_hints(fn, ns, include_extras=True)
-    except Exception:
-        # Not just `NameError` but also e.g. `ValueError` in case we have e.g.
-        # 'Float[Foo, "*foo *bar"]' and raise  from having multiple variadic
-        # arguments. Sometimes this can still be useful to use for human
-        # documentation purposes.
-        return Any
-    else:
-        return hints["value"]
+        hints = get_type_hints(fn, include_extras=True)
+    except Exception as e:
+        if not final:
+            return None
+        hints = {}
+        unresolved = []
+        globalns = getattr(inspect.unwrap(fn), "__globals__", {})
+        annotations = {p.name: p.annotation for p in signature.parameters.values()}
+        annotations["return"] = signature.return_annotation
+        for p_name, p_annotation in annotations.items():
+            if p_annotation is inspect.Signature.empty:
+                continue
+            try:
+                hints[p_name] = _destring_annotation(p_annotation, globalns)
+            except Exception:
+                # Not just `NameError` but also e.g. `ValueError` in case we have e.g.
+                # 'Float[Foo, "*foo *bar"]' and raise from having multiple variadic
+                # arguments. Sometimes this can still be useful to use for human
+                # documentation purposes.
+                hints[p_name] = Any
+                unresolved.append(p_name)
+        qualname = getattr(fn, "__qualname__", "<no qualname found>")
+        module = getattr(fn, "__module__", "<no module found>")
+        if len(unresolved) > 0:
+            warnings.warn(
+                f"jaxtyping could not resolve the type annotations of {unresolved} "
+                f"for {module}.{qualname} ({e}), so these will not be checked.",
+                stacklevel=6,
+            )
+    new_params = []
+    for p_name, p_value in signature.parameters.items():
+        p_annotation = hints.get(p_name, p_value.annotation)
+        p_value = p_value.replace(annotation=_substitute_self(p_annotation))
+        new_params.append(p_value)
+    return_annotation = hints.get("return", signature.return_annotation)
+    return signature.replace(
+        parameters=new_params, return_annotation=_substitute_self(return_annotation)
+    )
 
 
 def _make_fn_with_signature(
