@@ -725,7 +725,7 @@ class _MetaAbstractDtype(type):
             f'`jaxtyping.{cls.__name__}[jnp.ndarray, "..."]`.'
         )
 
-    def __getitem__(cls, item: tuple[Any, str]):
+    def __getitem__(cls, item: tuple[Any, Union[str, types.EllipsisType]]):
         if not isinstance(item, tuple) or len(item) != 2:
             raise ValueError(
                 "As of jaxtyping v0.2.0, type annotations must now include both an "
@@ -734,6 +734,9 @@ class _MetaAbstractDtype(type):
             )
         array_type, dim_str = item
         array_type = _normalize_array_type(array_type)
+        if dim_str is ...:
+            # `Float[Array, ...]` is the same as `Float[Array, "..."]`.
+            dim_str = "..."
         dim_str = dim_str.strip()
         del item
         if get_origin(array_type) in _union_types:
