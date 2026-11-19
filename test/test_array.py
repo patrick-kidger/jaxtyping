@@ -964,3 +964,11 @@ def test_typealiastype():
 def test_union_of_arraylike():
     Arrayish = Union[jax.Array, np.typing.ArrayLike]
     Float[Arrayish, ""]
+
+
+def test_bare_ellipsis():
+    # `Float[Array, ...]` is spelled with the `Ellipsis` object rather than the string
+    # `"..."`. It means the same thing.
+    assert isinstance(np.zeros((2, 3)), Float[np.ndarray, ...])
+    assert not isinstance(np.zeros((2, 3), dtype=np.int32), Float[np.ndarray, ...])
+    assert Float[float, ...] is float

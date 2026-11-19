@@ -20,6 +20,8 @@ Some tooling in the Python ecosystem assumes that only the latter is true, and w
 
 In the case of `flake8`, or Ruff, this can be resolved. Multi-dimensional arrays (e.g. `Float32[jax.Array, "b c"]`) will throw a very unusual error (F722, syntax error in forward annotation), so you can safely just disable this particular error globally. Uni-dimensional arrays (e.g. `Float32[jax.Array, "x"]`) will throw an error that's actually useful (F821, undefined name), so instead of disabling this globally, you should instead prepend a space to the start of your shape, e.g. `Float32[jax.Array, " x"]`. `jaxtyping` will treat this in the same way, whilst `flake8` will now throw an F722 error that you can disable as before.
 
+Ruff's UP037 ("remove quotes from type annotation") has an autofix that rewrites such strings when annotations are deferred (under `from __future__ import annotations`, or when targeting Python 3.14+): `"x"` becomes the bare name `x`, and `"..."` becomes a bare `...`. The leading space prevents this as well. A bare `...` is accepted and means the same as `"..."`.
+
 ## Dataclass annotations aren't being checked properly.
 
 Stringified dataclass annotations, e.g.
